@@ -4,7 +4,13 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Receipt {{ $order->invoice_no ?? $order->number }}</title>
+    @php
+        // Hitung sisa, lalu tentukan apakah sudah lunas atau belum
+        $sisa = max((float) $order->grand_total - (float) $order->paid_amount, 0);
+        $isLunas = $sisa <= 0 && $order->payment_status === 'PAID';
+        $docTitle = $isLunas ? 'KUITANSI PEMBAYARAN' : 'TAGIHAN / INVOICE';
+    @endphp
+    <title>{{ $docTitle }} {{ $order->invoice_no ?? $order->number }}</title>
     <style>
         * {
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -17,8 +23,15 @@
 
         h1 {
             font-size: 14px;
-            margin: 0 0 6px;
+            margin: 0 0 4px;
             text-align: center;
+        }
+
+        .doc-type {
+            font-size: 12px;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 4px;
         }
 
         .meta,
@@ -50,6 +63,9 @@
 
 <body>
     <h1>{{ $branch?->name ?? 'Salve Laundry' }}</h1>
+    <div class="doc-type">
+        {{ $docTitle }}
+    </div>
     <div class="meta">
         No: {{ $order->invoice_no ?? $order->number }}<br>
         Tgl: {{ \Illuminate\Support\Carbon::parse($order->created_at)->format('d/m/Y H:i') }}<br>
@@ -85,9 +101,10 @@
             <td class="right">{{ number_format((float) $order->paid_amount, 0, ',', '.') }}</td>
         </tr>
         <tr>
-            <td>Sisa</td>
+            <td>{{ $isLunas ? 'Sisa' : 'Sisa Tagihan' }}</td>
             <td class="right">
-                {{ number_format(max((float) $order->grand_total - (float) $order->paid_amount, 0), 0, ',', '.') }}</td>
+                {{ number_format($sisa, 0, ',', '.') }}
+            </td>
         </tr>
     </table>
     <div class="sep"></div>
