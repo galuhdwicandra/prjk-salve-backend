@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\OrderPaymentsController;
 use App\Http\Controllers\Api\OrderPhotosController;
 use App\Http\Controllers\Api\DeliveryController;
 use App\Http\Controllers\api\ReceivableController;
+use App\Http\Controllers\Api\ExpenseController;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
@@ -104,6 +105,9 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/receivables', [ReceivableController::class, 'index']);
         Route::post('/receivables/{id}/settle', [ReceivableController::class, 'settle']);
+
+        Route::apiResource('expenses', ExpenseController::class)
+            ->only(['index', 'store', 'show', 'update', 'destroy']);
 
         // Tambahkan route lain di sini sesuai kebutuhan
     });

@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-11-09 16:41:32_  
+_Dihasilkan otomatis: 2025-11-14 20:28:04_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2025\apk-web-salve\Projek Salve\prjk-salve\backend`
 
 
@@ -12,6 +12,7 @@ _Dihasilkan otomatis: 2025-11-09 16:41:32_
   - [app\Http\Controllers\Api\CategoryController.php](#file-apphttpcontrollersapicategorycontrollerphp)
   - [app\Http\Controllers\Api\CustomerController.php](#file-apphttpcontrollersapicustomercontrollerphp)
   - [app\Http\Controllers\Api\DeliveryController.php](#file-apphttpcontrollersapideliverycontrollerphp)
+  - [app\Http\Controllers\Api\ExpenseController.php](#file-apphttpcontrollersapiexpensecontrollerphp)
   - [app\Http\Controllers\Api\InvoiceCounterController.php](#file-apphttpcontrollersapiinvoicecountercontrollerphp)
   - [app\Http\Controllers\Api\OrderController.php](#file-apphttpcontrollersapiordercontrollerphp)
   - [app\Http\Controllers\Api\OrderPaymentsController.php](#file-apphttpcontrollersapiorderpaymentscontrollerphp)
@@ -27,6 +28,7 @@ _Dihasilkan otomatis: 2025-11-09 16:41:32_
   - [app\Models\Customer.php](#file-appmodelscustomerphp)
   - [app\Models\Delivery.php](#file-appmodelsdeliveryphp)
   - [app\Models\DeliveryEvent.php](#file-appmodelsdeliveryeventphp)
+  - [app\Models\Expense.php](#file-appmodelsexpensephp)
   - [app\Models\InvoiceCounter.php](#file-appmodelsinvoicecounterphp)
   - [app\Models\Order.php](#file-appmodelsorderphp)
   - [app\Models\OrderItem.php](#file-appmodelsorderitemphp)
@@ -45,6 +47,7 @@ _Dihasilkan otomatis: 2025-11-09 16:41:32_
   - [app\Policies\CategoryPolicy.php](#file-apppoliciescategorypolicyphp)
   - [app\Policies\CustomerPolicy.php](#file-apppoliciescustomerpolicyphp)
   - [app\Policies\DeliveryPolicy.php](#file-apppoliciesdeliverypolicyphp)
+  - [app\Policies\ExpensePolicy.php](#file-apppoliciesexpensepolicyphp)
   - [app\Policies\OrderPolicy.php](#file-apppoliciesorderpolicyphp)
   - [app\Policies\ReceivablePolicy.php](#file-apppoliciesreceivablepolicyphp)
   - [app\Policies\ServicePolicy.php](#file-apppoliciesservicepolicyphp)
@@ -63,6 +66,8 @@ _Dihasilkan otomatis: 2025-11-09 16:41:32_
   - [app\Http\Requests\Deliveries\DeliveryAssignRequest.php](#file-apphttprequestsdeliveriesdeliveryassignrequestphp)
   - [app\Http\Requests\Deliveries\DeliveryStatusRequest.php](#file-apphttprequestsdeliveriesdeliverystatusrequestphp)
   - [app\Http\Requests\Deliveries\DeliveryStoreRequest.php](#file-apphttprequestsdeliveriesdeliverystorerequestphp)
+  - [app\Http\Requests\Expenses\ExpenseStoreRequest.php](#file-apphttprequestsexpensesexpensestorerequestphp)
+  - [app\Http\Requests\Expenses\ExpenseUpdateRequest.php](#file-apphttprequestsexpensesexpenseupdaterequestphp)
   - [app\Http\Requests\InvoiceCounterStoreRequest.php](#file-apphttprequestsinvoicecounterstorerequestphp)
   - [app\Http\Requests\InvoiceCounterUpdateRequest.php](#file-apphttprequestsinvoicecounterupdaterequestphp)
   - [app\Http\Requests\Orders\OrderApplyVoucherRequest.php](#file-apphttprequestsordersorderapplyvoucherrequestphp)
@@ -796,6 +801,183 @@ class DeliveryController extends Controller
             return $bid ? (int) $bid : null;
         }
         return (int) ($u->branch_id ?? 0) ?: null;
+    }
+}
+
+```
+</details>
+
+### app\Http\Controllers\Api\ExpenseController.php
+
+- SHA: `3f7933189b3b`  
+- Ukuran: 4 KB  
+- Namespace: `App\Http\Controllers\Api`
+
+**Class `ExpenseController` extends `Controller`**
+
+Metode Publik:
+- **index**(Request $request)
+- **store**(ExpenseStoreRequest $request)
+- **show**(Expense $expense)
+- **update**(ExpenseUpdateRequest $request, Expense $expense)
+- **destroy**(Request $request, Expense $expense)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Expenses\ExpenseStoreRequest;
+use App\Http\Requests\Expenses\ExpenseUpdateRequest;
+use App\Models\Expense;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+
+class ExpenseController extends Controller
+{
+    public function index(Request $request)
+    {
+        $this->authorize('viewAny', Expense::class);
+
+        $user = $request->user();
+
+        $query = Expense::query()
+            ->with('branch')
+            ->orderByDesc('created_at');
+
+        // Scope per cabang:
+        // - Superadmin: boleh lihat semua, bisa filter branch_id
+        // - Admin Cabang: hanya cabangnya sendiri
+        if ($user->hasRole('Superadmin')) {
+            if ($branchId = $request->query('branch_id')) {
+                $query->where('branch_id', $branchId);
+            }
+        } else {
+            if ($user->branch_id !== null) {
+                $query->where('branch_id', $user->branch_id);
+            }
+        }
+
+        // Optional filter tanggal (kalau nanti dipakai di F11)
+        if ($dateFrom = $request->query('date_from')) {
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+        if ($dateTo = $request->query('date_to')) {
+            $query->whereDate('created_at', '<=', $dateTo);
+        }
+
+        $perPage = min($request->integer('per_page', 50), 100);
+
+        return $query->paginate($perPage);
+    }
+
+    public function store(ExpenseStoreRequest $request)
+    {
+        $this->authorize('create', Expense::class);
+
+        $user = $request->user();
+
+        $branchId = null;
+
+        if ($user->hasRole('Superadmin')) {
+            $branchId = $request->input('branch_id');
+
+            if (!$branchId) {
+                return response()->json([
+                    'message' => 'branch_id wajib diisi untuk Superadmin.',
+                ], 422);
+            }
+        } else {
+            $branchId = $user->branch_id;
+
+            if (!$branchId) {
+                return response()->json([
+                    'message' => 'User tidak memiliki cabang yang terasosiasi.',
+                ], 422);
+            }
+        }
+
+        $data = $request->validated();
+
+        $data['branch_id'] = $branchId;
+
+        // Handle upload bukti
+        if ($request->hasFile('proof')) {
+            $storedPath = $request
+                ->file('proof')
+                ->store('uploads/expenses', 'public');
+
+            // Sesuai pola order_photos: path yang disimpan "storage/..."
+            $data['proof_path'] = 'storage/' . $storedPath;
+        }
+
+        $expense = Expense::create($data);
+
+        return response()->json([
+            'data' => $expense->load('branch'),
+        ], 201);
+    }
+
+    public function show(Expense $expense)
+    {
+        $this->authorize('view', $expense);
+
+        return response()->json([
+            'data' => $expense->load('branch'),
+        ]);
+    }
+
+    public function update(ExpenseUpdateRequest $request, Expense $expense)
+    {
+        $this->authorize('update', $expense);
+
+        $data = $request->validated();
+
+        // branch_id tidak boleh diubah lewat update
+        unset($data['branch_id']);
+
+        // Jika ada file baru, hapus file lama
+        if ($request->hasFile('proof')) {
+            if ($expense->proof_path) {
+                $this->deleteProofFile($expense->proof_path);
+            }
+
+            $storedPath = $request
+                ->file('proof')
+                ->store('uploads/expenses', 'public');
+
+            $data['proof_path'] = 'storage/' . $storedPath;
+        }
+
+        $expense->update($data);
+
+        return response()->json([
+            'data' => $expense->fresh()->load('branch'),
+        ]);
+    }
+
+    public function destroy(Request $request, Expense $expense)
+    {
+        $this->authorize('delete', $expense);
+
+        if ($expense->proof_path) {
+            $this->deleteProofFile($expense->proof_path);
+        }
+
+        $expense->delete();
+
+        return response()->json([], 204);
+    }
+
+    private function deleteProofFile(string $storedPath): void
+    {
+        // storedPath berbentuk "storage/uploads/expenses/xxx.ext"
+        // Disk 'public' menyimpan di "app/public/..."
+        $relativePath = preg_replace('#^storage/#', '', $storedPath);
+
+        Storage::disk('public')->delete($relativePath);
     }
 }
 
@@ -2239,6 +2421,59 @@ class DeliveryEvent extends Model
 ```
 </details>
 
+### app\Models\Expense.php
+
+- SHA: `3fb0d1d88867`  
+- Ukuran: 644 B  
+- Namespace: `App\Models`
+
+**Class `Expense` extends `Model`**
+
+Metode Publik:
+- **branch**()
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+
+class Expense extends Model
+{
+    use HasFactory;
+    use HasUuids;
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    protected $table = 'expenses';
+
+    protected $fillable = [
+        'branch_id',
+        'category',
+        'amount',
+        'note',
+        'proof_path',
+    ];
+
+    protected $casts = [
+        'amount' => 'decimal:2',
+    ];
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+}
+
+```
+</details>
+
 ### app\Models\InvoiceCounter.php
 
 - SHA: `214e0c65ae0c`  
@@ -3238,6 +3473,79 @@ class DeliveryPolicy
     public function viewAny(User $user): bool
     {
         return $user->hasAnyRole(['Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir']);
+    }
+}
+
+```
+</details>
+
+### app\Policies\ExpensePolicy.php
+
+- SHA: `57cfc797292f`  
+- Ukuran: 1 KB  
+- Namespace: `App\Policies`
+
+**Class `ExpensePolicy`**
+
+Metode Publik:
+- **before**(?User $user, string $ability)
+- **viewAny**(User $user) : *bool*
+- **view**(User $user, Expense $expense) : *bool*
+- **create**(User $user) : *bool*
+- **update**(User $user, Expense $expense) : *bool*
+- **delete**(User $user, Expense $expense) : *bool*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Policies;
+
+use App\Models\Expense;
+use App\Models\User;
+use Illuminate\Auth\Access\HandlesAuthorization;
+
+class ExpensePolicy
+{
+    use HandlesAuthorization;
+
+    public function before(?User $user, string $ability)
+    {
+        if ($user && $user->hasRole('Superadmin')) {
+            return true;
+        }
+
+        return null;
+    }
+
+    public function viewAny(User $user): bool
+    {
+        // Sesuai SOP: modul Expenses hanya untuk Admin Cabang (dan Superadmin via before)
+        return $user->hasRole('Admin Cabang');
+    }
+
+    public function view(User $user, Expense $expense): bool
+    {
+        if ($user->hasRole('Admin Cabang') && $user->branch_id !== null) {
+            return $expense->branch_id === $user->branch_id;
+        }
+
+        return false;
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->hasRole('Admin Cabang') && $user->branch_id !== null;
+    }
+
+    public function update(User $user, Expense $expense): bool
+    {
+        return $this->view($user, $expense);
+    }
+
+    public function delete(User $user, Expense $expense): bool
+    {
+        return $this->view($user, $expense);
     }
 }
 
@@ -4263,6 +4571,93 @@ class DeliveryStoreRequest extends FormRequest
             'type' => ['required', Rule::in(['pickup','delivery','return'])],
             'zone_id' => ['nullable','uuid'],
             'fee' => ['nullable','numeric','min:0'],
+        ];
+    }
+}
+
+```
+</details>
+
+### app\Http\Requests\Expenses\ExpenseStoreRequest.php
+
+- SHA: `5c7bf55f4b7b`  
+- Ukuran: 610 B  
+- Namespace: `App\Http\Requests\Expenses`
+
+**Class `ExpenseStoreRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Expenses;
+
+use App\Models\Expense;
+use Illuminate\Foundation\Http\FormRequest;
+
+class ExpenseStoreRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()?->can('create', Expense::class) ?? false;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'category' => ['required', 'string', 'max:100'],
+            'amount' => ['required', 'numeric', 'min:0'],
+            'note' => ['nullable', 'string'],
+            'proof' => ['nullable', 'file', 'max:4096', 'mimes:jpg,jpeg,png,pdf'],
+        ];
+    }
+}
+
+```
+</details>
+
+### app\Http\Requests\Expenses\ExpenseUpdateRequest.php
+
+- SHA: `1c565a8f575d`  
+- Ukuran: 699 B  
+- Namespace: `App\Http\Requests\Expenses`
+
+**Class `ExpenseUpdateRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array* — @var \App\Models\Expense $expense
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Expenses;
+
+use App\Models\Expense;
+use Illuminate\Foundation\Http\FormRequest;
+
+class ExpenseUpdateRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        /** @var \App\Models\Expense $expense */
+        $expense = $this->route('expense');
+
+        return $this->user()?->can('update', $expense) ?? false;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'category' => ['required', 'string', 'max:100'],
+            'amount' => ['required', 'numeric', 'min:0'],
+            'note' => ['nullable', 'string'],
+            'proof' => ['nullable', 'file', 'max:4096', 'mimes:jpg,jpeg,png,pdf'],
         ];
     }
 }
@@ -5631,8 +6026,8 @@ class OrderNumberService
 
 ### app\Services\OrderService.php
 
-- SHA: `963f40539f43`  
-- Ukuran: 8 KB  
+- SHA: `792deff8dfac`  
+- Ukuran: 9 KB  
 - Namespace: `App\Services`
 
 **Class `OrderService`**
@@ -5658,6 +6053,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\Delivery;
 use App\Services\DeliveryService;
+use Illuminate\Support\Facades\Schema;
 
 class OrderService
 {
@@ -5689,7 +6085,6 @@ class OrderService
                 'customer_id' => $data['customer_id'] ?? null,
                 'number' => $number,
                 'status' => 'QUEUE',
-                // isi nilai decimal dengan string 2 desimal
                 'subtotal' => $this->dec(0),
                 'discount' => $this->dec(0),
                 'grand_total' => $this->dec(0),
@@ -5725,7 +6120,25 @@ class OrderService
             $order->due_amount = $this->dec(((float) $order->grand_total) - ((float) $order->paid_amount));
             $order->save();
 
-            // TODO: audit('ORDER_CREATE', ['order_id' => $order->id, 'number' => $order->number]);
+            if (Schema::hasTable('receivables')) {
+                $grand = (float) $order->getAttribute('grand_total');
+                if ($grand > 0) {
+                    $existing = DB::table('receivables')
+                        ->where('order_id', (string) $order->getKey())
+                        ->first();
+
+                    if (!$existing) {
+                        DB::table('receivables')->insert([
+                            'id' => (string) Str::uuid(),
+                            'order_id' => (string) $order->getKey(),
+                            'remaining_amount' => $grand,
+                            'status' => 'OPEN',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
 
             return $order->load(['items.service', 'customer']);
         });
@@ -5769,19 +6182,17 @@ class OrderService
 
             // POLA 1 — server-driven: saat masuk DELIVERING, bikin delivery + auto-assign kurir
             if ($next === 'DELIVERING') {
-                // Idempoten: jangan dobel kalau sudah ada
                 $exists = Delivery::query()
                     ->where('order_id', $order->id)
                     ->exists();
 
                 if (!$exists) {
-                    // Panggil method yang BENAR (create), bukan createForOrder
                     app(DeliveryService::class)->create(
                         $order,
                         [
-                            'type' => 'delivery', // sesuaikan jika enum/type kamu beda
+                            'type' => 'delivery',
                             'zone_id' => null,
-                            'fee' => 0,          // kalau ada rule fee/zone, hitung di service
+                            'fee' => 0,
                         ],
                         $actor
                     );
@@ -6712,7 +7123,7 @@ class UserSeeder extends Seeder
 
 ### resources\views\orders\receipt.blade.php
 
-- SHA: `4fc9b17c94e8`  
+- SHA: `40442c028e98`  
 - Ukuran: 3 KB  
 - Namespace: ``
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
@@ -6724,7 +7135,13 @@ class UserSeeder extends Seeder
 
 <head>
     <meta charset="utf-8">
-    <title>Receipt {{ $order->invoice_no ?? $order->number }}</title>
+    @php
+        // Hitung sisa, lalu tentukan apakah sudah lunas atau belum
+        $sisa = max((float) $order->grand_total - (float) $order->paid_amount, 0);
+        $isLunas = $sisa <= 0 && $order->payment_status === 'PAID';
+        $docTitle = $isLunas ? 'KUITANSI PEMBAYARAN' : 'TAGIHAN / INVOICE';
+    @endphp
+    <title>{{ $docTitle }} {{ $order->invoice_no ?? $order->number }}</title>
     <style>
         * {
             font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -6737,8 +7154,15 @@ class UserSeeder extends Seeder
 
         h1 {
             font-size: 14px;
-            margin: 0 0 6px;
+            margin: 0 0 4px;
             text-align: center;
+        }
+
+        .doc-type {
+            font-size: 12px;
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 4px;
         }
 
         .meta,
@@ -6770,6 +7194,9 @@ class UserSeeder extends Seeder
 
 <body>
     <h1>{{ $branch?->name ?? 'Salve Laundry' }}</h1>
+    <div class="doc-type">
+        {{ $docTitle }}
+    </div>
     <div class="meta">
         No: {{ $order->invoice_no ?? $order->number }}<br>
         Tgl: {{ \Illuminate\Support\Carbon::parse($order->created_at)->format('d/m/Y H:i') }}<br>
@@ -6805,9 +7232,10 @@ class UserSeeder extends Seeder
             <td class="right">{{ number_format((float) $order->paid_amount, 0, ',', '.') }}</td>
         </tr>
         <tr>
-            <td>Sisa</td>
+            <td>{{ $isLunas ? 'Sisa' : 'Sisa Tagihan' }}</td>
             <td class="right">
-                {{ number_format(max((float) $order->grand_total - (float) $order->paid_amount, 0), 0, ',', '.') }}</td>
+                {{ number_format($sisa, 0, ',', '.') }}
+            </td>
         </tr>
     </table>
     <div class="sep"></div>
@@ -6823,7 +7251,7 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `d2b46be9a52d`  
+- SHA: `30a81ce5e05a`  
 - Ukuran: 6 KB
 
 **Ringkasan Routes (deteksi heuristik):**
@@ -6909,6 +7337,7 @@ use App\Http\Controllers\Api\OrderPaymentsController;
 use App\Http\Controllers\Api\OrderPhotosController;
 use App\Http\Controllers\Api\DeliveryController;
 use App\Http\Controllers\api\ReceivableController;
+use App\Http\Controllers\Api\ExpenseController;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
@@ -7000,6 +7429,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/receivables', [ReceivableController::class, 'index']);
         Route::post('/receivables/{id}/settle', [ReceivableController::class, 'settle']);
 
+        Route::apiResource('expenses', ExpenseController::class)
+            ->only(['index', 'store', 'show', 'update', 'destroy']);
+
         // Tambahkan route lain di sini sesuai kebutuhan
     });
 });
@@ -7011,7 +7443,7 @@ Route::prefix('v1')->group(function () {
 
 ## AuthServiceProvider.php
 
-- SHA: `e6a45c29e489`  
+- SHA: `c02c64da14a2`  
 - Ukuran: 3 KB
 
 **$policies**
@@ -7024,6 +7456,7 @@ Route::prefix('v1')->group(function () {
 - `Delivery` => `DeliveryPolicy`
 - `Voucher` => `VoucherPolicy`
 - `Receivable` => `ReceivablePolicy`
+- `Expense` => `ExpensePolicy`
 
 **Gate::define()**
 - `user.assignRole`
@@ -7060,6 +7493,9 @@ use App\Models\Voucher;
 use App\Policies\VoucherPolicy;
 use App\Models\Receivable;
 use App\Policies\ReceivablePolicy;
+use App\Models\Expense;
+use App\Policies\ExpensePolicy;
+
 class AuthServiceProvider extends ServiceProvider
 {
 
@@ -7073,6 +7509,7 @@ class AuthServiceProvider extends ServiceProvider
         Delivery::class => DeliveryPolicy::class,
         Voucher::class => VoucherPolicy::class,
         Receivable::class => ReceivablePolicy::class,
+        Expense::class => ExpensePolicy::class,
     ];
 
     /**

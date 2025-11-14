@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\Delivery;
 use App\Services\DeliveryService;
+use Illuminate\Support\Facades\Schema;
 
 class OrderService
 {
@@ -41,7 +42,6 @@ class OrderService
                 'customer_id' => $data['customer_id'] ?? null,
                 'number' => $number,
                 'status' => 'QUEUE',
-                // isi nilai decimal dengan string 2 desimal
                 'subtotal' => $this->dec(0),
                 'discount' => $this->dec(0),
                 'grand_total' => $this->dec(0),
@@ -77,7 +77,25 @@ class OrderService
             $order->due_amount = $this->dec(((float) $order->grand_total) - ((float) $order->paid_amount));
             $order->save();
 
-            // TODO: audit('ORDER_CREATE', ['order_id' => $order->id, 'number' => $order->number]);
+            if (Schema::hasTable('receivables')) {
+                $grand = (float) $order->getAttribute('grand_total');
+                if ($grand > 0) {
+                    $existing = DB::table('receivables')
+                        ->where('order_id', (string) $order->getKey())
+                        ->first();
+
+                    if (!$existing) {
+                        DB::table('receivables')->insert([
+                            'id' => (string) Str::uuid(),
+                            'order_id' => (string) $order->getKey(),
+                            'remaining_amount' => $grand,
+                            'status' => 'OPEN',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
 
             return $order->load(['items.service', 'customer']);
         });
@@ -121,19 +139,17 @@ class OrderService
 
             // POLA 1 — server-driven: saat masuk DELIVERING, bikin delivery + auto-assign kurir
             if ($next === 'DELIVERING') {
-                // Idempoten: jangan dobel kalau sudah ada
                 $exists = Delivery::query()
                     ->where('order_id', $order->id)
                     ->exists();
 
                 if (!$exists) {
-                    // Panggil method yang BENAR (create), bukan createForOrder
                     app(DeliveryService::class)->create(
                         $order,
                         [
-                            'type' => 'delivery', // sesuaikan jika enum/type kamu beda
+                            'type' => 'delivery',
                             'zone_id' => null,
-                            'fee' => 0,          // kalau ada rule fee/zone, hitung di service
+                            'fee' => 0,
                         ],
                         $actor
                     );

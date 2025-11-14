@@ -22,6 +22,9 @@ use App\Models\Voucher;
 use App\Policies\VoucherPolicy;
 use App\Models\Receivable;
 use App\Policies\ReceivablePolicy;
+use App\Models\Expense;
+use App\Policies\ExpensePolicy;
+
 class AuthServiceProvider extends ServiceProvider
 {
 
@@ -35,6 +38,7 @@ class AuthServiceProvider extends ServiceProvider
         Delivery::class => DeliveryPolicy::class,
         Voucher::class => VoucherPolicy::class,
         Receivable::class => ReceivablePolicy::class,
+        Expense::class => ExpensePolicy::class,
     ];
 
     /**
