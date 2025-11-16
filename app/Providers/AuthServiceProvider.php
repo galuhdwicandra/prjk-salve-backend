@@ -67,6 +67,7 @@ class AuthServiceProvider extends ServiceProvider
             ($user->hasRole('Admin Cabang') && ($target->branch_id === $user->branch_id)) ||
             ($user->id === $target->id)
         );
+        
         Gate::define('user.create', fn($user) => $user->hasAnyRole(['Superadmin', 'Admin Cabang']));
         Gate::define(
             'user.update',
@@ -75,6 +76,12 @@ class AuthServiceProvider extends ServiceProvider
             ($user->hasRole('Admin Cabang') && ($target->branch_id === $user->branch_id)) ||
             ($user->id === $target->id)
         );
+
+        Gate::define('dashboard.summary', function (User $user) {
+            // Spatie roles; semua role boleh melihat ringkasan sesuai scope cabangnya.
+            return $user->hasAnyRole(['Superadmin', 'Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir']);
+        });
+
         Gate::define(
             'user.delete',
             fn($user, $target) =>

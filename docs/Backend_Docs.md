@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-11-14 20:28:04_  
+_Dihasilkan otomatis: 2025-11-17 01:41:04_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2025\apk-web-salve\Projek Salve\prjk-salve\backend`
 
 
@@ -11,6 +11,7 @@ _Dihasilkan otomatis: 2025-11-14 20:28:04_
   - [app\Http\Controllers\Api\BranchController.php](#file-apphttpcontrollersapibranchcontrollerphp)
   - [app\Http\Controllers\Api\CategoryController.php](#file-apphttpcontrollersapicategorycontrollerphp)
   - [app\Http\Controllers\Api\CustomerController.php](#file-apphttpcontrollersapicustomercontrollerphp)
+  - [app\Http\Controllers\Api\DashboardController.php](#file-apphttpcontrollersapidashboardcontrollerphp)
   - [app\Http\Controllers\Api\DeliveryController.php](#file-apphttpcontrollersapideliverycontrollerphp)
   - [app\Http\Controllers\Api\ExpenseController.php](#file-apphttpcontrollersapiexpensecontrollerphp)
   - [app\Http\Controllers\Api\InvoiceCounterController.php](#file-apphttpcontrollersapiinvoicecountercontrollerphp)
@@ -63,6 +64,7 @@ _Dihasilkan otomatis: 2025-11-14 20:28:04_
   - [app\Http\Requests\CustomerSearchWARequest.php](#file-apphttprequestscustomersearchwarequestphp)
   - [app\Http\Requests\CustomerStoreRequest.php](#file-apphttprequestscustomerstorerequestphp)
   - [app\Http\Requests\CustomerUpdateRequest.php](#file-apphttprequestscustomerupdaterequestphp)
+  - [app\Http\Requests\Dashboard\DashboardSummaryRequest.php](#file-apphttprequestsdashboarddashboardsummaryrequestphp)
   - [app\Http\Requests\Deliveries\DeliveryAssignRequest.php](#file-apphttprequestsdeliveriesdeliveryassignrequestphp)
   - [app\Http\Requests\Deliveries\DeliveryStatusRequest.php](#file-apphttprequestsdeliveriesdeliverystatusrequestphp)
   - [app\Http\Requests\Deliveries\DeliveryStoreRequest.php](#file-apphttprequestsdeliveriesdeliverystorerequestphp)
@@ -89,6 +91,7 @@ _Dihasilkan otomatis: 2025-11-14 20:28:04_
 
 - [Services (app/Services)](#services-appservices)
   - [app\Services\AuthService.php](#file-appservicesauthservicephp)
+  - [app\Services\DashboardService.php](#file-appservicesdashboardservicephp)
   - [app\Services\DeliveryService.php](#file-appservicesdeliveryservicephp)
   - [app\Services\InvoiceService.php](#file-appservicesinvoiceservicephp)
   - [app\Services\OrderNumberService.php](#file-appservicesordernumberservicephp)
@@ -631,6 +634,56 @@ class CustomerController extends Controller
             return (string) $me->branch_id;
         }
         return null;
+    }
+}
+
+```
+</details>
+
+### app\Http\Controllers\Api\DashboardController.php
+
+- SHA: `ed75c6016132`  
+- Ukuran: 925 B  
+- Namespace: `App\Http\Controllers\Api`
+
+**Class `DashboardController` extends `Controller`**
+
+Metode Publik:
+- **summary**(DashboardSummaryRequest $request, DashboardService $service)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Dashboard\DashboardSummaryRequest;
+use App\Services\DashboardService;
+use Illuminate\Support\Facades\Gate;
+use Symfony\Component\HttpFoundation\Response;
+
+class DashboardController extends Controller
+{
+    public function summary(DashboardSummaryRequest $request, DashboardService $service)
+    {
+        Gate::authorize('dashboard.summary');
+
+        $data = $service->summary(
+            $request->fromDate(),
+            $request->toDate(),
+            $request->branchId(),
+        );
+
+        return response()->json([
+            'data' => $data,
+            'meta' => [
+                'from' => $request->input('from'),
+                'to' => $request->input('to'),
+                'branch_id' => $request->input('branch_id'),
+            ],
+            'message' => 'OK',
+        ], Response::HTTP_OK);
     }
 }
 
@@ -4420,6 +4473,75 @@ class CustomerUpdateRequest extends FormRequest
 ```
 </details>
 
+### app\Http\Requests\Dashboard\DashboardSummaryRequest.php
+
+- SHA: `a4b594f5872d`  
+- Ukuran: 1 KB  
+- Namespace: `App\Http\Requests\Dashboard`
+
+**Class `DashboardSummaryRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **fromDate**() : *Carbon*
+- **toDate**() : *Carbon*
+- **branchId**() : *?string*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Dashboard;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Carbon;
+
+class DashboardSummaryRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()?->can('dashboard.summary') === true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+            'branch_id' => ['nullable', 'uuid'],
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        // Non-Superadmin wajib terikat ke cabangnya sendiri bila branch_id tidak diisi.
+        $u = $this->user();
+        if ($u && !$u->hasRole('Superadmin') && !$this->input('branch_id')) {
+            $this->merge(['branch_id' => $u->branch_id]);
+        }
+    }
+
+    public function fromDate(): Carbon
+    {
+        return Carbon::createFromFormat('Y-m-d', $this->input('from'))->startOfDay();
+    }
+
+    public function toDate(): Carbon
+    {
+        return Carbon::createFromFormat('Y-m-d', $this->input('to'))->endOfDay();
+    }
+
+    public function branchId(): ?string
+    {
+        return $this->input('branch_id');
+    }
+}
+
+```
+</details>
+
 ### app\Http\Requests\Deliveries\DeliveryAssignRequest.php
 
 - SHA: `990c3eea3cce`  
@@ -5717,6 +5839,112 @@ class AuthService
             $token->delete();
         }
         return ['ok' => true, 'status' => 200, 'message' => 'Logged out.'];
+    }
+}
+
+```
+</details>
+
+### app\Services\DashboardService.php
+
+- SHA: `a5574bfaf3e1`  
+- Ukuran: 4 KB  
+- Namespace: `App\Services`
+
+**Class `DashboardService`**
+
+Metode Publik:
+- **summary**(Carbon $from, Carbon $to, ?string $branchId) : *array* — @param Carbon $from  mulai (awal hari)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Services;
+
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+
+class DashboardService
+{
+    /**
+     * @param Carbon $from  mulai (awal hari)
+     * @param Carbon $to    akhir (akhir hari)
+     * @param string|null $branchId
+     * @return array<string,mixed>
+     */
+    public function summary(Carbon $from, Carbon $to, ?string $branchId): array
+    {
+        // OMZET (basis kas): sum payments.amount dalam window paid_at
+        $omzet = DB::table('payments')
+            ->join('orders', 'orders.id', '=', 'payments.order_id')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereBetween('payments.paid_at', [$from, $to])
+            ->sum('payments.amount');
+
+        // TRANSAKSI: count orders by created_at
+        $transaksi = DB::table('orders')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereBetween('orders.created_at', [$from, $to])
+            ->count();
+
+        // ONGKIR: sum deliveries.fee by deliveries.created_at
+        $ongkir = DB::table('deliveries')
+            ->join('orders', 'orders.id', '=', 'deliveries.order_id')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereBetween('deliveries.created_at', [$from, $to])
+            ->sum('deliveries.fee');
+
+        // VOUCHER: jumlah order yang pakai voucher & total applied_amount by applied_at
+        $voucher = DB::table('order_vouchers')
+            ->join('orders', 'orders.id', '=', 'order_vouchers.order_id')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereBetween('order_vouchers.applied_at', [$from, $to])
+            ->selectRaw('COUNT(DISTINCT order_vouchers.order_id) as used_count, COALESCE(SUM(order_vouchers.applied_amount),0) as used_amount')
+            ->first();
+
+        // PIUTANG: outstanding (OPEN/PARTIAL/OVERDUE) per due_date vs now()
+        $now = now();
+        $piutang = DB::table('receivables')
+            ->join('orders', 'orders.id', '=', 'receivables.order_id')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereIn('receivables.status', ['OPEN', 'PARTIAL', 'OVERDUE'])
+            ->selectRaw('
+                COALESCE(SUM(receivables.remaining_amount),0) as remaining,
+                COUNT(*) as open_count,
+                COALESCE(SUM(CASE WHEN receivables.due_date < ? THEN receivables.remaining_amount ELSE 0 END),0) as overdue_amount,
+                SUM(CASE WHEN receivables.due_date < ? THEN 1 ELSE 0 END) as overdue_count
+            ', [$now, $now])
+            ->first();
+
+        // TOP LAYANAN: top 5 by omzet (order_items.total) dalam window orders.created_at
+        $topServices = DB::table('order_items')
+            ->join('orders', 'orders.id', '=', 'order_items.order_id')
+            ->join('services', 'services.id', '=', 'order_items.service_id')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereBetween('orders.created_at', [$from, $to])
+            ->groupBy('order_items.service_id', 'services.name')
+            ->selectRaw('order_items.service_id, services.name, SUM(order_items.qty) as qty, SUM(order_items.total) as amount')
+            ->orderByDesc('amount')
+            ->limit(5)
+            ->get();
+
+        return [
+            'omzet' => (float) $omzet,
+            'transaksi' => (int) $transaksi,
+            'ongkir' => (float) $ongkir,
+            'voucher' => [
+                'used_count' => (int) ($voucher->used_count ?? 0),
+                'used_amount' => (float) ($voucher->used_amount ?? 0),
+            ],
+            'piutang' => [
+                'remaining' => (float) ($piutang->remaining ?? 0),
+                'open_count' => (int) ($piutang->open_count ?? 0),
+                'overdue_amount' => (float) ($piutang->overdue_amount ?? 0),
+                'overdue_count' => (int) ($piutang->overdue_count ?? 0),
+            ],
+            'top_services' => $topServices,
+        ];
     }
 }
 
@@ -7251,7 +7479,7 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `30a81ce5e05a`  
+- SHA: `6e277203c0e3`  
 - Ukuran: 6 KB
 
 **Ringkasan Routes (deteksi heuristik):**
@@ -7317,6 +7545,7 @@ class UserSeeder extends Seeder
 | DELETE | `/vouchers/{voucher}` | `` | `` |
 | GET | `/receivables` | `ReceivableController` | `index` |
 | POST | `/receivables/{id}/settle` | `ReceivableController` | `settle` |
+| GET | `dashboard/summary` | `DashboardController` | `summary` |
 
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -7338,6 +7567,7 @@ use App\Http\Controllers\Api\OrderPhotosController;
 use App\Http\Controllers\Api\DeliveryController;
 use App\Http\Controllers\api\ReceivableController;
 use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\api\DashboardController;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
@@ -7432,6 +7662,8 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('expenses', ExpenseController::class)
             ->only(['index', 'store', 'show', 'update', 'destroy']);
 
+        Route::get('dashboard/summary', [DashboardController::class, 'summary']);
+
         // Tambahkan route lain di sini sesuai kebutuhan
     });
 });
@@ -7443,7 +7675,7 @@ Route::prefix('v1')->group(function () {
 
 ## AuthServiceProvider.php
 
-- SHA: `c02c64da14a2`  
+- SHA: `f488a92dd766`  
 - Ukuran: 3 KB
 
 **$policies**
@@ -7464,6 +7696,7 @@ Route::prefix('v1')->group(function () {
 - `user.view`
 - `user.create`
 - `user.update`
+- `dashboard.summary`
 - `user.delete`
 
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
@@ -7538,6 +7771,7 @@ class AuthServiceProvider extends ServiceProvider
             ($user->hasRole('Admin Cabang') && ($target->branch_id === $user->branch_id)) ||
             ($user->id === $target->id)
         );
+        
         Gate::define('user.create', fn($user) => $user->hasAnyRole(['Superadmin', 'Admin Cabang']));
         Gate::define(
             'user.update',
@@ -7546,6 +7780,12 @@ class AuthServiceProvider extends ServiceProvider
             ($user->hasRole('Admin Cabang') && ($target->branch_id === $user->branch_id)) ||
             ($user->id === $target->id)
         );
+
+        Gate::define('dashboard.summary', function (User $user) {
+            // Spatie roles; semua role boleh melihat ringkasan sesuai scope cabangnya.
+            return $user->hasAnyRole(['Superadmin', 'Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir']);
+        });
+
         Gate::define(
             'user.delete',
             fn($user, $target) =>

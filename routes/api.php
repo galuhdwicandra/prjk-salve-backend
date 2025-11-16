@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\OrderPhotosController;
 use App\Http\Controllers\Api\DeliveryController;
 use App\Http\Controllers\api\ReceivableController;
 use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\api\DashboardController;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
@@ -108,6 +109,8 @@ Route::prefix('v1')->group(function () {
 
         Route::apiResource('expenses', ExpenseController::class)
             ->only(['index', 'store', 'show', 'update', 'destroy']);
+
+        Route::get('dashboard/summary', [DashboardController::class, 'summary']);
 
         // Tambahkan route lain di sini sesuai kebutuhan
     });
