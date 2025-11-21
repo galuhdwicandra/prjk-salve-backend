@@ -52,6 +52,9 @@ Route::prefix('v1')->group(function () {
         Route::delete('/invoice-counters/{id}', [InvoiceCounterController::class, 'destroy']);
         Route::put('/invoice-counters/{id}', [InvoiceCounterController::class, 'update']);
 
+        Route::get('/invoice-counters/preview', [InvoiceCounterController::class, 'preview']);
+        Route::post('/invoice-counters/{id}/reset-now', [InvoiceCounterController::class, 'resetNow']);
+
         Route::get('/service-categories', [CategoryController::class, 'index']);
         Route::post('/service-categories', [CategoryController::class, 'store']);
         Route::get('/service-categories/{category}', [CategoryController::class, 'show']);

@@ -7,6 +7,7 @@ use App\Http\Requests\InvoiceCounterStoreRequest;
 use App\Http\Requests\InvoiceCounterUpdateRequest;
 use App\Models\Branch;
 use App\Models\InvoiceCounter;
+use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 
 class InvoiceCounterController extends Controller
@@ -161,6 +162,72 @@ class InvoiceCounterController extends Controller
             'data' => null,
             'meta' => [],
             'message' => 'Deleted',
+            'errors' => null,
+        ]);
+    }
+
+    public function preview(Request $request, InvoiceService $invoice)
+    {
+        $branchId = (string) $request->query('branch_id');
+        if (!$branchId) {
+            return response()->json([
+                'data' => null,
+                'meta' => [],
+                'message' => 'branch_id is required',
+                'errors' => ['branch_id' => ['required']],
+            ], 422);
+        }
+
+        $branch = Branch::query()->find($branchId);
+        if (!$branch) {
+            return response()->json([
+                'data' => null,
+                'meta' => [],
+                'message' => 'Branch not found',
+                'errors' => ['branch_id' => ['not_found']],
+            ], 404);
+        }
+
+        $this->authorize('update', $branch);
+
+        $result = $invoice->preview($branchId);
+        return response()->json([
+            'data' => $result,
+            'meta' => [],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
+    /**
+     * POST /invoice-counters/{id}/reset-now
+     * Reset seq ke 0 dan set last_reset_month ke bulan berjalan.
+     * Otorisasi: update pada Branch terkait counter.
+     */
+    public function resetNow(string $id)
+    {
+        /** @var InvoiceCounter|null $counter */
+        $counter = InvoiceCounter::query()->find($id);
+        if (!$counter) {
+            return response()->json([
+                'data' => null,
+                'meta' => [],
+                'message' => 'InvoiceCounter not found',
+                'errors' => ['id' => ['not_found']],
+            ], 404);
+        }
+
+        $branch = $counter->branch;
+        $this->authorize('update', $branch);
+
+        $counter->seq = 0;
+        $counter->last_reset_month = now('Asia/Jakarta')->format('Ym');
+        $counter->save();
+
+        return response()->json([
+            'data' => $counter->fresh(),
+            'meta' => [],
+            'message' => 'Reset OK',
             'errors' => null,
         ]);
     }

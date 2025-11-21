@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-11-21 17:31:25_  
+_Dihasilkan otomatis: 2025-11-21 22:18:55_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2025\apk-web-salve\Projek Salve\prjk-salve\backend`
 
 
@@ -692,7 +692,7 @@ class DashboardController extends Controller
 
 ### app\Http\Controllers\Api\DeliveryController.php
 
-- SHA: `f84412700883`  
+- SHA: `4af6f597f729`  
 - Ukuran: 5 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -733,7 +733,7 @@ class DeliveryController extends Controller
 
         $user = $request->user();
         $q = Delivery::query()
-            ->with(['courier:id,name', 'order:id,branch_id,number'])
+            ->with(['courier:id,name', 'order:id,branch_id,number,invoice_no'])
             ->latest('created_at');
 
         // Filter umum
@@ -747,7 +747,10 @@ class DeliveryController extends Controller
             $q->where(function ($w) use ($term) {
                 $w->where('id', 'like', "%{$term}%")
                     ->orWhere('order_id', 'like', "%{$term}%")
-                    ->orWhereHas('order', fn($oq) => $oq->where('number', 'like', "%{$term}%"));
+                    ->orWhereHas('order', function ($oq) use ($term) {
+                        $oq->where('number', 'like', "%{$term}%")
+                            ->orWhere('invoice_no', 'like', "%{$term}%");
+                    });
             });
         }
 
@@ -765,8 +768,24 @@ class DeliveryController extends Controller
         $per = max(1, min(200, (int) $request->query('per_page', 50)));
         $page = $q->paginate($per);
 
+        $items = collect($page->items())->map(function (Delivery $d) {
+            return [
+                'id' => $d->id,
+                'order_id' => $d->order_id,
+                'order_invoice_no' => $d->order->invoice_no ?? null,
+                'order_number' => $d->order->number ?? null,
+                'type' => $d->type,
+                'fee' => $d->fee,
+                'assigned_to' => $d->assigned_to,
+                'status' => $d->status,
+                'created_at' => $d->created_at,
+                // opsional: info kurir ringkas
+                'courier' => $d->courier ? ['id' => $d->courier->id, 'name' => $d->courier->name] : null,
+            ];
+        })->all();
+
         return response()->json([
-            'data' => $page->items(),
+            'data' => $items,
             'meta' => [
                 'current_page' => $page->currentPage(),
                 'per_page' => $page->perPage(),
@@ -6103,14 +6122,15 @@ class DeliveryService
 
 ### app\Services\InvoiceService.php
 
-- SHA: `c11224d1fcb6`  
-- Ukuran: 2 KB  
+- SHA: `30c3b75a924f`  
+- Ukuran: 3 KB  
 - Namespace: `App\Services`
 
 **Class `InvoiceService`**
 
 Metode Publik:
 - **generate**(string $branchId) : *string* — Generate nomor faktur format: {PREFIX}-{YYYYMM}-{SEQ6}
+- **generatePair**(string $branchId, ?Carbon $now = null) : *array* — Generate nomor faktur format: {PREFIX}-{YYYYMM}-{SEQ6}
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -6130,7 +6150,18 @@ class InvoiceService
      * Generate nomor faktur format: {PREFIX}-{YYYYMM}-{SEQ6}
      * Reset bulanan jika reset_policy = 'monthly'.
      */
-    public function generate(string $branchId): string
+        public function generate(string $branchId): string
+    {
+        $ids = $this->generatePair($branchId);
+        return $ids['number'];
+    }
+
+    /**
+     * Generate dua nomor sekaligus dalam satu transaksi DB:
+     * - number     : {PREFIX}-{YYYYMM}-{SEQ6}  (tetap untuk kompatibilitas)
+     * - invoice_no : INV-{DD}-{MM}-{####}      (untuk ditampilkan ke user/struk)
+     */
+    public function generatePair(string $branchId, ?Carbon $now = null): array
     {
         // Pastikan branch ada
         $branch = Branch::query()->find($branchId);
@@ -6138,10 +6169,13 @@ class InvoiceService
             throw new ModelNotFoundException('Branch not found');
         }
 
+        $now    = $now ?: Carbon::now('Asia/Jakarta');
+        $nowYm  = $now->format('Ym'); // contoh: 202511
+        $dd     = $now->format('d');  // 25
+        $mm     = $now->format('m');  // 11
         $prefix = $branch->invoice_prefix ?? 'SLV';
-        $nowYm = Carbon::now()->format('Ym');
 
-        return DB::transaction(function () use ($branch, $prefix, $nowYm) {
+        return DB::transaction(function () use ($branch, $prefix, $nowYm, $dd, $mm) {
             // Lock row counter by (branch_id, prefix)
             $counter = InvoiceCounter::query()
                 ->where('branch_id', $branch->id)
@@ -6152,16 +6186,16 @@ class InvoiceService
             if (!$counter) {
                 $counter = new InvoiceCounter([
                     'branch_id' => $branch->id,
-                    'prefix' => $prefix,
-                    'seq' => 0,
-                    'reset_policy' => $branch->reset_policy ?? 'monthly',
+                    'prefix'    => $prefix,
+                    'seq'       => 0,
+                    'reset_policy'     => $branch->reset_policy ?? 'monthly',
                     'last_reset_month' => null,
                 ]);
                 $counter->save();
                 $counter->refresh();
             }
 
-            // Reset jika perlu
+            // Reset jika perlu (monthly)
             if ($counter->reset_policy === 'monthly') {
                 if ($counter->last_reset_month !== $nowYm) {
                     $counter->seq = 0;
@@ -6173,11 +6207,15 @@ class InvoiceService
             $counter->seq = (int) $counter->seq + 1;
             $counter->save();
 
-            // Format A: PREFIX-YYYYMM-SEQ6
-            $seq6 = str_pad((string) $counter->seq, 6, '0', STR_PAD_LEFT);
-            $invoiceNo = "{$counter->prefix}-{$nowYm}-{$seq6}";
+            // number: PREFIX-YYYYMM-SEQ6
+            $seq6   = str_pad((string) $counter->seq, 6, '0', STR_PAD_LEFT);
+            $number = "{$counter->prefix}-{$nowYm}-{$seq6}";
 
-            return $invoiceNo;
+            // invoice_no: INV-DD-MM-#### (gunakan 4 digit terakhir seq)
+            $seq4      = substr(str_pad((string) $counter->seq, 4, '0', STR_PAD_LEFT), -4);
+            $invoiceNo = "INV-{$dd}-{$mm}-{$seq4}";
+
+            return ['number' => $number, 'invoice_no' => $invoiceNo];
         });
     }
 }
@@ -6254,7 +6292,7 @@ class OrderNumberService
 
 ### app\Services\OrderService.php
 
-- SHA: `792deff8dfac`  
+- SHA: `bfcc80303024`  
 - Ukuran: 9 KB  
 - Namespace: `App\Services`
 
@@ -6305,13 +6343,16 @@ class OrderService
         $branchId = (string) ($data['branch_id'] ?? $actor->branch_id);
 
         return DB::transaction(function () use ($data, $actor, $branchId) {
-            $number = $this->invoice->generate($branchId);
+            // Generate dua nomor sekaligus (number & invoice_no)
+            $ids = $this->invoice->generatePair($branchId);
+            $number = $ids['number'];
 
             $order = new Order([
                 'id' => (string) Str::uuid(),
                 'branch_id' => $branchId,
                 'customer_id' => $data['customer_id'] ?? null,
-                'number' => $number,
+                'number' => $ids['number'],
+                'invoice_no' => $ids['invoice_no'],
                 'status' => 'QUEUE',
                 'subtotal' => $this->dec(0),
                 'discount' => $this->dec(0),

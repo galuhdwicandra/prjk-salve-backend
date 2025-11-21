@@ -14,7 +14,7 @@ class InvoiceService
      * Generate nomor faktur format: {PREFIX}-{YYYYMM}-{SEQ6}
      * Reset bulanan jika reset_policy = 'monthly'.
      */
-        public function generate(string $branchId): string
+    public function generate(string $branchId): string
     {
         $ids = $this->generatePair($branchId);
         return $ids['number'];
@@ -33,10 +33,10 @@ class InvoiceService
             throw new ModelNotFoundException('Branch not found');
         }
 
-        $now    = $now ?: Carbon::now('Asia/Jakarta');
-        $nowYm  = $now->format('Ym'); // contoh: 202511
-        $dd     = $now->format('d');  // 25
-        $mm     = $now->format('m');  // 11
+        $now = $now ?: Carbon::now('Asia/Jakarta');
+        $nowYm = $now->format('Ym'); // contoh: 202511
+        $dd = $now->format('d');  // 25
+        $mm = $now->format('m');  // 11
         $prefix = $branch->invoice_prefix ?? 'SLV';
 
         return DB::transaction(function () use ($branch, $prefix, $nowYm, $dd, $mm) {
@@ -50,9 +50,9 @@ class InvoiceService
             if (!$counter) {
                 $counter = new InvoiceCounter([
                     'branch_id' => $branch->id,
-                    'prefix'    => $prefix,
-                    'seq'       => 0,
-                    'reset_policy'     => $branch->reset_policy ?? 'monthly',
+                    'prefix' => $prefix,
+                    'seq' => 0,
+                    'reset_policy' => $branch->reset_policy ?? 'monthly',
                     'last_reset_month' => null,
                 ]);
                 $counter->save();
@@ -72,14 +72,50 @@ class InvoiceService
             $counter->save();
 
             // number: PREFIX-YYYYMM-SEQ6
-            $seq6   = str_pad((string) $counter->seq, 6, '0', STR_PAD_LEFT);
+            $seq6 = str_pad((string) $counter->seq, 6, '0', STR_PAD_LEFT);
             $number = "{$counter->prefix}-{$nowYm}-{$seq6}";
 
             // invoice_no: INV-DD-MM-#### (gunakan 4 digit terakhir seq)
-            $seq4      = substr(str_pad((string) $counter->seq, 4, '0', STR_PAD_LEFT), -4);
+            $seq4 = substr(str_pad((string) $counter->seq, 4, '0', STR_PAD_LEFT), -4);
             $invoiceNo = "INV-{$dd}-{$mm}-{$seq4}";
 
             return ['number' => $number, 'invoice_no' => $invoiceNo];
         });
+    }
+
+    public function preview(string $branchId, ?Carbon $now = null): array
+    {
+        $now ??= now('Asia/Jakarta');
+        $dd = $now->format('d');
+        $mm = $now->format('m');
+        $ym = $now->format('Ym');
+
+        /** @var Branch $branch */
+        $branch = Branch::query()->findOrFail($branchId);
+        $prefix = $branch->invoice_prefix ?? 'SLV';
+
+        /** @var InvoiceCounter|null $counter */
+        $counter = InvoiceCounter::query()
+            ->where('branch_id', $branch->id)
+            ->where('prefix', $prefix)
+            ->first();
+
+        $seq = $counter?->seq ?? 0;
+
+        // Jika kebijakan reset bulanan aktif dan bulan terakhir berbeda, maka preview mulai dari 0 lagi
+        if (($counter?->reset_policy ?? $branch->reset_policy ?? 'monthly') === 'monthly') {
+            if (($counter?->last_reset_month) !== $ym) {
+                $seq = 0;
+            }
+        }
+
+        $next = $seq + 1;
+        $seq6 = str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+        $seq4 = substr(str_pad((string) $next, 4, '0', STR_PAD_LEFT), -4);
+
+        return [
+            'number' => "{$prefix}-{$ym}-{$seq6}",
+            'invoice_no' => "INV-{$dd}-{$mm}-{$seq4}",
+        ];
     }
 }
