@@ -23,7 +23,7 @@ class DeliveryController extends Controller
 
         $user = $request->user();
         $q = Delivery::query()
-            ->with(['courier:id,name', 'order:id,branch_id,number'])
+            ->with(['courier:id,name', 'order:id,branch_id,number,invoice_no'])
             ->latest('created_at');
 
         // Filter umum
@@ -37,7 +37,10 @@ class DeliveryController extends Controller
             $q->where(function ($w) use ($term) {
                 $w->where('id', 'like', "%{$term}%")
                     ->orWhere('order_id', 'like', "%{$term}%")
-                    ->orWhereHas('order', fn($oq) => $oq->where('number', 'like', "%{$term}%"));
+                    ->orWhereHas('order', function ($oq) use ($term) {
+                        $oq->where('number', 'like', "%{$term}%")
+                            ->orWhere('invoice_no', 'like', "%{$term}%");
+                    });
             });
         }
 
@@ -55,8 +58,24 @@ class DeliveryController extends Controller
         $per = max(1, min(200, (int) $request->query('per_page', 50)));
         $page = $q->paginate($per);
 
+        $items = collect($page->items())->map(function (Delivery $d) {
+            return [
+                'id' => $d->id,
+                'order_id' => $d->order_id,
+                'order_invoice_no' => $d->order->invoice_no ?? null,
+                'order_number' => $d->order->number ?? null,
+                'type' => $d->type,
+                'fee' => $d->fee,
+                'assigned_to' => $d->assigned_to,
+                'status' => $d->status,
+                'created_at' => $d->created_at,
+                // opsional: info kurir ringkas
+                'courier' => $d->courier ? ['id' => $d->courier->id, 'name' => $d->courier->name] : null,
+            ];
+        })->all();
+
         return response()->json([
-            'data' => $page->items(),
+            'data' => $items,
             'meta' => [
                 'current_page' => $page->currentPage(),
                 'per_page' => $page->perPage(),

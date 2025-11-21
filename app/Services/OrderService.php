@@ -34,13 +34,16 @@ class OrderService
         $branchId = (string) ($data['branch_id'] ?? $actor->branch_id);
 
         return DB::transaction(function () use ($data, $actor, $branchId) {
-            $number = $this->invoice->generate($branchId);
+            // Generate dua nomor sekaligus (number & invoice_no)
+            $ids = $this->invoice->generatePair($branchId);
+            $number = $ids['number'];
 
             $order = new Order([
                 'id' => (string) Str::uuid(),
                 'branch_id' => $branchId,
                 'customer_id' => $data['customer_id'] ?? null,
-                'number' => $number,
+                'number' => $ids['number'],
+                'invoice_no' => $ids['invoice_no'],
                 'status' => 'QUEUE',
                 'subtotal' => $this->dec(0),
                 'discount' => $this->dec(0),
