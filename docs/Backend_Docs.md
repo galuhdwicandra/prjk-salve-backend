@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-11-21 22:18:55_  
+_Dihasilkan otomatis: 2025-11-24 14:01:55_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2025\apk-web-salve\Projek Salve\prjk-salve\backend`
 
 
@@ -93,6 +93,7 @@ _Dihasilkan otomatis: 2025-11-21 22:18:55_
   - [app\Services\AuthService.php](#file-appservicesauthservicephp)
   - [app\Services\DashboardService.php](#file-appservicesdashboardservicephp)
   - [app\Services\DeliveryService.php](#file-appservicesdeliveryservicephp)
+  - [app\Services\InvoiceNumberService.php](#file-appservicesinvoicenumberservicephp)
   - [app\Services\InvoiceService.php](#file-appservicesinvoiceservicephp)
   - [app\Services\OrderNumberService.php](#file-appservicesordernumberservicephp)
   - [app\Services\OrderService.php](#file-appservicesorderservicephp)
@@ -1058,8 +1059,8 @@ class ExpenseController extends Controller
 
 ### app\Http\Controllers\Api\InvoiceCounterController.php
 
-- SHA: `1964de2b0ae8`  
-- Ukuran: 5 KB  
+- SHA: `5aff7a2f1617`  
+- Ukuran: 7 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `InvoiceCounterController` extends `Controller`**
@@ -1069,6 +1070,8 @@ Metode Publik:
 - **store**(InvoiceCounterStoreRequest $request)
 - **update**(InvoiceCounterUpdateRequest $request, string $id)
 - **destroy**(string $id)
+- **preview**(Request $request, InvoiceService $invoice)
+- **resetNow**(string $id) — POST /invoice-counters/{id}/reset-now
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -1081,6 +1084,7 @@ use App\Http\Requests\InvoiceCounterStoreRequest;
 use App\Http\Requests\InvoiceCounterUpdateRequest;
 use App\Models\Branch;
 use App\Models\InvoiceCounter;
+use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 
 class InvoiceCounterController extends Controller
@@ -1235,6 +1239,72 @@ class InvoiceCounterController extends Controller
             'data' => null,
             'meta' => [],
             'message' => 'Deleted',
+            'errors' => null,
+        ]);
+    }
+
+    public function preview(Request $request, InvoiceService $invoice)
+    {
+        $branchId = (string) $request->query('branch_id');
+        if (!$branchId) {
+            return response()->json([
+                'data' => null,
+                'meta' => [],
+                'message' => 'branch_id is required',
+                'errors' => ['branch_id' => ['required']],
+            ], 422);
+        }
+
+        $branch = Branch::query()->find($branchId);
+        if (!$branch) {
+            return response()->json([
+                'data' => null,
+                'meta' => [],
+                'message' => 'Branch not found',
+                'errors' => ['branch_id' => ['not_found']],
+            ], 404);
+        }
+
+        $this->authorize('update', $branch);
+
+        $result = $invoice->preview($branchId);
+        return response()->json([
+            'data' => $result,
+            'meta' => [],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
+    /**
+     * POST /invoice-counters/{id}/reset-now
+     * Reset seq ke 0 dan set last_reset_month ke bulan berjalan.
+     * Otorisasi: update pada Branch terkait counter.
+     */
+    public function resetNow(string $id)
+    {
+        /** @var InvoiceCounter|null $counter */
+        $counter = InvoiceCounter::query()->find($id);
+        if (!$counter) {
+            return response()->json([
+                'data' => null,
+                'meta' => [],
+                'message' => 'InvoiceCounter not found',
+                'errors' => ['id' => ['not_found']],
+            ], 404);
+        }
+
+        $branch = $counter->branch;
+        $this->authorize('update', $branch);
+
+        $counter->seq = 0;
+        $counter->last_reset_month = now('Asia/Jakarta')->format('Ym');
+        $counter->save();
+
+        return response()->json([
+            'data' => $counter->fresh(),
+            'meta' => [],
+            'message' => 'Reset OK',
             'errors' => null,
         ]);
     }
@@ -6120,10 +6190,22 @@ class DeliveryService
 ```
 </details>
 
+### app\Services\InvoiceNumberService.php
+
+- SHA: `da39a3ee5e6b`  
+- Ukuran: 0 B  
+- Namespace: ``
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+
+```
+</details>
+
 ### app\Services\InvoiceService.php
 
-- SHA: `30c3b75a924f`  
-- Ukuran: 3 KB  
+- SHA: `74136cd3556a`  
+- Ukuran: 4 KB  
 - Namespace: `App\Services`
 
 **Class `InvoiceService`**
@@ -6131,6 +6213,7 @@ class DeliveryService
 Metode Publik:
 - **generate**(string $branchId) : *string* — Generate nomor faktur format: {PREFIX}-{YYYYMM}-{SEQ6}
 - **generatePair**(string $branchId, ?Carbon $now = null) : *array* — Generate nomor faktur format: {PREFIX}-{YYYYMM}-{SEQ6}
+- **preview**(string $branchId, ?Carbon $now = null) : *array* — Generate nomor faktur format: {PREFIX}-{YYYYMM}-{SEQ6}
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -6150,7 +6233,7 @@ class InvoiceService
      * Generate nomor faktur format: {PREFIX}-{YYYYMM}-{SEQ6}
      * Reset bulanan jika reset_policy = 'monthly'.
      */
-        public function generate(string $branchId): string
+    public function generate(string $branchId): string
     {
         $ids = $this->generatePair($branchId);
         return $ids['number'];
@@ -6169,10 +6252,10 @@ class InvoiceService
             throw new ModelNotFoundException('Branch not found');
         }
 
-        $now    = $now ?: Carbon::now('Asia/Jakarta');
-        $nowYm  = $now->format('Ym'); // contoh: 202511
-        $dd     = $now->format('d');  // 25
-        $mm     = $now->format('m');  // 11
+        $now = $now ?: Carbon::now('Asia/Jakarta');
+        $nowYm = $now->format('Ym'); // contoh: 202511
+        $dd = $now->format('d');  // 25
+        $mm = $now->format('m');  // 11
         $prefix = $branch->invoice_prefix ?? 'SLV';
 
         return DB::transaction(function () use ($branch, $prefix, $nowYm, $dd, $mm) {
@@ -6186,9 +6269,9 @@ class InvoiceService
             if (!$counter) {
                 $counter = new InvoiceCounter([
                     'branch_id' => $branch->id,
-                    'prefix'    => $prefix,
-                    'seq'       => 0,
-                    'reset_policy'     => $branch->reset_policy ?? 'monthly',
+                    'prefix' => $prefix,
+                    'seq' => 0,
+                    'reset_policy' => $branch->reset_policy ?? 'monthly',
                     'last_reset_month' => null,
                 ]);
                 $counter->save();
@@ -6208,15 +6291,51 @@ class InvoiceService
             $counter->save();
 
             // number: PREFIX-YYYYMM-SEQ6
-            $seq6   = str_pad((string) $counter->seq, 6, '0', STR_PAD_LEFT);
+            $seq6 = str_pad((string) $counter->seq, 6, '0', STR_PAD_LEFT);
             $number = "{$counter->prefix}-{$nowYm}-{$seq6}";
 
             // invoice_no: INV-DD-MM-#### (gunakan 4 digit terakhir seq)
-            $seq4      = substr(str_pad((string) $counter->seq, 4, '0', STR_PAD_LEFT), -4);
+            $seq4 = substr(str_pad((string) $counter->seq, 4, '0', STR_PAD_LEFT), -4);
             $invoiceNo = "INV-{$dd}-{$mm}-{$seq4}";
 
             return ['number' => $number, 'invoice_no' => $invoiceNo];
         });
+    }
+
+    public function preview(string $branchId, ?Carbon $now = null): array
+    {
+        $now ??= now('Asia/Jakarta');
+        $dd = $now->format('d');
+        $mm = $now->format('m');
+        $ym = $now->format('Ym');
+
+        /** @var Branch $branch */
+        $branch = Branch::query()->findOrFail($branchId);
+        $prefix = $branch->invoice_prefix ?? 'SLV';
+
+        /** @var InvoiceCounter|null $counter */
+        $counter = InvoiceCounter::query()
+            ->where('branch_id', $branch->id)
+            ->where('prefix', $prefix)
+            ->first();
+
+        $seq = $counter?->seq ?? 0;
+
+        // Jika kebijakan reset bulanan aktif dan bulan terakhir berbeda, maka preview mulai dari 0 lagi
+        if (($counter?->reset_policy ?? $branch->reset_policy ?? 'monthly') === 'monthly') {
+            if (($counter?->last_reset_month) !== $ym) {
+                $seq = 0;
+            }
+        }
+
+        $next = $seq + 1;
+        $seq6 = str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+        $seq4 = substr(str_pad((string) $next, 4, '0', STR_PAD_LEFT), -4);
+
+        return [
+            'number' => "{$prefix}-{$ym}-{$seq6}",
+            'invoice_no' => "INV-{$dd}-{$mm}-{$seq4}",
+        ];
     }
 }
 
@@ -7520,8 +7639,8 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `6e277203c0e3`  
-- Ukuran: 6 KB
+- SHA: `439fc604aa5f`  
+- Ukuran: 7 KB
 
 **Ringkasan Routes (deteksi heuristik):**
 
@@ -7547,6 +7666,8 @@ class UserSeeder extends Seeder
 | POST | `/invoice-counters` | `InvoiceCounterController` | `store` |
 | DELETE | `/invoice-counters/{id}` | `InvoiceCounterController` | `destroy` |
 | PUT | `/invoice-counters/{id}` | `InvoiceCounterController` | `update` |
+| GET | `/invoice-counters/preview` | `InvoiceCounterController` | `preview` |
+| POST | `/invoice-counters/{id}/reset-now` | `InvoiceCounterController` | `resetNow` |
 | GET | `/service-categories` | `CategoryController` | `index` |
 | POST | `/service-categories` | `CategoryController` | `store` |
 | GET | `/service-categories/{category}` | `CategoryController` | `show` |
@@ -7644,6 +7765,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/invoice-counters', [InvoiceCounterController::class, 'store']);
         Route::delete('/invoice-counters/{id}', [InvoiceCounterController::class, 'destroy']);
         Route::put('/invoice-counters/{id}', [InvoiceCounterController::class, 'update']);
+
+        Route::get('/invoice-counters/preview', [InvoiceCounterController::class, 'preview']);
+        Route::post('/invoice-counters/{id}/reset-now', [InvoiceCounterController::class, 'resetNow']);
 
         Route::get('/service-categories', [CategoryController::class, 'index']);
         Route::post('/service-categories', [CategoryController::class, 'store']);
