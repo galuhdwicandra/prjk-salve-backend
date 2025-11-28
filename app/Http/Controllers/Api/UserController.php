@@ -25,14 +25,27 @@ class UserController extends Controller
         $filters = [
             'search' => (string) $request->query('q', ''),
             'branch_id' => $this->branchScopeFor($request),
+            'role'      => (string) $request->query('role', ''),
         ];
         $perPage = (int) $request->integer('per_page', 15);
 
         /** @var \Illuminate\Pagination\LengthAwarePaginator $page */
         $page = $this->svc->paginate($filters, $perPage);
 
+        // Normalisasi: roles -> string[]
+        $items = collect($page->items())->map(function (User $u) {
+            return [
+                'id'        => $u->id,
+                'name'      => $u->name,
+                'email'     => $u->email,
+                'branch_id' => $u->branch_id,
+                'is_active' => (bool) $u->is_active,
+                'roles'     => $u->getRoleNames()->values(), // ← ["Kurir", ...]
+            ];
+        })->values();
+
         return response()->json([
-            'data' => $page->items(),
+            'data' => $items,
             'meta' => [
                 'current_page' => $page->currentPage(),
                 'per_page' => $page->perPage(),
@@ -51,10 +64,19 @@ class UserController extends Controller
     {
         $this->authorize('view', $user);
 
+        // Kembalikan bentuk yang sama (roles: string[])
         $user->load('roles:id,name');
+        $data = [
+            'id'        => $user->id,
+            'name'      => $user->name,
+            'email'     => $user->email,
+            'branch_id' => $user->branch_id,
+            'is_active' => (bool) $user->is_active,
+            'roles'     => $user->getRoleNames()->values(),
+        ];
 
         return response()->json([
-            'data' => $user,
+            'data' => $data,
             'meta' => null,
             'message' => 'OK',
             'errors' => [],

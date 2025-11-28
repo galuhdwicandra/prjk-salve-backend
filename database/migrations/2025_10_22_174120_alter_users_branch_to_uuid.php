@@ -8,82 +8,100 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        // 1) Drop semua FK yang mungkin mengikat ke users.branch_id (jika ada)
-        $dbName = DB::getDatabaseName();
-        $constraints = DB::select("
-            SELECT CONSTRAINT_NAME
-            FROM information_schema.KEY_COLUMN_USAGE
-            WHERE TABLE_SCHEMA = ?
-              AND TABLE_NAME = 'users'
-              AND COLUMN_NAME = 'branch_id'
-              AND REFERENCED_TABLE_NAME IS NOT NULL
-        ", [$dbName]);
+        $driver = DB::getDriverName();
 
-        foreach ($constraints as $c) {
-            $name = $c->CONSTRAINT_NAME;
-            try {
-                DB::statement("ALTER TABLE `users` DROP FOREIGN KEY `{$name}`");
-            } catch (\Throwable $e) {
-                // ignore if already dropped / not exists
+        // 1) Drop semua FK yang mungkin mengikat ke users.branch_id
+        if ($driver === 'pgsql') {
+            $rows = DB::select(<<<'SQL'
+                SELECT tc.constraint_name
+                FROM information_schema.table_constraints AS tc
+                JOIN information_schema.key_column_usage AS kcu
+                  ON tc.constraint_name = kcu.constraint_name
+                 AND tc.constraint_schema = kcu.constraint_schema
+               WHERE tc.constraint_type = 'FOREIGN KEY'
+                 AND tc.table_schema = current_schema()
+                 AND tc.table_name = 'users'
+                 AND kcu.column_name = 'branch_id'
+            SQL);
+            foreach ($rows as $row) {
+                DB::statement('ALTER TABLE "users" DROP CONSTRAINT "' . $row->constraint_name . '"');
             }
-        }
-
-        // 2) Hapus kolom branch_id lama bila masih ada (BIGINT)
-        if (Schema::hasColumn('users', 'branch_id')) {
+        } elseif ($driver === 'mysql') {
+            $rows = DB::select(<<<'SQL'
+                SELECT CONSTRAINT_NAME
+                FROM information_schema.KEY_COLUMN_USAGE
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'users'
+                  AND COLUMN_NAME = 'branch_id'
+                  AND REFERENCED_TABLE_NAME IS NOT NULL
+            SQL);
+            foreach ($rows as $row) {
+                DB::statement('ALTER TABLE `users` DROP FOREIGN KEY `' . $row->CONSTRAINT_NAME . '`');
+            }
+        } else {
+            // Fallback generic
             try {
                 Schema::table('users', function (Blueprint $table) {
-                    $table->dropColumn('branch_id');
+                    $table->dropForeign(['branch_id']);
                 });
-            } catch (\Throwable $e) {
-                // jika tipe/constraint menyulitkan, fallback: coba raw
-                try {
-                    DB::statement("ALTER TABLE `users` DROP COLUMN `branch_id`");
-                } catch (\Throwable $e2) {
-                    // biarkan gagal diam, lanjut tambahkan kolom baru (akan bentrok jika masih ada)
-                }
+            } catch (\Throwable $e) { /* ignore */
             }
         }
 
-        // 3) Tambah kolom branch_id baru (UUID) + index
-        Schema::table('users', function (Blueprint $table) {
-            if (!Schema::hasColumn('users', 'branch_id')) {
-                $table->uuid('branch_id')->nullable()->after('email_verified_at');
-                $table->index('branch_id', 'users_branch_id_index');
-            }
-        });
+        // 2) Drop kolom lama bila ada
+        if (Schema::hasColumn('users', 'branch_id')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->dropColumn('branch_id');
+            });
+        }
 
-        // 4) Tambah FK ke branches.id (UUID)
+        // 3) Tambah kolom UUID + FK portable (tanpa after())
         Schema::table('users', function (Blueprint $table) {
-            // Jika FK belum ada, tambahkan
-            try {
-                $table->foreign('branch_id', 'users_branch_id_foreign')
-                    ->references('id')->on('branches')
-                    ->cascadeOnUpdate()
-                    ->nullOnDelete();
-            } catch (\Throwable $e) {
-                // abaikan bila sudah ada
-            }
+            $table->foreignUuid('branch_id')->nullable()
+                ->constrained('branches')->nullOnDelete()->cascadeOnUpdate();
         });
-
-        // 5) Inisialisasi nilai (opsional): biarkan NULL karena tidak ada mapping BIGINT→UUID
-        // DB::table('users')->whereNull('branch_id')->update([...]);
     }
 
     public function down(): void
     {
-        // Hapus FK & index baru
-        try {
-            DB::statement("ALTER TABLE `users` DROP FOREIGN KEY `users_branch_id_foreign`");
-        } catch (\Throwable $e) {
-        }
-        Schema::table('users', function (Blueprint $table) {
-            try {
-                $table->dropIndex('users_branch_id_index');
-            } catch (\Throwable $e) {
-            }
-        });
+        $driver = DB::getDriverName();
 
-        // Hapus kolom UUID
+        // Drop FK
+        if ($driver === 'pgsql') {
+            try {
+                DB::statement('ALTER TABLE "users" DROP CONSTRAINT "users_branch_id_foreign"');
+            } catch (\Throwable $e) {
+                // fallback: temukan nama constraint secara dinamis
+                $rows = DB::select(<<<'SQL'
+                    SELECT tc.constraint_name
+                    FROM information_schema.table_constraints AS tc
+                    JOIN information_schema.key_column_usage AS kcu
+                      ON tc.constraint_name = kcu.constraint_name
+                     AND tc.constraint_schema = kcu.constraint_schema
+                   WHERE tc.constraint_type = 'FOREIGN KEY'
+                     AND tc.table_schema = current_schema()
+                     AND tc.table_name = 'users'
+                     AND kcu.column_name = 'branch_id'
+                SQL);
+                foreach ($rows as $row) {
+                    DB::statement('ALTER TABLE "users" DROP CONSTRAINT "' . $row->constraint_name . '"');
+                }
+            }
+        } elseif ($driver === 'mysql') {
+            try {
+                DB::statement('ALTER TABLE `users` DROP FOREIGN KEY `users_branch_id_foreign`');
+            } catch (\Throwable $e) { /* ignore */
+            }
+        } else {
+            try {
+                Schema::table('users', function (Blueprint $table) {
+                    $table->dropForeign(['branch_id']);
+                });
+            } catch (\Throwable $e) { /* ignore */
+            }
+        }
+
+        // Drop kolom UUID
         if (Schema::hasColumn('users', 'branch_id')) {
             Schema::table('users', function (Blueprint $table) {
                 $table->dropColumn('branch_id');
@@ -92,7 +110,7 @@ return new class extends Migration {
 
         // Kembalikan ke BIGINT nullable (tanpa FK)
         Schema::table('users', function (Blueprint $table) {
-            $table->unsignedBigInteger('branch_id')->nullable()->after('email_verified_at');
+            $table->unsignedBigInteger('branch_id')->nullable();
         });
     }
 };

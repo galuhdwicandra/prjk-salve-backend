@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 class UserService
 {
     /**
-     * @param array{search?:string, branch_id?:string|null} $filters
+     * @param array{search?:string, branch_id?:string|null, role?:string} $filters
      */
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
@@ -24,7 +24,12 @@ class UserService
                 });
             })
             ->when(!empty($filters['branch_id']), fn($q) => $q->where('branch_id', $filters['branch_id']))
-            ->orderBy('name') // atau ->orderByDesc('id') sesuai preferensi
+            ->when(
+                !empty($filters['role']),
+                fn($q) =>
+                $q->whereHas('roles', fn($r) => $r->where('name', $filters['role']))
+            )
+            ->orderBy('name')
             ->paginate($perPage);
     }
 

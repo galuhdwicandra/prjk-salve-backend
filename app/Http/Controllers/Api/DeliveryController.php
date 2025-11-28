@@ -35,11 +35,11 @@ class DeliveryController extends Controller
         }
         if ($term = trim((string) $request->query('q', ''))) {
             $q->where(function ($w) use ($term) {
-                $w->where('id', 'like', "%{$term}%")
-                    ->orWhere('order_id', 'like', "%{$term}%")
+                $w->whereRaw('id::text ILIKE ?', ["%{$term}%"])
+                    ->orWhereRaw('order_id::text ILIKE ?', ["%{$term}%"])
                     ->orWhereHas('order', function ($oq) use ($term) {
-                        $oq->where('number', 'like', "%{$term}%")
-                            ->orWhere('invoice_no', 'like', "%{$term}%");
+                        $oq->where('number', 'ILIKE', "%{$term}%")
+                            ->orWhere('invoice_no', 'ILIKE', "%{$term}%");
                     });
             });
         }
@@ -62,8 +62,8 @@ class DeliveryController extends Controller
             return [
                 'id' => $d->id,
                 'order_id' => $d->order_id,
-                'order_invoice_no' => $d->order->invoice_no ?? null,
-                'order_number' => $d->order->number ?? null,
+                'order_invoice_no' => $d->order?->invoice_no,
+                'order_number'     => $d->order?->number,
                 'type' => $d->type,
                 'fee' => $d->fee,
                 'assigned_to' => $d->assigned_to,
@@ -155,13 +155,13 @@ class DeliveryController extends Controller
         ]);
     }
 
-    private function branchScopeFor(Request $request): ?int
+    private function branchScopeFor(Request $request): ?string
     {
         $u = $request->user();
         if ($u->hasRole('Superadmin')) {
-            $bid = $request->query('branch_id');
-            return $bid ? (int) $bid : null;
+            $bid = (string) $request->query('branch_id', '');
+            return $bid !== '' ? $bid : null;
         }
-        return (int) ($u->branch_id ?? 0) ?: null;
+        return $u->branch_id ?: null;
     }
 }

@@ -1,116 +1,116 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-11-24 14:01:55_  
-**Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2025\apk-web-salve\Projek Salve\prjk-salve\backend`
+_Dihasilkan otomatis: 2025-11-28 15:46:46_  
+**Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
 ## Daftar Isi
 
 - [Controllers (app/Http/Controllers/Api)](#controllers-apphttpcontrollersapi)
-  - [app\Http\Controllers\Api\AuthController.php](#file-apphttpcontrollersapiauthcontrollerphp)
-  - [app\Http\Controllers\Api\BranchController.php](#file-apphttpcontrollersapibranchcontrollerphp)
-  - [app\Http\Controllers\Api\CategoryController.php](#file-apphttpcontrollersapicategorycontrollerphp)
-  - [app\Http\Controllers\Api\CustomerController.php](#file-apphttpcontrollersapicustomercontrollerphp)
-  - [app\Http\Controllers\Api\DashboardController.php](#file-apphttpcontrollersapidashboardcontrollerphp)
-  - [app\Http\Controllers\Api\DeliveryController.php](#file-apphttpcontrollersapideliverycontrollerphp)
-  - [app\Http\Controllers\Api\ExpenseController.php](#file-apphttpcontrollersapiexpensecontrollerphp)
-  - [app\Http\Controllers\Api\InvoiceCounterController.php](#file-apphttpcontrollersapiinvoicecountercontrollerphp)
-  - [app\Http\Controllers\Api\OrderController.php](#file-apphttpcontrollersapiordercontrollerphp)
-  - [app\Http\Controllers\Api\OrderPaymentsController.php](#file-apphttpcontrollersapiorderpaymentscontrollerphp)
-  - [app\Http\Controllers\Api\OrderPhotosController.php](#file-apphttpcontrollersapiorderphotoscontrollerphp)
-  - [app\Http\Controllers\Api\ReceivableController.php](#file-apphttpcontrollersapireceivablecontrollerphp)
-  - [app\Http\Controllers\Api\ServiceController.php](#file-apphttpcontrollersapiservicecontrollerphp)
-  - [app\Http\Controllers\Api\ServicePriceController.php](#file-apphttpcontrollersapiservicepricecontrollerphp)
-  - [app\Http\Controllers\Api\UserController.php](#file-apphttpcontrollersapiusercontrollerphp)
-  - [app\Http\Controllers\Api\VoucherController.php](#file-apphttpcontrollersapivouchercontrollerphp)
+  - [app/Http/Controllers/Api/AuthController.php](#file-apphttpcontrollersapiauthcontrollerphp)
+  - [app/Http/Controllers/Api/BranchController.php](#file-apphttpcontrollersapibranchcontrollerphp)
+  - [app/Http/Controllers/Api/CategoryController.php](#file-apphttpcontrollersapicategorycontrollerphp)
+  - [app/Http/Controllers/Api/CustomerController.php](#file-apphttpcontrollersapicustomercontrollerphp)
+  - [app/Http/Controllers/Api/DashboardController.php](#file-apphttpcontrollersapidashboardcontrollerphp)
+  - [app/Http/Controllers/Api/DeliveryController.php](#file-apphttpcontrollersapideliverycontrollerphp)
+  - [app/Http/Controllers/Api/ExpenseController.php](#file-apphttpcontrollersapiexpensecontrollerphp)
+  - [app/Http/Controllers/Api/InvoiceCounterController.php](#file-apphttpcontrollersapiinvoicecountercontrollerphp)
+  - [app/Http/Controllers/Api/OrderController.php](#file-apphttpcontrollersapiordercontrollerphp)
+  - [app/Http/Controllers/Api/OrderPaymentsController.php](#file-apphttpcontrollersapiorderpaymentscontrollerphp)
+  - [app/Http/Controllers/Api/OrderPhotosController.php](#file-apphttpcontrollersapiorderphotoscontrollerphp)
+  - [app/Http/Controllers/Api/ReceivableController.php](#file-apphttpcontrollersapireceivablecontrollerphp)
+  - [app/Http/Controllers/Api/ServiceController.php](#file-apphttpcontrollersapiservicecontrollerphp)
+  - [app/Http/Controllers/Api/ServicePriceController.php](#file-apphttpcontrollersapiservicepricecontrollerphp)
+  - [app/Http/Controllers/Api/UserController.php](#file-apphttpcontrollersapiusercontrollerphp)
+  - [app/Http/Controllers/Api/VoucherController.php](#file-apphttpcontrollersapivouchercontrollerphp)
 
 - [Models (app/Models)](#models-appmodels)
-  - [app\Models\Branch.php](#file-appmodelsbranchphp)
-  - [app\Models\Customer.php](#file-appmodelscustomerphp)
-  - [app\Models\Delivery.php](#file-appmodelsdeliveryphp)
-  - [app\Models\DeliveryEvent.php](#file-appmodelsdeliveryeventphp)
-  - [app\Models\Expense.php](#file-appmodelsexpensephp)
-  - [app\Models\InvoiceCounter.php](#file-appmodelsinvoicecounterphp)
-  - [app\Models\Order.php](#file-appmodelsorderphp)
-  - [app\Models\OrderItem.php](#file-appmodelsorderitemphp)
-  - [app\Models\OrderPhoto.php](#file-appmodelsorderphotophp)
-  - [app\Models\OrderVoucher.php](#file-appmodelsordervoucherphp)
-  - [app\Models\Payment.php](#file-appmodelspaymentphp)
-  - [app\Models\Receivable.php](#file-appmodelsreceivablephp)
-  - [app\Models\Service.php](#file-appmodelsservicephp)
-  - [app\Models\ServiceCategory.php](#file-appmodelsservicecategoryphp)
-  - [app\Models\ServicePrice.php](#file-appmodelsservicepricephp)
-  - [app\Models\User.php](#file-appmodelsuserphp)
-  - [app\Models\Voucher.php](#file-appmodelsvoucherphp)
+  - [app/Models/Branch.php](#file-appmodelsbranchphp)
+  - [app/Models/Customer.php](#file-appmodelscustomerphp)
+  - [app/Models/Delivery.php](#file-appmodelsdeliveryphp)
+  - [app/Models/DeliveryEvent.php](#file-appmodelsdeliveryeventphp)
+  - [app/Models/Expense.php](#file-appmodelsexpensephp)
+  - [app/Models/InvoiceCounter.php](#file-appmodelsinvoicecounterphp)
+  - [app/Models/Order.php](#file-appmodelsorderphp)
+  - [app/Models/OrderItem.php](#file-appmodelsorderitemphp)
+  - [app/Models/OrderPhoto.php](#file-appmodelsorderphotophp)
+  - [app/Models/OrderVoucher.php](#file-appmodelsordervoucherphp)
+  - [app/Models/Payment.php](#file-appmodelspaymentphp)
+  - [app/Models/Receivable.php](#file-appmodelsreceivablephp)
+  - [app/Models/Service.php](#file-appmodelsservicephp)
+  - [app/Models/ServiceCategory.php](#file-appmodelsservicecategoryphp)
+  - [app/Models/ServicePrice.php](#file-appmodelsservicepricephp)
+  - [app/Models/User.php](#file-appmodelsuserphp)
+  - [app/Models/Voucher.php](#file-appmodelsvoucherphp)
 
 - [Policies (app/Policies)](#policies-apppolicies)
-  - [app\Policies\BranchPolicy.php](#file-apppoliciesbranchpolicyphp)
-  - [app\Policies\CategoryPolicy.php](#file-apppoliciescategorypolicyphp)
-  - [app\Policies\CustomerPolicy.php](#file-apppoliciescustomerpolicyphp)
-  - [app\Policies\DeliveryPolicy.php](#file-apppoliciesdeliverypolicyphp)
-  - [app\Policies\ExpensePolicy.php](#file-apppoliciesexpensepolicyphp)
-  - [app\Policies\OrderPolicy.php](#file-apppoliciesorderpolicyphp)
-  - [app\Policies\ReceivablePolicy.php](#file-apppoliciesreceivablepolicyphp)
-  - [app\Policies\ServicePolicy.php](#file-apppoliciesservicepolicyphp)
-  - [app\Policies\UserPolicy.php](#file-apppoliciesuserpolicyphp)
-  - [app\Policies\VoucherPolicy.php](#file-apppoliciesvoucherpolicyphp)
+  - [app/Policies/BranchPolicy.php](#file-apppoliciesbranchpolicyphp)
+  - [app/Policies/CategoryPolicy.php](#file-apppoliciescategorypolicyphp)
+  - [app/Policies/CustomerPolicy.php](#file-apppoliciescustomerpolicyphp)
+  - [app/Policies/DeliveryPolicy.php](#file-apppoliciesdeliverypolicyphp)
+  - [app/Policies/ExpensePolicy.php](#file-apppoliciesexpensepolicyphp)
+  - [app/Policies/OrderPolicy.php](#file-apppoliciesorderpolicyphp)
+  - [app/Policies/ReceivablePolicy.php](#file-apppoliciesreceivablepolicyphp)
+  - [app/Policies/ServicePolicy.php](#file-apppoliciesservicepolicyphp)
+  - [app/Policies/UserPolicy.php](#file-apppoliciesuserpolicyphp)
+  - [app/Policies/VoucherPolicy.php](#file-apppoliciesvoucherpolicyphp)
 
 - [Form Requests (app/Http/Requests)](#form-requests-apphttprequests)
-  - [app\Http\Requests\Auth\LoginRequest.php](#file-apphttprequestsauthloginrequestphp)
-  - [app\Http\Requests\BranchStoreRequest.php](#file-apphttprequestsbranchstorerequestphp)
-  - [app\Http\Requests\BranchUpdateRequest.php](#file-apphttprequestsbranchupdaterequestphp)
-  - [app\Http\Requests\CategoryStoreRequest.php](#file-apphttprequestscategorystorerequestphp)
-  - [app\Http\Requests\CategoryUpdateRequest.php](#file-apphttprequestscategoryupdaterequestphp)
-  - [app\Http\Requests\CustomerSearchWARequest.php](#file-apphttprequestscustomersearchwarequestphp)
-  - [app\Http\Requests\CustomerStoreRequest.php](#file-apphttprequestscustomerstorerequestphp)
-  - [app\Http\Requests\CustomerUpdateRequest.php](#file-apphttprequestscustomerupdaterequestphp)
-  - [app\Http\Requests\Dashboard\DashboardSummaryRequest.php](#file-apphttprequestsdashboarddashboardsummaryrequestphp)
-  - [app\Http\Requests\Deliveries\DeliveryAssignRequest.php](#file-apphttprequestsdeliveriesdeliveryassignrequestphp)
-  - [app\Http\Requests\Deliveries\DeliveryStatusRequest.php](#file-apphttprequestsdeliveriesdeliverystatusrequestphp)
-  - [app\Http\Requests\Deliveries\DeliveryStoreRequest.php](#file-apphttprequestsdeliveriesdeliverystorerequestphp)
-  - [app\Http\Requests\Expenses\ExpenseStoreRequest.php](#file-apphttprequestsexpensesexpensestorerequestphp)
-  - [app\Http\Requests\Expenses\ExpenseUpdateRequest.php](#file-apphttprequestsexpensesexpenseupdaterequestphp)
-  - [app\Http\Requests\InvoiceCounterStoreRequest.php](#file-apphttprequestsinvoicecounterstorerequestphp)
-  - [app\Http\Requests\InvoiceCounterUpdateRequest.php](#file-apphttprequestsinvoicecounterupdaterequestphp)
-  - [app\Http\Requests\Orders\OrderApplyVoucherRequest.php](#file-apphttprequestsordersorderapplyvoucherrequestphp)
-  - [app\Http\Requests\Orders\OrderPhotosRequest.php](#file-apphttprequestsordersorderphotosrequestphp)
-  - [app\Http\Requests\OrderStatusRequest.php](#file-apphttprequestsorderstatusrequestphp)
-  - [app\Http\Requests\OrderStoreRequest.php](#file-apphttprequestsorderstorerequestphp)
-  - [app\Http\Requests\OrderUpdateRequest.php](#file-apphttprequestsorderupdaterequestphp)
-  - [app\Http\Requests\Payments\PaymentRequest.php](#file-apphttprequestspaymentspaymentrequestphp)
-  - [app\Http\Requests\Receivables\ReceivableCreateRequest.php](#file-apphttprequestsreceivablesreceivablecreaterequestphp)
-  - [app\Http\Requests\Receivables\ReceivableSettleRequest.php](#file-apphttprequestsreceivablesreceivablesettlerequestphp)
-  - [app\Http\Requests\ResetPasswordRequest.php](#file-apphttprequestsresetpasswordrequestphp)
-  - [app\Http\Requests\ServicePriceSetRequest.php](#file-apphttprequestsservicepricesetrequestphp)
-  - [app\Http\Requests\ServiceStoreRequest.php](#file-apphttprequestsservicestorerequestphp)
-  - [app\Http\Requests\ServiceUpdateRequest.php](#file-apphttprequestsserviceupdaterequestphp)
-  - [app\Http\Requests\UserStoreRequest.php](#file-apphttprequestsuserstorerequestphp)
-  - [app\Http\Requests\UserUpdateRequest.php](#file-apphttprequestsuserupdaterequestphp)
-  - [app\Http\Requests\Vouchers\VoucherStoreRequest.php](#file-apphttprequestsvouchersvoucherstorerequestphp)
-  - [app\Http\Requests\Vouchers\VoucherUpdateRequest.php](#file-apphttprequestsvouchersvoucherupdaterequestphp)
+  - [app/Http/Requests/Auth/LoginRequest.php](#file-apphttprequestsauthloginrequestphp)
+  - [app/Http/Requests/BranchStoreRequest.php](#file-apphttprequestsbranchstorerequestphp)
+  - [app/Http/Requests/BranchUpdateRequest.php](#file-apphttprequestsbranchupdaterequestphp)
+  - [app/Http/Requests/CategoryStoreRequest.php](#file-apphttprequestscategorystorerequestphp)
+  - [app/Http/Requests/CategoryUpdateRequest.php](#file-apphttprequestscategoryupdaterequestphp)
+  - [app/Http/Requests/CustomerSearchWARequest.php](#file-apphttprequestscustomersearchwarequestphp)
+  - [app/Http/Requests/CustomerStoreRequest.php](#file-apphttprequestscustomerstorerequestphp)
+  - [app/Http/Requests/CustomerUpdateRequest.php](#file-apphttprequestscustomerupdaterequestphp)
+  - [app/Http/Requests/Dashboard/DashboardSummaryRequest.php](#file-apphttprequestsdashboarddashboardsummaryrequestphp)
+  - [app/Http/Requests/Deliveries/DeliveryAssignRequest.php](#file-apphttprequestsdeliveriesdeliveryassignrequestphp)
+  - [app/Http/Requests/Deliveries/DeliveryStatusRequest.php](#file-apphttprequestsdeliveriesdeliverystatusrequestphp)
+  - [app/Http/Requests/Deliveries/DeliveryStoreRequest.php](#file-apphttprequestsdeliveriesdeliverystorerequestphp)
+  - [app/Http/Requests/Expenses/ExpenseStoreRequest.php](#file-apphttprequestsexpensesexpensestorerequestphp)
+  - [app/Http/Requests/Expenses/ExpenseUpdateRequest.php](#file-apphttprequestsexpensesexpenseupdaterequestphp)
+  - [app/Http/Requests/InvoiceCounterStoreRequest.php](#file-apphttprequestsinvoicecounterstorerequestphp)
+  - [app/Http/Requests/InvoiceCounterUpdateRequest.php](#file-apphttprequestsinvoicecounterupdaterequestphp)
+  - [app/Http/Requests/OrderStatusRequest.php](#file-apphttprequestsorderstatusrequestphp)
+  - [app/Http/Requests/OrderStoreRequest.php](#file-apphttprequestsorderstorerequestphp)
+  - [app/Http/Requests/OrderUpdateRequest.php](#file-apphttprequestsorderupdaterequestphp)
+  - [app/Http/Requests/Orders/OrderApplyVoucherRequest.php](#file-apphttprequestsordersorderapplyvoucherrequestphp)
+  - [app/Http/Requests/Orders/OrderPhotosRequest.php](#file-apphttprequestsordersorderphotosrequestphp)
+  - [app/Http/Requests/Payments/PaymentRequest.php](#file-apphttprequestspaymentspaymentrequestphp)
+  - [app/Http/Requests/Receivables/ReceivableCreateRequest.php](#file-apphttprequestsreceivablesreceivablecreaterequestphp)
+  - [app/Http/Requests/Receivables/ReceivableSettleRequest.php](#file-apphttprequestsreceivablesreceivablesettlerequestphp)
+  - [app/Http/Requests/ResetPasswordRequest.php](#file-apphttprequestsresetpasswordrequestphp)
+  - [app/Http/Requests/ServicePriceSetRequest.php](#file-apphttprequestsservicepricesetrequestphp)
+  - [app/Http/Requests/ServiceStoreRequest.php](#file-apphttprequestsservicestorerequestphp)
+  - [app/Http/Requests/ServiceUpdateRequest.php](#file-apphttprequestsserviceupdaterequestphp)
+  - [app/Http/Requests/UserStoreRequest.php](#file-apphttprequestsuserstorerequestphp)
+  - [app/Http/Requests/UserUpdateRequest.php](#file-apphttprequestsuserupdaterequestphp)
+  - [app/Http/Requests/Vouchers/VoucherStoreRequest.php](#file-apphttprequestsvouchersvoucherstorerequestphp)
+  - [app/Http/Requests/Vouchers/VoucherUpdateRequest.php](#file-apphttprequestsvouchersvoucherupdaterequestphp)
 
 - [Services (app/Services)](#services-appservices)
-  - [app\Services\AuthService.php](#file-appservicesauthservicephp)
-  - [app\Services\DashboardService.php](#file-appservicesdashboardservicephp)
-  - [app\Services\DeliveryService.php](#file-appservicesdeliveryservicephp)
-  - [app\Services\InvoiceNumberService.php](#file-appservicesinvoicenumberservicephp)
-  - [app\Services\InvoiceService.php](#file-appservicesinvoiceservicephp)
-  - [app\Services\OrderNumberService.php](#file-appservicesordernumberservicephp)
-  - [app\Services\OrderService.php](#file-appservicesorderservicephp)
-  - [app\Services\PaymentService.php](#file-appservicespaymentservicephp)
-  - [app\Services\PricingService.php](#file-appservicespricingservicephp)
-  - [app\Services\ReceivableService.php](#file-appservicesreceivableservicephp)
-  - [app\Services\UserService.php](#file-appservicesuserservicephp)
-  - [app\Services\VoucherService.php](#file-appservicesvoucherservicephp)
+  - [app/Services/AuthService.php](#file-appservicesauthservicephp)
+  - [app/Services/DashboardService.php](#file-appservicesdashboardservicephp)
+  - [app/Services/DeliveryService.php](#file-appservicesdeliveryservicephp)
+  - [app/Services/InvoiceNumberService.php](#file-appservicesinvoicenumberservicephp)
+  - [app/Services/InvoiceService.php](#file-appservicesinvoiceservicephp)
+  - [app/Services/OrderNumberService.php](#file-appservicesordernumberservicephp)
+  - [app/Services/OrderService.php](#file-appservicesorderservicephp)
+  - [app/Services/PaymentService.php](#file-appservicespaymentservicephp)
+  - [app/Services/PricingService.php](#file-appservicespricingservicephp)
+  - [app/Services/ReceivableService.php](#file-appservicesreceivableservicephp)
+  - [app/Services/UserService.php](#file-appservicesuserservicephp)
+  - [app/Services/VoucherService.php](#file-appservicesvoucherservicephp)
 
 - [Database (seeders)](#database-seeders)
-  - [database\seeders\BranchSeeder.php](#file-databaseseedersbranchseederphp)
-  - [database\seeders\DatabaseSeeder.php](#file-databaseseedersdatabaseseederphp)
-  - [database\seeders\RolesTableSeeder.php](#file-databaseseedersrolestableseederphp)
-  - [database\seeders\UserSeeder.php](#file-databaseseedersuserseederphp)
+  - [database/seeders/BranchSeeder.php](#file-databaseseedersbranchseederphp)
+  - [database/seeders/DatabaseSeeder.php](#file-databaseseedersdatabaseseederphp)
+  - [database/seeders/RolesTableSeeder.php](#file-databaseseedersrolestableseederphp)
+  - [database/seeders/UserSeeder.php](#file-databaseseedersuserseederphp)
 
 - [resources (resources)](#resources-resources)
-  - [resources\views\orders\receipt.blade.php](#file-resourcesviewsordersreceiptbladephp)
+  - [resources/views/orders/receipt.blade.php](#file-resourcesviewsordersreceiptbladephp)
 
 - [routes/api.php](#routesapiphp)
 
@@ -120,7 +120,7 @@ _Dihasilkan otomatis: 2025-11-24 14:01:55_
 
 ## Controllers (app/Http/Controllers/Api)
 
-### app\Http\Controllers\Api\AuthController.php
+### app/Http/Controllers/Api/AuthController.php
 
 - SHA: `dcec2eec2c98`  
 - Ukuran: 2 KB  
@@ -204,7 +204,7 @@ class AuthController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\BranchController.php
+### app/Http/Controllers/Api/BranchController.php
 
 - SHA: `6e032450ac63`  
 - Ukuran: 2 KB  
@@ -326,7 +326,7 @@ class BranchController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\CategoryController.php
+### app/Http/Controllers/Api/CategoryController.php
 
 - SHA: `69f1f77ad824`  
 - Ukuran: 3 KB  
@@ -449,7 +449,7 @@ class CategoryController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\CustomerController.php
+### app/Http/Controllers/Api/CustomerController.php
 
 - SHA: `3182cb22cc7f`  
 - Ukuran: 5 KB  
@@ -641,7 +641,7 @@ class CustomerController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\DashboardController.php
+### app/Http/Controllers/Api/DashboardController.php
 
 - SHA: `ed75c6016132`  
 - Ukuran: 925 B  
@@ -691,9 +691,9 @@ class DashboardController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\DeliveryController.php
+### app/Http/Controllers/Api/DeliveryController.php
 
-- SHA: `4af6f597f729`  
+- SHA: `d6d7f3c70700`  
 - Ukuran: 5 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -746,11 +746,11 @@ class DeliveryController extends Controller
         }
         if ($term = trim((string) $request->query('q', ''))) {
             $q->where(function ($w) use ($term) {
-                $w->where('id', 'like', "%{$term}%")
-                    ->orWhere('order_id', 'like', "%{$term}%")
+                $w->whereRaw('id::text ILIKE ?', ["%{$term}%"])
+                    ->orWhereRaw('order_id::text ILIKE ?', ["%{$term}%"])
                     ->orWhereHas('order', function ($oq) use ($term) {
-                        $oq->where('number', 'like', "%{$term}%")
-                            ->orWhere('invoice_no', 'like', "%{$term}%");
+                        $oq->where('number', 'ILIKE', "%{$term}%")
+                            ->orWhere('invoice_no', 'ILIKE', "%{$term}%");
                     });
             });
         }
@@ -773,8 +773,8 @@ class DeliveryController extends Controller
             return [
                 'id' => $d->id,
                 'order_id' => $d->order_id,
-                'order_invoice_no' => $d->order->invoice_no ?? null,
-                'order_number' => $d->order->number ?? null,
+                'order_invoice_no' => $d->order?->invoice_no,
+                'order_number'     => $d->order?->number,
                 'type' => $d->type,
                 'fee' => $d->fee,
                 'assigned_to' => $d->assigned_to,
@@ -870,17 +870,17 @@ class DeliveryController extends Controller
     {
         $u = $request->user();
         if ($u->hasRole('Superadmin')) {
-            $bid = $request->query('branch_id');
-            return $bid ? (int) $bid : null;
+            $bid = (string) $request->query('branch_id', '');
+            return $bid !== '' ? $bid : null;
         }
-        return (int) ($u->branch_id ?? 0) ?: null;
+        return $u->branch_id ?: null;
     }
 }
 
 ```
 </details>
 
-### app\Http\Controllers\Api\ExpenseController.php
+### app/Http/Controllers/Api/ExpenseController.php
 
 - SHA: `3f7933189b3b`  
 - Ukuran: 4 KB  
@@ -1057,7 +1057,7 @@ class ExpenseController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\InvoiceCounterController.php
+### app/Http/Controllers/Api/InvoiceCounterController.php
 
 - SHA: `5aff7a2f1617`  
 - Ukuran: 7 KB  
@@ -1313,7 +1313,7 @@ class InvoiceCounterController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\OrderController.php
+### app/Http/Controllers/Api/OrderController.php
 
 - SHA: `6913294c2089`  
 - Ukuran: 4 KB  
@@ -1484,7 +1484,7 @@ class OrderController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\OrderPaymentsController.php
+### app/Http/Controllers/Api/OrderPaymentsController.php
 
 - SHA: `3adf2247688f`  
 - Ukuran: 1 KB  
@@ -1543,7 +1543,7 @@ class OrderPaymentsController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\OrderPhotosController.php
+### app/Http/Controllers/Api/OrderPhotosController.php
 
 - SHA: `6f0a722896b0`  
 - Ukuran: 2 KB  
@@ -1617,7 +1617,7 @@ class OrderPhotosController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\ReceivableController.php
+### app/Http/Controllers/Api/ReceivableController.php
 
 - SHA: `79e5a8187973`  
 - Ukuran: 3 KB  
@@ -1715,7 +1715,7 @@ class ReceivableController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\ServiceController.php
+### app/Http/Controllers/Api/ServiceController.php
 
 - SHA: `def3779fd6a0`  
 - Ukuran: 3 KB  
@@ -1846,7 +1846,7 @@ class ServiceController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\ServicePriceController.php
+### app/Http/Controllers/Api/ServicePriceController.php
 
 - SHA: `317726c91494`  
 - Ukuran: 3 KB  
@@ -1970,7 +1970,7 @@ class ServicePriceController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\UserController.php
+### app/Http/Controllers/Api/UserController.php
 
 - SHA: `9f3c27ef9c81`  
 - Ukuran: 5 KB  
@@ -2179,7 +2179,7 @@ class UserController extends Controller
 ```
 </details>
 
-### app\Http\Controllers\Api\VoucherController.php
+### app/Http/Controllers/Api/VoucherController.php
 
 - SHA: `d1f7ed4e4508`  
 - Ukuran: 5 KB  
@@ -2359,7 +2359,7 @@ class VoucherController extends Controller
 
 ## Models (app/Models)
 
-### app\Models\Branch.php
+### app/Models/Branch.php
 
 - SHA: `2872c07ec6c6`  
 - Ukuran: 706 B  
@@ -2411,7 +2411,7 @@ class Branch extends Model
 ```
 </details>
 
-### app\Models\Customer.php
+### app/Models/Customer.php
 
 - SHA: `2b1004dedcaa`  
 - Ukuran: 585 B  
@@ -2457,7 +2457,7 @@ class Customer extends Model
 ```
 </details>
 
-### app\Models\Delivery.php
+### app/Models/Delivery.php
 
 - SHA: `33d3ae90aad7`  
 - Ukuran: 979 B  
@@ -2523,7 +2523,7 @@ class Delivery extends Model
 ```
 </details>
 
-### app\Models\DeliveryEvent.php
+### app/Models/DeliveryEvent.php
 
 - SHA: `4618be90f2e4`  
 - Ukuran: 535 B  
@@ -2563,7 +2563,7 @@ class DeliveryEvent extends Model
 ```
 </details>
 
-### app\Models\Expense.php
+### app/Models/Expense.php
 
 - SHA: `3fb0d1d88867`  
 - Ukuran: 644 B  
@@ -2616,7 +2616,7 @@ class Expense extends Model
 ```
 </details>
 
-### app\Models\InvoiceCounter.php
+### app/Models/InvoiceCounter.php
 
 - SHA: `214e0c65ae0c`  
 - Ukuran: 672 B  
@@ -2666,9 +2666,9 @@ class InvoiceCounter extends Model
 ```
 </details>
 
-### app\Models\Order.php
+### app/Models/Order.php
 
-- SHA: `4cc37d042b7c`  
+- SHA: `c5abc8d66e16`  
 - Ukuran: 3 KB  
 - Namespace: `App\Models`
 
@@ -2739,6 +2739,7 @@ class Order extends Model
         'paid_amount' => 'decimal:2',
         'due_amount' => 'decimal:2',
         'paid_at' => 'datetime',
+        'created_by' => 'integer',
     ];
 
     public function branch()
@@ -2783,7 +2784,7 @@ class Order extends Model
 ```
 </details>
 
-### app\Models\OrderItem.php
+### app/Models/OrderItem.php
 
 - SHA: `08408e431b38`  
 - Ukuran: 1 KB  
@@ -2848,7 +2849,7 @@ class OrderItem extends Model
 ```
 </details>
 
-### app\Models\OrderPhoto.php
+### app/Models/OrderPhoto.php
 
 - SHA: `eadef3af774e`  
 - Ukuran: 515 B  
@@ -2888,7 +2889,7 @@ class OrderPhoto extends Model
 ```
 </details>
 
-### app\Models\OrderVoucher.php
+### app/Models/OrderVoucher.php
 
 - SHA: `8cfb6e11a09e`  
 - Ukuran: 785 B  
@@ -2939,7 +2940,7 @@ class OrderVoucher extends Model
 ```
 </details>
 
-### app\Models\Payment.php
+### app/Models/Payment.php
 
 - SHA: `a54c2fa1b283`  
 - Ukuran: 677 B  
@@ -2990,7 +2991,7 @@ class Payment extends Model
 ```
 </details>
 
-### app\Models\Receivable.php
+### app/Models/Receivable.php
 
 - SHA: `a0289f2797ee`  
 - Ukuran: 685 B  
@@ -3040,7 +3041,7 @@ class Receivable extends Model
 ```
 </details>
 
-### app\Models\Service.php
+### app/Models/Service.php
 
 - SHA: `664f3e096369`  
 - Ukuran: 825 B  
@@ -3097,7 +3098,7 @@ class Service extends Model
 ```
 </details>
 
-### app\Models\ServiceCategory.php
+### app/Models/ServiceCategory.php
 
 - SHA: `39f2f2865673`  
 - Ukuran: 592 B  
@@ -3141,7 +3142,7 @@ class ServiceCategory extends Model
 ```
 </details>
 
-### app\Models\ServicePrice.php
+### app/Models/ServicePrice.php
 
 - SHA: `8f94665098ac`  
 - Ukuran: 707 B  
@@ -3191,7 +3192,7 @@ class ServicePrice extends Model
 ```
 </details>
 
-### app\Models\User.php
+### app/Models/User.php
 
 - SHA: `52c875472c44`  
 - Ukuran: 1 KB  
@@ -3274,7 +3275,7 @@ class User extends Authenticatable
 ```
 </details>
 
-### app\Models\Voucher.php
+### app/Models/Voucher.php
 
 - SHA: `abdd11b39c51`  
 - Ukuran: 995 B  
@@ -3338,7 +3339,7 @@ class Voucher extends Model
 
 ## Policies (app/Policies)
 
-### app\Policies\BranchPolicy.php
+### app/Policies/BranchPolicy.php
 
 - SHA: `c1dfe7a3aff2`  
 - Ukuran: 1 KB  
@@ -3408,7 +3409,7 @@ class BranchPolicy
 ```
 </details>
 
-### app\Policies\CategoryPolicy.php
+### app/Policies/CategoryPolicy.php
 
 - SHA: `83d6b855eca7`  
 - Ukuran: 960 B  
@@ -3471,7 +3472,7 @@ class CategoryPolicy
 ```
 </details>
 
-### app\Policies\CustomerPolicy.php
+### app/Policies/CustomerPolicy.php
 
 - SHA: `1e54bc29353f`  
 - Ukuran: 1 KB  
@@ -3545,7 +3546,7 @@ class CustomerPolicy
 ```
 </details>
 
-### app\Policies\DeliveryPolicy.php
+### app/Policies/DeliveryPolicy.php
 
 - SHA: `b5d183b67b82`  
 - Ukuran: 1 KB  
@@ -3621,7 +3622,7 @@ class DeliveryPolicy
 ```
 </details>
 
-### app\Policies\ExpensePolicy.php
+### app/Policies/ExpensePolicy.php
 
 - SHA: `57cfc797292f`  
 - Ukuran: 1 KB  
@@ -3694,7 +3695,7 @@ class ExpensePolicy
 ```
 </details>
 
-### app\Policies\OrderPolicy.php
+### app/Policies/OrderPolicy.php
 
 - SHA: `7ca1e4699484`  
 - Ukuran: 2 KB  
@@ -3784,7 +3785,7 @@ class OrderPolicy
 ```
 </details>
 
-### app\Policies\ReceivablePolicy.php
+### app/Policies/ReceivablePolicy.php
 
 - SHA: `839b5ee441f9`  
 - Ukuran: 955 B  
@@ -3840,7 +3841,7 @@ class ReceivablePolicy
 ```
 </details>
 
-### app\Policies\ServicePolicy.php
+### app/Policies/ServicePolicy.php
 
 - SHA: `c2bbfe6c8d4e`  
 - Ukuran: 940 B  
@@ -3903,7 +3904,7 @@ class ServicePolicy
 ```
 </details>
 
-### app\Policies\UserPolicy.php
+### app/Policies/UserPolicy.php
 
 - SHA: `5a811da043ce`  
 - Ukuran: 3 KB  
@@ -4053,7 +4054,7 @@ class UserPolicy
 ```
 </details>
 
-### app\Policies\VoucherPolicy.php
+### app/Policies/VoucherPolicy.php
 
 - SHA: `063e1272ad19`  
 - Ukuran: 1 KB  
@@ -4130,7 +4131,7 @@ class VoucherPolicy
 
 ## Form Requests (app/Http/Requests)
 
-### app\Http\Requests\Auth\LoginRequest.php
+### app/Http/Requests/Auth/LoginRequest.php
 
 - SHA: `8dd59b857462`  
 - Ukuran: 2 KB  
@@ -4236,7 +4237,7 @@ class LoginRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\BranchStoreRequest.php
+### app/Http/Requests/BranchStoreRequest.php
 
 - SHA: `bc0cc0149344`  
 - Ukuran: 680 B  
@@ -4278,7 +4279,7 @@ class BranchStoreRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\BranchUpdateRequest.php
+### app/Http/Requests/BranchUpdateRequest.php
 
 - SHA: `e016b3d04ff4`  
 - Ukuran: 762 B  
@@ -4322,7 +4323,7 @@ class BranchUpdateRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\CategoryStoreRequest.php
+### app/Http/Requests/CategoryStoreRequest.php
 
 - SHA: `0d7a9632ab19`  
 - Ukuran: 479 B  
@@ -4362,7 +4363,7 @@ class CategoryStoreRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\CategoryUpdateRequest.php
+### app/Http/Requests/CategoryUpdateRequest.php
 
 - SHA: `f7580edead1e`  
 - Ukuran: 513 B  
@@ -4403,7 +4404,7 @@ class CategoryUpdateRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\CustomerSearchWARequest.php
+### app/Http/Requests/CustomerSearchWARequest.php
 
 - SHA: `359f2e485ed7`  
 - Ukuran: 401 B  
@@ -4441,7 +4442,7 @@ class CustomerSearchWARequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\CustomerStoreRequest.php
+### app/Http/Requests/CustomerStoreRequest.php
 
 - SHA: `38679783f912`  
 - Ukuran: 1 KB  
@@ -4498,7 +4499,7 @@ class CustomerStoreRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\CustomerUpdateRequest.php
+### app/Http/Requests/CustomerUpdateRequest.php
 
 - SHA: `5285851be61d`  
 - Ukuran: 1 KB  
@@ -4562,7 +4563,7 @@ class CustomerUpdateRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\Dashboard\DashboardSummaryRequest.php
+### app/Http/Requests/Dashboard/DashboardSummaryRequest.php
 
 - SHA: `a4b594f5872d`  
 - Ukuran: 1 KB  
@@ -4631,7 +4632,7 @@ class DashboardSummaryRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\Deliveries\DeliveryAssignRequest.php
+### app/Http/Requests/Deliveries/DeliveryAssignRequest.php
 
 - SHA: `990c3eea3cce`  
 - Ukuran: 424 B  
@@ -4670,7 +4671,7 @@ class DeliveryAssignRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\Deliveries\DeliveryStatusRequest.php
+### app/Http/Requests/Deliveries/DeliveryStatusRequest.php
 
 - SHA: `43bdfd523d1b`  
 - Ukuran: 1007 B  
@@ -4732,7 +4733,7 @@ class DeliveryStatusRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\Deliveries\DeliveryStoreRequest.php
+### app/Http/Requests/Deliveries/DeliveryStoreRequest.php
 
 - SHA: `659b9476cda8`  
 - Ukuran: 1 KB  
@@ -4789,7 +4790,7 @@ class DeliveryStoreRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\Expenses\ExpenseStoreRequest.php
+### app/Http/Requests/Expenses/ExpenseStoreRequest.php
 
 - SHA: `5c7bf55f4b7b`  
 - Ukuran: 610 B  
@@ -4831,7 +4832,7 @@ class ExpenseStoreRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\Expenses\ExpenseUpdateRequest.php
+### app/Http/Requests/Expenses/ExpenseUpdateRequest.php
 
 - SHA: `1c565a8f575d`  
 - Ukuran: 699 B  
@@ -4876,7 +4877,7 @@ class ExpenseUpdateRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\InvoiceCounterStoreRequest.php
+### app/Http/Requests/InvoiceCounterStoreRequest.php
 
 - SHA: `a8ce0038a22b`  
 - Ukuran: 860 B  
@@ -4927,7 +4928,7 @@ class InvoiceCounterStoreRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\InvoiceCounterUpdateRequest.php
+### app/Http/Requests/InvoiceCounterUpdateRequest.php
 
 - SHA: `abbd2d61549c`  
 - Ukuran: 538 B  
@@ -4967,95 +4968,7 @@ class InvoiceCounterUpdateRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\Orders\OrderApplyVoucherRequest.php
-
-- SHA: `f712b239f60b`  
-- Ukuran: 423 B  
-- Namespace: `App\Http\Requests\Orders`
-
-**Class `OrderApplyVoucherRequest` extends `FormRequest`**
-
-Metode Publik:
-- **authorize**() : *bool*
-- **rules**() : *array*
-<details><summary><strong>Lihat Kode Lengkap</strong></summary>
-
-```php
-<?php
-
-namespace App\Http\Requests\Orders;
-
-use Illuminate\Foundation\Http\FormRequest;
-
-class OrderApplyVoucherRequest extends FormRequest
-{
-    public function authorize(): bool
-    {
-        // Otorisasi pada controller via $this->authorize('update', $order)
-        return true;
-    }
-
-    public function rules(): array
-    {
-        return [
-            'code' => ['required', 'string', 'max:40'],
-        ];
-    }
-}
-
-```
-</details>
-
-### app\Http\Requests\Orders\OrderPhotosRequest.php
-
-- SHA: `8f5485516bd5`  
-- Ukuran: 723 B  
-- Namespace: `App\Http\Requests\Orders`
-
-**Class `OrderPhotosRequest` extends `FormRequest`**
-
-Metode Publik:
-- **authorize**() : *bool*
-- **rules**() : *array*
-- **messages**() : *array*
-<details><summary><strong>Lihat Kode Lengkap</strong></summary>
-
-```php
-<?php
-
-namespace App\Http\Requests\Orders;
-
-use Illuminate\Foundation\Http\FormRequest;
-
-class OrderPhotosRequest extends FormRequest
-{
-    public function authorize(): bool
-    {
-        // Otorisasi akan dicek di Controller (authorize('update', $order))
-        return true;
-    }
-
-    public function rules(): array
-    {
-        return [
-            'photos.before.*' => ['image', 'max:4096'], // ~4 MB per file
-            'photos.after.*'  => ['image', 'max:4096'],
-        ];
-    }
-
-    public function messages(): array
-    {
-        return [
-            'photos.before.*.image' => 'File "before" harus berupa gambar.',
-            'photos.after.*.image'  => 'File "after" harus berupa gambar.',
-        ];
-    }
-}
-
-```
-</details>
-
-### app\Http\Requests\OrderStatusRequest.php
+### app/Http/Requests/OrderStatusRequest.php
 
 - SHA: `fb9d1581c5c5`  
 - Ukuran: 487 B  
@@ -5094,7 +5007,7 @@ class OrderStatusRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\OrderStoreRequest.php
+### app/Http/Requests/OrderStoreRequest.php
 
 - SHA: `055a43d71ad3`  
 - Ukuran: 2 KB  
@@ -5165,7 +5078,7 @@ class OrderStoreRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\OrderUpdateRequest.php
+### app/Http/Requests/OrderUpdateRequest.php
 
 - SHA: `2de209141a36`  
 - Ukuran: 804 B  
@@ -5210,7 +5123,95 @@ class OrderUpdateRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\Payments\PaymentRequest.php
+### app/Http/Requests/Orders/OrderApplyVoucherRequest.php
+
+- SHA: `f712b239f60b`  
+- Ukuran: 423 B  
+- Namespace: `App\Http\Requests\Orders`
+
+**Class `OrderApplyVoucherRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Orders;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class OrderApplyVoucherRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        // Otorisasi pada controller via $this->authorize('update', $order)
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'code' => ['required', 'string', 'max:40'],
+        ];
+    }
+}
+
+```
+</details>
+
+### app/Http/Requests/Orders/OrderPhotosRequest.php
+
+- SHA: `8f5485516bd5`  
+- Ukuran: 723 B  
+- Namespace: `App\Http\Requests\Orders`
+
+**Class `OrderPhotosRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **messages**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Orders;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class OrderPhotosRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        // Otorisasi akan dicek di Controller (authorize('update', $order))
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'photos.before.*' => ['image', 'max:4096'], // ~4 MB per file
+            'photos.after.*'  => ['image', 'max:4096'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'photos.before.*.image' => 'File "before" harus berupa gambar.',
+            'photos.after.*.image'  => 'File "after" harus berupa gambar.',
+        ];
+    }
+}
+
+```
+</details>
+
+### app/Http/Requests/Payments/PaymentRequest.php
 
 - SHA: `cc8052cfe780`  
 - Ukuran: 1 KB  
@@ -5264,7 +5265,7 @@ class PaymentRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\Receivables\ReceivableCreateRequest.php
+### app/Http/Requests/Receivables/ReceivableCreateRequest.php
 
 - SHA: `680365444219`  
 - Ukuran: 343 B  
@@ -5302,7 +5303,7 @@ class ReceivableCreateRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\Receivables\ReceivableSettleRequest.php
+### app/Http/Requests/Receivables/ReceivableSettleRequest.php
 
 - SHA: `c7af4148cc72`  
 - Ukuran: 1 KB  
@@ -5362,7 +5363,7 @@ class ReceivableSettleRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\ResetPasswordRequest.php
+### app/Http/Requests/ResetPasswordRequest.php
 
 - SHA: `7973077d9c62`  
 - Ukuran: 428 B  
@@ -5401,7 +5402,7 @@ class ResetPasswordRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\ServicePriceSetRequest.php
+### app/Http/Requests/ServicePriceSetRequest.php
 
 - SHA: `e5e29ccac2f7`  
 - Ukuran: 837 B  
@@ -5452,7 +5453,7 @@ class ServicePriceSetRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\ServiceStoreRequest.php
+### app/Http/Requests/ServiceStoreRequest.php
 
 - SHA: `77a97b9513f4`  
 - Ukuran: 666 B  
@@ -5495,7 +5496,7 @@ class ServiceStoreRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\ServiceUpdateRequest.php
+### app/Http/Requests/ServiceUpdateRequest.php
 
 - SHA: `21cee56c7eb0`  
 - Ukuran: 705 B  
@@ -5539,7 +5540,7 @@ class ServiceUpdateRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\UserStoreRequest.php
+### app/Http/Requests/UserStoreRequest.php
 
 - SHA: `6256a71bb1eb`  
 - Ukuran: 2 KB  
@@ -5626,7 +5627,7 @@ class UserStoreRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\UserUpdateRequest.php
+### app/Http/Requests/UserUpdateRequest.php
 
 - SHA: `2318df7a9525`  
 - Ukuran: 3 KB  
@@ -5720,7 +5721,7 @@ class UserUpdateRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\Vouchers\VoucherStoreRequest.php
+### app/Http/Requests/Vouchers/VoucherStoreRequest.php
 
 - SHA: `92fc24dc4b14`  
 - Ukuran: 2 KB  
@@ -5794,7 +5795,7 @@ class VoucherStoreRequest extends FormRequest
 ```
 </details>
 
-### app\Http\Requests\Vouchers\VoucherUpdateRequest.php
+### app/Http/Requests/Vouchers/VoucherUpdateRequest.php
 
 - SHA: `3220aef98066`  
 - Ukuran: 1 KB  
@@ -5858,7 +5859,7 @@ class VoucherUpdateRequest extends FormRequest
 
 ## Services (app/Services)
 
-### app\Services\AuthService.php
+### app/Services/AuthService.php
 
 - SHA: `a675ff1ce9bd`  
 - Ukuran: 1 KB  
@@ -5934,7 +5935,7 @@ class AuthService
 ```
 </details>
 
-### app\Services\DashboardService.php
+### app/Services/DashboardService.php
 
 - SHA: `a5574bfaf3e1`  
 - Ukuran: 4 KB  
@@ -6040,7 +6041,7 @@ class DashboardService
 ```
 </details>
 
-### app\Services\DeliveryService.php
+### app/Services/DeliveryService.php
 
 - SHA: `94af194c9457`  
 - Ukuran: 5 KB  
@@ -6190,7 +6191,7 @@ class DeliveryService
 ```
 </details>
 
-### app\Services\InvoiceNumberService.php
+### app/Services/InvoiceNumberService.php
 
 - SHA: `da39a3ee5e6b`  
 - Ukuran: 0 B  
@@ -6202,7 +6203,7 @@ class DeliveryService
 ```
 </details>
 
-### app\Services\InvoiceService.php
+### app/Services/InvoiceService.php
 
 - SHA: `74136cd3556a`  
 - Ukuran: 4 KB  
@@ -6342,7 +6343,7 @@ class InvoiceService
 ```
 </details>
 
-### app\Services\OrderNumberService.php
+### app/Services/OrderNumberService.php
 
 - SHA: `f822f2ab3c8b`  
 - Ukuran: 2 KB  
@@ -6409,7 +6410,7 @@ class OrderNumberService
 ```
 </details>
 
-### app\Services\OrderService.php
+### app/Services/OrderService.php
 
 - SHA: `bfcc80303024`  
 - Ukuran: 9 KB  
@@ -6680,7 +6681,7 @@ class OrderService
 ```
 </details>
 
-### app\Services\PaymentService.php
+### app/Services/PaymentService.php
 
 - SHA: `4c5ee7cba903`  
 - Ukuran: 4 KB  
@@ -6802,7 +6803,7 @@ class PaymentService
 ```
 </details>
 
-### app\Services\PricingService.php
+### app/Services/PricingService.php
 
 - SHA: `99964ed09888`  
 - Ukuran: 804 B  
@@ -6848,7 +6849,7 @@ class PricingService
 ```
 </details>
 
-### app\Services\ReceivableService.php
+### app/Services/ReceivableService.php
 
 - SHA: `082890134330`  
 - Ukuran: 2 KB  
@@ -6912,7 +6913,7 @@ class ReceivableService
 ```
 </details>
 
-### app\Services\UserService.php
+### app/Services/UserService.php
 
 - SHA: `722bf91b8f62`  
 - Ukuran: 5 KB  
@@ -7103,7 +7104,7 @@ class UserService
 ```
 </details>
 
-### app\Services\VoucherService.php
+### app/Services/VoucherService.php
 
 - SHA: `9c61b4aaaa85`  
 - Ukuran: 4 KB  
@@ -7224,7 +7225,7 @@ class VoucherService
 
 ## Database (seeders)
 
-### database\seeders\BranchSeeder.php
+### database/seeders/BranchSeeder.php
 
 - SHA: `ec126954600d`  
 - Ukuran: 781 B  
@@ -7273,7 +7274,7 @@ class BranchSeeder extends Seeder
 ```
 </details>
 
-### database\seeders\DatabaseSeeder.php
+### database/seeders/DatabaseSeeder.php
 
 - SHA: `98af7f354a9a`  
 - Ukuran: 452 B  
@@ -7314,7 +7315,7 @@ class DatabaseSeeder extends Seeder
 ```
 </details>
 
-### database\seeders\RolesTableSeeder.php
+### database/seeders/RolesTableSeeder.php
 
 - SHA: `ce7284d0c443`  
 - Ukuran: 542 B  
@@ -7358,7 +7359,7 @@ class RolesTableSeeder extends Seeder
 ```
 </details>
 
-### database\seeders\UserSeeder.php
+### database/seeders/UserSeeder.php
 
 - SHA: `8fe599307505`  
 - Ukuran: 5 KB  
@@ -7509,7 +7510,7 @@ class UserSeeder extends Seeder
 
 ## resources (resources)
 
-### resources\views\orders\receipt.blade.php
+### resources/views/orders/receipt.blade.php
 
 - SHA: `40442c028e98`  
 - Ukuran: 3 KB  
@@ -7639,7 +7640,7 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `439fc604aa5f`  
+- SHA: `b4e5509bca81`  
 - Ukuran: 7 KB
 
 **Ringkasan Routes (deteksi heuristik):**
@@ -7727,9 +7728,9 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OrderPaymentsController;
 use App\Http\Controllers\Api\OrderPhotosController;
 use App\Http\Controllers\Api\DeliveryController;
-use App\Http\Controllers\api\ReceivableController;
+use App\Http\Controllers\Api\ReceivableController;
 use App\Http\Controllers\Api\ExpenseController;
-use App\Http\Controllers\api\DashboardController;
+use App\Http\Controllers\Api\DashboardController;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {

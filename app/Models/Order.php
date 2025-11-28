@@ -50,6 +50,7 @@ class Order extends Model
         'paid_amount' => 'decimal:2',
         'due_amount' => 'decimal:2',
         'paid_at' => 'datetime',
+        'created_by' => 'integer',
     ];
 
     public function branch()

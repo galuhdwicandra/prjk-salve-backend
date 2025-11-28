@@ -13,9 +13,9 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OrderPaymentsController;
 use App\Http\Controllers\Api\OrderPhotosController;
 use App\Http\Controllers\Api\DeliveryController;
-use App\Http\Controllers\api\ReceivableController;
+use App\Http\Controllers\Api\ReceivableController;
 use App\Http\Controllers\Api\ExpenseController;
-use App\Http\Controllers\api\DashboardController;
+use App\Http\Controllers\Api\DashboardController;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
