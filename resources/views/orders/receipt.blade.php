@@ -5,60 +5,76 @@
 <head>
     <meta charset="utf-8">
     @php
-        // Hitung sisa, lalu tentukan apakah sudah lunas atau belum
-        $sisa = max((float) $order->grand_total - (float) $order->paid_amount, 0);
-        $isLunas = $sisa <= 0 && $order->payment_status === 'PAID';
+    // Hitung sisa, lalu tentukan apakah sudah lunas atau belum
+    $sisa = max((float) $order->grand_total - (float) $order->paid_amount, 0);
+    $isLunas = $sisa <= 0 && $order->payment_status === 'PAID';
         $docTitle = $isLunas ? 'KUITANSI PEMBAYARAN' : 'TAGIHAN / INVOICE';
-    @endphp
-    <title>{{ $docTitle }} {{ $order->invoice_no ?? $order->number }}</title>
-    <style>
-        * {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        }
+        @endphp
+        <title>{{ $docTitle }} {{ $order->invoice_no ?? $order->number }}</title>
+        <style>
+            * {
+                font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            }
 
-        body {
-            width: 280px;
-            margin: 0;
-        }
+            body {
+                width: 280px;
+                margin: 0;
+            }
 
-        h1 {
-            font-size: 14px;
-            margin: 0 0 4px;
-            text-align: center;
-        }
+            h1 {
+                font-size: 14px;
+                margin: 0 0 4px;
+                text-align: center;
+            }
 
-        .doc-type {
-            font-size: 12px;
-            text-align: center;
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
+            .doc-type {
+                font-size: 12px;
+                text-align: center;
+                font-weight: bold;
+                margin-bottom: 4px;
+            }
 
-        .meta,
-        .totals {
-            font-size: 12px;
-        }
+            .meta,
+            .totals {
+                font-size: 12px;
+            }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-        }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 12px;
+            }
 
-        td {
-            padding: 2px 0;
-            vertical-align: top;
-        }
+            td {
+                padding: 2px 0;
+                vertical-align: top;
+            }
 
-        .right {
-            text-align: right;
-        }
+            .right {
+                text-align: right;
+            }
 
-        .sep {
-            border-top: 1px dashed #000;
-            margin: 6px 0;
-        }
-    </style>
+            .sep {
+                border-top: 1px dashed #000;
+                margin: 6px 0;
+            }
+
+            /* Gambar QRIS untuk thermal 58mm (lebar konten ±280px) */
+            .qris {
+                display: block;
+                margin: 6px auto 0;
+                width: 160px;
+                /* aman untuk 58mm, silakan naikkan ke 180px bila perlu */
+                height: auto;
+                image-rendering: -webkit-optimize-contrast;
+            }
+
+            .qris-caption {
+                text-align: center;
+                font-size: 11px;
+                margin-top: 2px;
+            }
+        </style>
 </head>
 
 <body>
@@ -75,10 +91,10 @@
     <table>
         <tbody>
             @foreach($order->items as $it)
-                <tr>
-                    <td>{{ $it->service->name ?? 'Layanan' }} x{{ (float) $it->qty }}</td>
-                    <td class="right">{{ number_format((float) $it->total, 0, ',', '.') }}</td>
-                </tr>
+            <tr>
+                <td>{{ $it->service->name ?? 'Layanan' }} x{{ (float) $it->qty }}</td>
+                <td class="right">{{ number_format((float) $it->total, 0, ',', '.') }}</td>
+            </tr>
             @endforeach
         </tbody>
     </table>
@@ -108,6 +124,19 @@
         </tr>
     </table>
     <div class="sep"></div>
+
+    @php
+    // Ubah ke 'qris.jpg' jika file Anda .jpg
+    $qrisPath = 'qris.png';
+    $hasQris = \Illuminate\Support\Facades\Storage::disk('public')->exists($qrisPath);
+    @endphp
+
+    @if(!$isLunas && $hasQris)
+    <div class="qris-caption">Scan untuk bayar (QRIS)</div>
+    <img class="qris" src="{{ asset('storage/'.$qrisPath) }}" alt="QRIS">
+    <div class="sep"></div>
+    @endif
+
     <div class="meta">Dicetak: {{ $printedAt->format('d/m/Y H:i') }}</div>
 </body>
 

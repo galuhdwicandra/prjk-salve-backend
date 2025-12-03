@@ -9,15 +9,11 @@ use App\Http\Requests\OrderStatusRequest;
 use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Illuminate\Http\Response;
 
 class OrderController extends Controller
 {
-    public function __construct(private OrderService $svc)
-    {
-    }
+    public function __construct(private OrderService $svc) {}
 
     // GET /orders
     public function index(Request $request)
@@ -114,7 +110,9 @@ class OrderController extends Controller
 
     public function receipt(Request $request, Order $order)
     {
-        $this->authorize('view', $order);
+        if (!$request->hasValidSignature()) {
+            $this->authorize('view', $order);
+        }
 
         $order->load([
             'items.service:id,name',
