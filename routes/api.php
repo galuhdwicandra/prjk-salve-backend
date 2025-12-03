@@ -79,6 +79,7 @@ Route::prefix('v1')->group(function () {
 
         // Receipt (HTML)
         Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt']);
+        Route::post('/orders/{order}/share-link', [OrderController::class, 'shareLink']);
 
         // Payments
         Route::post('/orders/{order}/payments', [OrderPaymentsController::class, 'store']);

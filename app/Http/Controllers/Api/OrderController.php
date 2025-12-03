@@ -10,6 +10,8 @@ use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\URL;
 
 class OrderController extends Controller
 {
@@ -126,6 +128,30 @@ class OrderController extends Controller
         ])->render();
 
         return new Response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
+    }
+
+    // POST /orders/{order}/share-link
+    public function shareLink(Request $request, Order $order): JsonResponse
+    {
+        // Staff yang berhak melihat order juga berhak membuat link struk
+        $this->authorize('view', $order);
+
+        // Buat signed URL ke route publik: /r/receipt/{order}
+        $shareUrl = URL::temporarySignedRoute(
+            'public.receipts.show',
+            now()->addMinutes(120),
+            ['order' => (string) $order->getKey()]
+        );
+
+        return response()->json([
+            'data' => [
+                'share_url' => $shareUrl,
+                'expires_in_minutes' => 120,
+            ],
+            'meta' => (object)[],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
     }
 
     // POST /orders/{order}/status

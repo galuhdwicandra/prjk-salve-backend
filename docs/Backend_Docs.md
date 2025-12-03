@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-11-28 15:46:46_  
+_Dihasilkan otomatis: 2025-12-04 01:44:31_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -693,7 +693,7 @@ class DashboardController extends Controller
 
 ### app/Http/Controllers/Api/DeliveryController.php
 
-- SHA: `d6d7f3c70700`  
+- SHA: `57ff79d75d6d`  
 - Ukuran: 5 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -866,7 +866,7 @@ class DeliveryController extends Controller
         ]);
     }
 
-    private function branchScopeFor(Request $request): ?int
+    private function branchScopeFor(Request $request): ?string
     {
         $u = $request->user();
         if ($u->hasRole('Superadmin')) {
@@ -1315,7 +1315,7 @@ class InvoiceCounterController extends Controller
 
 ### app/Http/Controllers/Api/OrderController.php
 
-- SHA: `6913294c2089`  
+- SHA: `85e2a8b74680`  
 - Ukuran: 4 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -1343,15 +1343,11 @@ use App\Http\Requests\OrderStatusRequest;
 use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 use Illuminate\Http\Response;
 
 class OrderController extends Controller
 {
-    public function __construct(private OrderService $svc)
-    {
-    }
+    public function __construct(private OrderService $svc) {}
 
     // GET /orders
     public function index(Request $request)
@@ -1448,7 +1444,9 @@ class OrderController extends Controller
 
     public function receipt(Request $request, Order $order)
     {
-        $this->authorize('view', $order);
+        if (!$request->hasValidSignature()) {
+            $this->authorize('view', $order);
+        }
 
         $order->load([
             'items.service:id,name',
@@ -1619,7 +1617,7 @@ class OrderPhotosController extends Controller
 
 ### app/Http/Controllers/Api/ReceivableController.php
 
-- SHA: `79e5a8187973`  
+- SHA: `faf1c359d191`  
 - Ukuran: 3 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -1638,6 +1636,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\URL;
 use App\Models\Receivable;
 use App\Models\Order;
 use App\Http\Requests\Receivables\ReceivableSettleRequest;
@@ -1655,7 +1654,7 @@ class ReceivableController extends Controller
         $q = Receivable::query()
             ->with(['order' => function ($q) {
                 $q->select(['id', 'branch_id', 'customer_id', 'invoice_no', 'grand_total', 'paid_amount', 'due_amount', 'status', 'payment_status', 'created_at']);
-            }, 'order.customer:id,name'])
+            }, 'order.customer:id,name,whatsapp'])
             ->join('orders', 'orders.id', '=', 'receivables.order_id')
             ->select('receivables.*');
 
@@ -1670,13 +1669,13 @@ class ReceivableController extends Controller
         } elseif ($status === 'OVERDUE') {
             $today = Carbon::today();
             $q->whereNotNull('receivables.due_date')
-              ->where('receivables.due_date', '<', $today->toDateString())
-              ->where('receivables.remaining_amount', '>', 0);
+                ->where('receivables.due_date', '<', $today->toDateString())
+                ->where('receivables.remaining_amount', '>', 0);
         }
 
         $q->orderByRaw('CASE WHEN receivables.due_date IS NULL THEN 1 ELSE 0 END')
-          ->orderBy('receivables.due_date', 'asc')
-          ->orderBy('receivables.created_at', 'desc');
+            ->orderBy('receivables.due_date', 'asc')
+            ->orderBy('receivables.created_at', 'desc');
 
         $data = $q->paginate((int) $req->query('per_page', 15));
 
@@ -1700,10 +1699,28 @@ class ReceivableController extends Controller
 
         $result = $svc->settle($rcv->order, $method, $amount, $paidAt, $note);
 
+        $ord = $result['order'];
+        $orderId = is_array($ord)
+            ? (string) data_get($ord, 'order.id', data_get($ord, 'id'))
+            : (string) data_get($ord, 'id');
+        // Link internal (butuh auth) untuk staff
+        $receiptUrl = $orderId ? url("/api/v1/orders/{$orderId}/receipt") : null;
+        // Link publik bertanda tangan untuk dibagikan ke pelanggan (berlaku 120 menit)
+        $shareUrl = $orderId
+            ? URL::temporarySignedRoute(
+                'public.receipts.show',
+                now()->addMinutes(120),
+                ['order' => $orderId]
+            )
+            : null;
+
         return response()->json([
             'data' => [
                 'order' => $result['order'],
                 'receivable' => $result['receivable'],
+                'order_id' => $orderId,
+                'receipt_url' => $receiptUrl,
+                'share_url' => $shareUrl,
             ],
             'meta' => (object) [],
             'message' => 'Pelunasan berhasil.',
@@ -1972,8 +1989,8 @@ class ServicePriceController extends Controller
 
 ### app/Http/Controllers/Api/UserController.php
 
-- SHA: `9f3c27ef9c81`  
-- Ukuran: 5 KB  
+- SHA: `46d1c51ba1d3`  
+- Ukuran: 6 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `UserController` extends `Controller`**
@@ -2018,14 +2035,27 @@ class UserController extends Controller
         $filters = [
             'search' => (string) $request->query('q', ''),
             'branch_id' => $this->branchScopeFor($request),
+            'role'      => (string) $request->query('role', ''),
         ];
         $perPage = (int) $request->integer('per_page', 15);
 
         /** @var \Illuminate\Pagination\LengthAwarePaginator $page */
         $page = $this->svc->paginate($filters, $perPage);
 
+        // Normalisasi: roles -> string[]
+        $items = collect($page->items())->map(function (User $u) {
+            return [
+                'id'        => $u->id,
+                'name'      => $u->name,
+                'email'     => $u->email,
+                'branch_id' => $u->branch_id,
+                'is_active' => (bool) $u->is_active,
+                'roles'     => $u->getRoleNames()->values(), // ← ["Kurir", ...]
+            ];
+        })->values();
+
         return response()->json([
-            'data' => $page->items(),
+            'data' => $items,
             'meta' => [
                 'current_page' => $page->currentPage(),
                 'per_page' => $page->perPage(),
@@ -2044,10 +2074,19 @@ class UserController extends Controller
     {
         $this->authorize('view', $user);
 
+        // Kembalikan bentuk yang sama (roles: string[])
         $user->load('roles:id,name');
+        $data = [
+            'id'        => $user->id,
+            'name'      => $user->name,
+            'email'     => $user->email,
+            'branch_id' => $user->branch_id,
+            'is_active' => (bool) $user->is_active,
+            'roles'     => $user->getRoleNames()->values(),
+        ];
 
         return response()->json([
-            'data' => $user,
+            'data' => $data,
             'meta' => null,
             'message' => 'OK',
             'errors' => [],
@@ -6915,20 +6954,20 @@ class ReceivableService
 
 ### app/Services/UserService.php
 
-- SHA: `722bf91b8f62`  
+- SHA: `e1d4fbb51eb5`  
 - Ukuran: 5 KB  
 - Namespace: `App\Services`
 
 **Class `UserService`**
 
 Metode Publik:
-- **paginate**(array $filters = [], int $perPage = 15) : *LengthAwarePaginator* — @param array{search?:string, branch_id?:string|null} $filters
-- **create**(array $data) : *User* — @param array{search?:string, branch_id?:string|null} $filters
-- **update**(User $user, array $data) : *User* — @param array{search?:string, branch_id?:string|null} $filters
-- **delete**(User $user) : *void* — @param array{search?:string, branch_id?:string|null} $filters
-- **resetPassword**(User $user, string $plain) : *void* — @param array{search?:string, branch_id?:string|null} $filters
-- **setActive**(User $user, bool $isActive) : *User* — @param array{search?:string, branch_id?:string|null} $filters
-- **setRoles**(User $user, array $roles) : *User* — @param array{search?:string, branch_id?:string|null} $filters
+- **paginate**(array $filters = [], int $perPage = 15) : *LengthAwarePaginator* — @param array{search?:string, branch_id?:string|null, role?:string} $filters
+- **create**(array $data) : *User* — @param array{search?:string, branch_id?:string|null, role?:string} $filters
+- **update**(User $user, array $data) : *User* — @param array{search?:string, branch_id?:string|null, role?:string} $filters
+- **delete**(User $user) : *void* — @param array{search?:string, branch_id?:string|null, role?:string} $filters
+- **resetPassword**(User $user, string $plain) : *void* — @param array{search?:string, branch_id?:string|null, role?:string} $filters
+- **setActive**(User $user, bool $isActive) : *User* — @param array{search?:string, branch_id?:string|null, role?:string} $filters
+- **setRoles**(User $user, array $roles) : *User* — @param array{search?:string, branch_id?:string|null, role?:string} $filters
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -6944,7 +6983,7 @@ use Illuminate\Support\Facades\Hash;
 class UserService
 {
     /**
-     * @param array{search?:string, branch_id?:string|null} $filters
+     * @param array{search?:string, branch_id?:string|null, role?:string} $filters
      */
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
@@ -6958,7 +6997,12 @@ class UserService
                 });
             })
             ->when(!empty($filters['branch_id']), fn($q) => $q->where('branch_id', $filters['branch_id']))
-            ->orderBy('name') // atau ->orderByDesc('id') sesuai preferensi
+            ->when(
+                !empty($filters['role']),
+                fn($q) =>
+                $q->whereHas('roles', fn($r) => $r->where('name', $filters['role']))
+            )
+            ->orderBy('name')
             ->paginate($perPage);
     }
 
@@ -7512,8 +7556,8 @@ class UserSeeder extends Seeder
 
 ### resources/views/orders/receipt.blade.php
 
-- SHA: `40442c028e98`  
-- Ukuran: 3 KB  
+- SHA: `1422883edf07`  
+- Ukuran: 4 KB  
 - Namespace: ``
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -7525,60 +7569,76 @@ class UserSeeder extends Seeder
 <head>
     <meta charset="utf-8">
     @php
-        // Hitung sisa, lalu tentukan apakah sudah lunas atau belum
-        $sisa = max((float) $order->grand_total - (float) $order->paid_amount, 0);
-        $isLunas = $sisa <= 0 && $order->payment_status === 'PAID';
+    // Hitung sisa, lalu tentukan apakah sudah lunas atau belum
+    $sisa = max((float) $order->grand_total - (float) $order->paid_amount, 0);
+    $isLunas = $sisa <= 0 && $order->payment_status === 'PAID';
         $docTitle = $isLunas ? 'KUITANSI PEMBAYARAN' : 'TAGIHAN / INVOICE';
-    @endphp
-    <title>{{ $docTitle }} {{ $order->invoice_no ?? $order->number }}</title>
-    <style>
-        * {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        }
+        @endphp
+        <title>{{ $docTitle }} {{ $order->invoice_no ?? $order->number }}</title>
+        <style>
+            * {
+                font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            }
 
-        body {
-            width: 280px;
-            margin: 0;
-        }
+            body {
+                width: 280px;
+                margin: 0;
+            }
 
-        h1 {
-            font-size: 14px;
-            margin: 0 0 4px;
-            text-align: center;
-        }
+            h1 {
+                font-size: 14px;
+                margin: 0 0 4px;
+                text-align: center;
+            }
 
-        .doc-type {
-            font-size: 12px;
-            text-align: center;
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
+            .doc-type {
+                font-size: 12px;
+                text-align: center;
+                font-weight: bold;
+                margin-bottom: 4px;
+            }
 
-        .meta,
-        .totals {
-            font-size: 12px;
-        }
+            .meta,
+            .totals {
+                font-size: 12px;
+            }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-        }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 12px;
+            }
 
-        td {
-            padding: 2px 0;
-            vertical-align: top;
-        }
+            td {
+                padding: 2px 0;
+                vertical-align: top;
+            }
 
-        .right {
-            text-align: right;
-        }
+            .right {
+                text-align: right;
+            }
 
-        .sep {
-            border-top: 1px dashed #000;
-            margin: 6px 0;
-        }
-    </style>
+            .sep {
+                border-top: 1px dashed #000;
+                margin: 6px 0;
+            }
+
+            /* Gambar QRIS untuk thermal 58mm (lebar konten ±280px) */
+            .qris {
+                display: block;
+                margin: 6px auto 0;
+                width: 160px;
+                /* aman untuk 58mm, silakan naikkan ke 180px bila perlu */
+                height: auto;
+                image-rendering: -webkit-optimize-contrast;
+            }
+
+            .qris-caption {
+                text-align: center;
+                font-size: 11px;
+                margin-top: 2px;
+            }
+        </style>
 </head>
 
 <body>
@@ -7595,10 +7655,10 @@ class UserSeeder extends Seeder
     <table>
         <tbody>
             @foreach($order->items as $it)
-                <tr>
-                    <td>{{ $it->service->name ?? 'Layanan' }} x{{ (float) $it->qty }}</td>
-                    <td class="right">{{ number_format((float) $it->total, 0, ',', '.') }}</td>
-                </tr>
+            <tr>
+                <td>{{ $it->service->name ?? 'Layanan' }} x{{ (float) $it->qty }}</td>
+                <td class="right">{{ number_format((float) $it->total, 0, ',', '.') }}</td>
+            </tr>
             @endforeach
         </tbody>
     </table>
@@ -7628,11 +7688,23 @@ class UserSeeder extends Seeder
         </tr>
     </table>
     <div class="sep"></div>
+
+    @php
+    // Ubah ke 'qris.jpg' jika file Anda .jpg
+    $qrisPath = 'qris.png';
+    $hasQris = \Illuminate\Support\Facades\Storage::disk('public')->exists($qrisPath);
+    @endphp
+
+    @if(!$isLunas && $hasQris)
+    <div class="qris-caption">Scan untuk bayar (QRIS)</div>
+    <img class="qris" src="{{ asset('storage/'.$qrisPath) }}" alt="QRIS">
+    <div class="sep"></div>
+    @endif
+
     <div class="meta">Dicetak: {{ $printedAt->format('d/m/Y H:i') }}</div>
 </body>
 
 </html>
-
 ```
 </details>
 
