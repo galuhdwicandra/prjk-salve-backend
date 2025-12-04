@@ -38,6 +38,7 @@ class UserController extends Controller
                 'id'        => $u->id,
                 'name'      => $u->name,
                 'email'     => $u->email,
+                'username'  => $u->username,
                 'branch_id' => $u->branch_id,
                 'is_active' => (bool) $u->is_active,
                 'roles'     => $u->getRoleNames()->values(), // ← ["Kurir", ...]
@@ -70,6 +71,7 @@ class UserController extends Controller
             'id'        => $user->id,
             'name'      => $user->name,
             'email'     => $user->email,
+            'username'  => $user->username,
             'branch_id' => $user->branch_id,
             'is_active' => (bool) $user->is_active,
             'roles'     => $user->getRoleNames()->values(),

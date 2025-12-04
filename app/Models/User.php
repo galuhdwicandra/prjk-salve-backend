@@ -23,6 +23,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'username',
         'password',
         'branch_id',
         'is_active',
@@ -61,5 +62,10 @@ class User extends Authenticatable
     {
         // Hindari N1; panggil onlyNames() dari Spatie
         return $this->roles()->pluck('name')->all();
+    }
+
+    public function setUsernameAttribute(?string $v): void
+    {
+        $this->attributes['username'] = $v !== null ? strtolower(trim($v)) : null;
     }
 }

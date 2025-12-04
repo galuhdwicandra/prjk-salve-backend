@@ -7,11 +7,19 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthService
 {
-    public function login(string $email, string $password): array
+    public function login(string $login, string $password): array
     {
-        $user = User::query()->where('email', $email)->first();
+        $login = trim($login);
+        $isEmail = filter_var($login, FILTER_VALIDATE_EMAIL) !== false;
+        $query = User::query();
+        if ($isEmail) {
+            $query->where('email', strtolower($login));
+        } else {
+            $query->where('username', strtolower($login));
+        }
+        $user = $query->first();
 
-        if (!$user || !Hash::check($password, $user->password)) {
+        if (!$user || !Hash::check($password, (string) $user->password)) {
             return ['ok' => false, 'status' => 401, 'message' => 'Invalid credentials.'];
         }
 

@@ -16,6 +16,16 @@ class UserUpdateRequest extends FormRequest
         return $target ? ($this->user()?->can('update', $target) ?? false) : false;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('username')) {
+            $this->merge(['username' => strtolower(trim((string) $this->input('username')))]);
+        }
+        if ($this->has('email')) {
+            $this->merge(['email' => strtolower(trim((string) $this->input('email')))]);
+        }
+    }
+
     public function rules(): array
     {
         /** @var \App\Models\User|null $target */
@@ -28,6 +38,14 @@ class UserUpdateRequest extends FormRequest
                 'email',
                 'max:190',
                 $target ? Rule::unique('users', 'email')->ignore($target->id) : Rule::unique('users', 'email')
+            ],
+            'username' => [
+                'sometimes',
+                'string',
+                'min:3',
+                'max:50',
+                'regex:/^[a-z0-9_.]+$/',
+                $target ? Rule::unique('users', 'username')->ignore($target->id) : Rule::unique('users', 'username'),
             ],
             // opsional: kuatkan rule password
             'password' => ['nullable', Password::min(8)->mixedCase()->numbers()],

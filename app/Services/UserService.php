@@ -20,7 +20,8 @@ class UserService
                 $s = $filters['search'];
                 $q->where(function ($w) use ($s) {
                     $w->where('name', 'like', "%{$s}%")
-                        ->orWhere('email', 'like', "%{$s}%");
+                        ->orWhere('email', 'like', "%{$s}%")
+                        ->orWhere('username', 'like', "%{$s}%");
                 });
             })
             ->when(!empty($filters['branch_id']), fn($q) => $q->where('branch_id', $filters['branch_id']))
@@ -37,6 +38,7 @@ class UserService
      * @param array{
      *   name:string,
      *   email:string,
+     *   username?:string,
      *   password:string,
      *   is_active?:bool,
      *   branch_id?:string|null,
@@ -50,6 +52,9 @@ class UserService
             $user = new User();
             $user->name = $data['name'];
             $user->email = $data['email'];
+            if (array_key_exists('username', $data)) {
+                $user->username = strtolower(trim((string) $data['username'])); // NEW
+            }
 
             // PILIH SALAH SATU:
             // 1) Jika model punya casts: 'password' => 'hashed', boleh langsung assign:
@@ -75,6 +80,7 @@ class UserService
      * @param array{
      *   name?:string,
      *   email?:string,
+     *   username?:string,
      *   password?:string|null,
      *   is_active?:bool,
      *   branch_id?:string|null,
@@ -90,6 +96,9 @@ class UserService
             }
             if (array_key_exists('email', $data)) {
                 $user->email = $data['email'];
+            }
+            if (array_key_exists('username', $data)) {
+                $user->username = strtolower(trim((string) $data['username'])); // NEW
             }
             if (!empty($data['password'])) {
                 // Sama catatan seperti create():

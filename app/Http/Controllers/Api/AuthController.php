@@ -9,18 +9,16 @@ use Illuminate\Http\JsonResponse;
 
 class AuthController extends Controller
 {
-    public function __construct(private AuthService $auth)
-    {
-    }
+    public function __construct(private AuthService $auth) {}
 
     public function login(Request $request): JsonResponse
     {
         $payload = $request->validate([
-            'email' => ['required', 'email'],
+            'login'    => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        $res = $this->auth->login($payload['email'], $payload['password']);
+        $res = $this->auth->login($payload['login'], $payload['password']);
         if (!$res['ok']) {
             return response()->json([
                 'data' => null,

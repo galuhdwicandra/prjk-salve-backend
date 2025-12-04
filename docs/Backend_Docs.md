@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-04 23:41:56_  
+_Dihasilkan otomatis: 2025-12-05 01:31:33_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -122,7 +122,7 @@ _Dihasilkan otomatis: 2025-12-04 23:41:56_
 
 ### app/Http/Controllers/Api/AuthController.php
 
-- SHA: `dcec2eec2c98`  
+- SHA: `9226ec9d4fbb`  
 - Ukuran: 2 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -147,18 +147,16 @@ use Illuminate\Http\JsonResponse;
 
 class AuthController extends Controller
 {
-    public function __construct(private AuthService $auth)
-    {
-    }
+    public function __construct(private AuthService $auth) {}
 
     public function login(Request $request): JsonResponse
     {
         $payload = $request->validate([
-            'email' => ['required', 'email'],
+            'login'    => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        $res = $this->auth->login($payload['email'], $payload['password']);
+        $res = $this->auth->login($payload['login'], $payload['password']);
         if (!$res['ok']) {
             return response()->json([
                 'data' => null,
@@ -3305,8 +3303,8 @@ class ServicePrice extends Model
 
 ### app/Models/User.php
 
-- SHA: `52c875472c44`  
-- Ukuran: 1 KB  
+- SHA: `9bab0ed384b9`  
+- Ukuran: 2 KB  
 - Namespace: `App\Models`
 
 **Class `User` extends `Authenticatable`**
@@ -3314,6 +3312,7 @@ class ServicePrice extends Model
 Metode Publik:
 - **branch**() — @use HasFactory<\Database\Factories\UserFactory>
 - **getRolesListAttribute**() : *array* — @use HasFactory<\Database\Factories\UserFactory>
+- **setUsernameAttribute**(?string $v) : *void* — @use HasFactory<\Database\Factories\UserFactory>
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -3342,6 +3341,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'username',
         'password',
         'branch_id',
         'is_active',
@@ -3380,6 +3380,11 @@ class User extends Authenticatable
     {
         // Hindari N1; panggil onlyNames() dari Spatie
         return $this->roles()->pluck('name')->all();
+    }
+
+    public function setUsernameAttribute(?string $v): void
+    {
+        $this->attributes['username'] = $v !== null ? strtolower(trim($v)) : null;
     }
 }
 
@@ -5687,8 +5692,8 @@ class ServiceUpdateRequest extends FormRequest
 
 ### app/Http/Requests/UserStoreRequest.php
 
-- SHA: `6256a71bb1eb`  
-- Ukuran: 2 KB  
+- SHA: `f2f73594304a`  
+- Ukuran: 3 KB  
 - Namespace: `App\Http\Requests`
 
 **Class `UserStoreRequest` extends `FormRequest`**
@@ -5716,11 +5721,29 @@ class UserStoreRequest extends FormRequest
         return $this->user()?->can('create', \App\Models\User::class) ?? false;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('username')) {
+            $this->merge(['username' => strtolower(trim((string) $this->input('username')))]);
+        }
+        if ($this->has('email')) {
+            $this->merge(['email' => strtolower(trim((string) $this->input('email')))]);
+        }
+    }
+
     public function rules(): array
     {
         return [
             'name' => ['required', 'string', 'max:150'],
             'email' => ['required', 'email', 'max:190', 'unique:users,email'],
+            'username' => [
+                'required',
+                'string',
+                'min:3',
+                'max:50',
+                'regex:/^[a-z0-9_.]+$/',
+                'unique:users,username',
+            ],
             'password' => ['required', Password::min(8)->mixedCase()->numbers()],
             // Jika kamu ingin default aktif = true, ubah ke 'sometimes|boolean' lalu handle default di controller
             'is_active' => ['required', 'boolean'],
@@ -5765,6 +5788,9 @@ class UserStoreRequest extends FormRequest
             'role.required' => 'Role wajib diisi.',
             'role.exists' => 'Role tidak valid.',
             'branch_id.uuid' => 'branch_id harus berupa UUID yang valid.',
+            'username.required' => 'Username wajib diisi.',
+            'username.unique' => 'Username sudah digunakan.',
+            'username.regex' => 'Username hanya boleh huruf/angka/underscore/titik (lowercase).',
         ];
     }
 }
@@ -5774,7 +5800,7 @@ class UserStoreRequest extends FormRequest
 
 ### app/Http/Requests/UserUpdateRequest.php
 
-- SHA: `2318df7a9525`  
+- SHA: `0ae2325164cc`  
 - Ukuran: 3 KB  
 - Namespace: `App\Http\Requests`
 
@@ -5805,6 +5831,16 @@ class UserUpdateRequest extends FormRequest
         return $target ? ($this->user()?->can('update', $target) ?? false) : false;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('username')) {
+            $this->merge(['username' => strtolower(trim((string) $this->input('username')))]);
+        }
+        if ($this->has('email')) {
+            $this->merge(['email' => strtolower(trim((string) $this->input('email')))]);
+        }
+    }
+
     public function rules(): array
     {
         /** @var \App\Models\User|null $target */
@@ -5817,6 +5853,14 @@ class UserUpdateRequest extends FormRequest
                 'email',
                 'max:190',
                 $target ? Rule::unique('users', 'email')->ignore($target->id) : Rule::unique('users', 'email')
+            ],
+            'username' => [
+                'sometimes',
+                'string',
+                'min:3',
+                'max:50',
+                'regex:/^[a-z0-9_.]+$/',
+                $target ? Rule::unique('users', 'username')->ignore($target->id) : Rule::unique('users', 'username'),
             ],
             // opsional: kuatkan rule password
             'password' => ['nullable', Password::min(8)->mixedCase()->numbers()],
@@ -6006,14 +6050,14 @@ class VoucherUpdateRequest extends FormRequest
 
 ### app/Services/AuthService.php
 
-- SHA: `a675ff1ce9bd`  
-- Ukuran: 1 KB  
+- SHA: `102127084776`  
+- Ukuran: 2 KB  
 - Namespace: `App\Services`
 
 **Class `AuthService`**
 
 Metode Publik:
-- **login**(string $email, string $password) : *array*
+- **login**(string $login, string $password) : *array*
 - **me**(User $user) : *array*
 - **logout**(User $user) : *array*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
@@ -6028,11 +6072,19 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthService
 {
-    public function login(string $email, string $password): array
+    public function login(string $login, string $password): array
     {
-        $user = User::query()->where('email', $email)->first();
+        $login = trim($login);
+        $isEmail = filter_var($login, FILTER_VALIDATE_EMAIL) !== false;
+        $query = User::query();
+        if ($isEmail) {
+            $query->where('email', strtolower($login));
+        } else {
+            $query->where('username', strtolower($login));
+        }
+        $user = $query->first();
 
-        if (!$user || !Hash::check($password, $user->password)) {
+        if (!$user || !Hash::check($password, (string) $user->password)) {
             return ['ok' => false, 'status' => 401, 'message' => 'Invalid credentials.'];
         }
 
