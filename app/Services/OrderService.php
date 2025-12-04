@@ -17,8 +17,7 @@ class OrderService
     public function __construct(
         private PricingService $pricing,
         private InvoiceService $invoice,
-    ) {
-    }
+    ) {}
 
     /**
      * Create order (draft/queue) — hitung total dan harga per cabang.
@@ -173,12 +172,19 @@ class OrderService
      * @param array{
      *   customer_id?:string|null,
      *   notes?:string|null,
+     *   discount?:float|int|null,
      *   items?: array<int, array{id?:string, service_id:string, qty:float|int, note?:string|null}>
      * } $data
      */
     public function update(Order $order, array $data, User $actor): Order
     {
         return DB::transaction(function () use ($order, $data, $actor) {
+            // pastikan state fresh & terkunci selama perhitungan
+            $order->refresh();
+            if (in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true)) {
+                abort(403, 'Order pada status ini terkunci dan tidak dapat diedit.');
+            }
+
             if (array_key_exists('customer_id', $data)) {
                 $order->customer_id = $data['customer_id'];
             }
@@ -186,39 +192,90 @@ class OrderService
                 $order->notes = $data['notes'];
             }
 
+            if (array_key_exists('discount', $data)) {
+                // normalisasi di Request; di sini cukup set
+                $order->discount = $this->dec((float) max(0, (float) $data['discount']));
+            }
+
+            $recalcSubtotal = null;
             if (!empty($data['items'])) {
                 // strategi sederhana: hapus & tulis ulang
                 $order->items()->delete();
 
                 $subtotal = 0.0;
-
                 foreach ($data['items'] as $row) {
-                    $price = (float) app(PricingService::class)->getPrice($row['service_id'], $order->branch_id);
-                    $qty = (float) $row['qty'];
-                    $line = $price * $qty;
+                    $price = (float) $this->pricing->getPrice($row['service_id'], $order->branch_id);
+                    $qty   = (float) $row['qty'];
+                    $line  = $price * $qty;
                     $subtotal += $line;
 
                     OrderItem::query()->create([
-                        'id' => (string) Str::uuid(),
-                        'order_id' => $order->id,
+                        'id'        => (string) Str::uuid(),
+                        'order_id'  => $order->id,
                         'service_id' => $row['service_id'],
-                        'qty' => $this->dec($qty),
-                        'price' => $this->dec($price),
-                        'total' => $this->dec($line),
-                        'note' => $row['note'] ?? null,
+                        'qty'       => $this->dec($qty),
+                        'price'     => $this->dec($price),
+                        'total'     => $this->dec($line),
+                        'note'      => $row['note'] ?? null,
                     ]);
                 }
-
-                $order->subtotal = $this->dec($subtotal);
-                $order->grand_total = $this->dec(((float) $order->subtotal) - ((float) $order->discount));
-                $order->due_amount = $this->dec(((float) $order->grand_total) - ((float) $order->paid_amount));
+                $recalcSubtotal = $subtotal;
             }
+
+            // Hitung ulang total (selalu konsisten jika subtotal/discount berubah)
+            $effectiveSubtotal = $recalcSubtotal !== null ? $recalcSubtotal : (float) $order->subtotal;
+            $effectiveDiscount = (float) max(0, (float) $order->discount);
+            $grand = max(0, $effectiveSubtotal - $effectiveDiscount);
+            $due   = max(0, $grand - (float) $order->paid_amount);
+
+            $order->subtotal    = $this->dec($effectiveSubtotal);
+            $order->discount    = $this->dec($effectiveDiscount);
+            $order->grand_total = $this->dec($grand);
+            $order->due_amount  = $this->dec($due);
 
             $order->save();
 
+            if (Schema::hasTable('receivables')) {
+                $existing = DB::table('receivables')
+                    ->where('order_id', (string) $order->getKey())
+                    ->first();
+
+                if ($grand <= 0.0) {
+                    if ($existing) {
+                        DB::table('receivables')
+                            ->where('id', $existing->id)
+                            ->update([
+                                'remaining_amount' => 0,
+                                'status' => 'SETTLED',
+                                'updated_at' => now(),
+                            ]);
+                    }
+                } else {
+                    if ($existing) {
+                        DB::table('receivables')
+                            ->where('id', $existing->id)
+                            ->update([
+                                'remaining_amount' => $due,
+                                'status' => $due <= 0 ? 'SETTLED' : ($due < $grand ? 'PARTIAL' : 'OPEN'),
+                                'updated_at' => now(),
+                            ]);
+                    } else {
+                        // jika sebelumnya belum ada, buat baru saat kini grand_total > 0
+                        DB::table('receivables')->insert([
+                            'id' => (string) Str::uuid(),
+                            'order_id' => (string) $order->getKey(),
+                            'remaining_amount' => $due,
+                            'status' => $due <= 0 ? 'SETTLED' : 'OPEN',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
+
             // TODO: audit('ORDER_UPDATE', ['order_id' => $order->id, 'actor' => $actor->id]);
 
-            return $order->load(['items.service', 'customer']);
+            return $order->load(['items.service', 'customer', 'receivable']);
         });
     }
 

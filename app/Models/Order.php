@@ -79,6 +79,10 @@ class Order extends Model
             ->withPivot(['id', 'applied_amount', 'applied_by', 'applied_at'])
             ->withTimestamps();
     }
+    public function receivable()
+    {
+        return $this->hasOne(\App\Models\Receivable::class, 'order_id', 'id');
+    }
 
     /**
      * Mutator generik untuk kolom uang — menerima float|int|string.

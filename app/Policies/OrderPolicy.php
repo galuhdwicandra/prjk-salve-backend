@@ -34,18 +34,31 @@ class OrderPolicy
 
     public function update(User $user, Order $order): bool
     {
-        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
-            return (string) $user->branch_id === (string) $order->branch_id;
+        if (! $user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
+            return false;
         }
-        return false;
+        // Harus satu cabang
+        $sameBranch = (string) $user->branch_id === (string) $order->branch_id;
+        if (! $sameBranch) return false;
+        // Kunci: status terminal tidak boleh diedit
+        $terminal = in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true);
+        if ($terminal) return false;
+        return true;
     }
 
     public function delete(User $user, Order $order): bool
     {
-        if ($user->hasRole('Admin Cabang')) {
-            return (string) $user->branch_id === (string) $order->branch_id;
-        }
-        return false;
+        // Hanya Admin Cabang
+        if (! $user->hasRole('Admin Cabang')) return false;
+        // Harus satu cabang
+        $sameBranch = (string) $user->branch_id === (string) $order->branch_id;
+        if (! $sameBranch) return false;
+        // Kunci: status terminal tidak boleh dihapus
+        $terminal = in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true);
+        if ($terminal) return false;
+        // Kunci: jika sudah ada pembayaran tidak boleh dihapus
+        if ($order->payments()->exists()) return false;
+        return true;
     }
 
     public function transitionStatus(User $user, Order $order): bool

@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-04 01:44:31_  
+_Dihasilkan otomatis: 2025-12-04 18:32:41_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -1315,8 +1315,8 @@ class InvoiceCounterController extends Controller
 
 ### app/Http/Controllers/Api/OrderController.php
 
-- SHA: `85e2a8b74680`  
-- Ukuran: 4 KB  
+- SHA: `7c05020cad0b`  
+- Ukuran: 5 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `OrderController` extends `Controller`**
@@ -1328,6 +1328,7 @@ Metode Publik:
 - **store**(OrderStoreRequest $request)
 - **update**(OrderUpdateRequest $request, Order $order)
 - **receipt**(Request $request, Order $order)
+- **shareLink**(Request $request, Order $order) : *JsonResponse*
 - **transitionStatus**(OrderStatusRequest $request, Order $order)
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -1344,6 +1345,8 @@ use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\URL;
 
 class OrderController extends Controller
 {
@@ -1356,7 +1359,8 @@ class OrderController extends Controller
 
         $me = $request->user();
         $q = Order::query()
-            ->with(['customer', 'items.service'])
+            ->with(['customer', 'items.service', 'receivable'])
+            ->withCount('payments')
             ->orderByDesc('created_at');
 
         // scope cabang
@@ -1378,7 +1382,15 @@ class OrderController extends Controller
             $q->where('status', $st);
         }
 
-        $per = (int) $request->query('per_page', 10);
+        // Filter tanggal (opsional): from/to pada kolom created_at
+        if ($from = $request->query('from')) {
+            $q->whereDate('created_at', '>=', $from);
+        }
+        if ($to = $request->query('to')) {
+            $q->whereDate('created_at', '<=', $to);
+        }
+
+        $per = (int) max(1, min(100, (int) $request->query('per_page', 10)));
         $page = $q->paginate($per);
 
         return response()->json([
@@ -1399,7 +1411,7 @@ class OrderController extends Controller
         $this->authorize('view', $order);
 
         return response()->json([
-            'data' => $order->load(['customer', 'items.service', 'photos']),
+            'data' => $order->load(['customer', 'items.service', 'photos', 'receivable']),
             'meta' => [],
             'message' => 'OK',
             'errors' => null,
@@ -1409,6 +1421,7 @@ class OrderController extends Controller
     // POST /orders
     public function store(OrderStoreRequest $request)
     {
+        $this->authorize('create', Order::class);
         $payload = $request->validated();
 
         // Admin Cabang/Kasir: fallback branch ke cabang aktor
@@ -1462,9 +1475,34 @@ class OrderController extends Controller
         return new Response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
     }
 
+    // POST /orders/{order}/share-link
+    public function shareLink(Request $request, Order $order): JsonResponse
+    {
+        // Staff yang berhak melihat order juga berhak membuat link struk
+        $this->authorize('view', $order);
+
+        // Buat signed URL ke route publik: /r/receipt/{order}
+        $shareUrl = URL::temporarySignedRoute(
+            'public.receipts.show',
+            now()->addMinutes(120),
+            ['order' => (string) $order->getKey()]
+        );
+
+        return response()->json([
+            'data' => [
+                'share_url' => $shareUrl,
+                'expires_in_minutes' => 120,
+            ],
+            'meta' => (object)[],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
     // POST /orders/{order}/status
     public function transitionStatus(OrderStatusRequest $request, Order $order)
     {
+        $this->authorize('transitionStatus', $order);
         $order = $this->svc->transition($order, $request->validated()['next'], $request->user());
 
         return response()->json([
@@ -2707,7 +2745,7 @@ class InvoiceCounter extends Model
 
 ### app/Models/Order.php
 
-- SHA: `c5abc8d66e16`  
+- SHA: `9b11b75d8528`  
 - Ukuran: 3 KB  
 - Namespace: `App\Models`
 
@@ -2722,6 +2760,7 @@ Metode Publik:
 - **photos**()
 - **payments**()
 - **vouchers**()
+- **receivable**()
 - **setMoney**(string $attr, float|int|string|null $value) : *void* — Mutator generik untuk kolom uang — menerima float|int|string.
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -2806,6 +2845,10 @@ class Order extends Model
         return $this->belongsToMany(\App\Models\Voucher::class, 'order_vouchers', 'order_id', 'voucher_id')
             ->withPivot(['id', 'applied_amount', 'applied_by', 'applied_at'])
             ->withTimestamps();
+    }
+    public function receivable()
+    {
+        return $this->hasOne(\App\Models\Receivable::class, 'order_id', 'id');
     }
 
     /**
@@ -3736,7 +3779,7 @@ class ExpensePolicy
 
 ### app/Policies/OrderPolicy.php
 
-- SHA: `7ca1e4699484`  
+- SHA: `c5b59f925b9d`  
 - Ukuran: 2 KB  
 - Namespace: `App\Policies`
 
@@ -3790,18 +3833,31 @@ class OrderPolicy
 
     public function update(User $user, Order $order): bool
     {
-        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
-            return (string) $user->branch_id === (string) $order->branch_id;
+        if (! $user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
+            return false;
         }
-        return false;
+        // Harus satu cabang
+        $sameBranch = (string) $user->branch_id === (string) $order->branch_id;
+        if (! $sameBranch) return false;
+        // Kunci: status terminal tidak boleh diedit
+        $terminal = in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true);
+        if ($terminal) return false;
+        return true;
     }
 
     public function delete(User $user, Order $order): bool
     {
-        if ($user->hasRole('Admin Cabang')) {
-            return (string) $user->branch_id === (string) $order->branch_id;
-        }
-        return false;
+        // Hanya Admin Cabang
+        if (! $user->hasRole('Admin Cabang')) return false;
+        // Harus satu cabang
+        $sameBranch = (string) $user->branch_id === (string) $order->branch_id;
+        if (! $sameBranch) return false;
+        // Kunci: status terminal tidak boleh dihapus
+        $terminal = in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true);
+        if ($terminal) return false;
+        // Kunci: jika sudah ada pembayaran tidak boleh dihapus
+        if ($order->payments()->exists()) return false;
+        return true;
     }
 
     public function transitionStatus(User $user, Order $order): bool
@@ -5119,8 +5175,8 @@ class OrderStoreRequest extends FormRequest
 
 ### app/Http/Requests/OrderUpdateRequest.php
 
-- SHA: `2de209141a36`  
-- Ukuran: 804 B  
+- SHA: `4e4df5baf7f5`  
+- Ukuran: 2 KB  
 - Namespace: `App\Http\Requests`
 
 **Class `OrderUpdateRequest` extends `FormRequest`**
@@ -5141,21 +5197,38 @@ class OrderUpdateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $order = $this->route('order');
-        return $this->user()?->can('update', $order) ?? false;
+        return true;
     }
 
     public function rules(): array
     {
         return [
-            'customer_id' => ['sometimes', 'nullable', 'uuid', 'exists:customers,id'],
-            'notes' => ['sometimes', 'nullable', 'string'],
+            'customer_id'        => ['sometimes', 'nullable', 'uuid', 'exists:customers,id'],
+            'discount'           => ['sometimes', 'numeric', 'min:0'],
+            'notes'              => ['sometimes', 'nullable', 'string', 'max:500'],
 
-            'items' => ['sometimes', 'array', 'min:1'],
-            'items.*.id' => ['sometimes', 'uuid'], // jika edit baris
-            'items.*.service_id' => ['required_with:items.*.qty', 'uuid', 'exists:services,id'],
-            'items.*.qty' => ['required_with:items', 'numeric', 'gt:0'],
+            'items'              => ['sometimes', 'array', 'min:1'],
+            'items.*.id'         => ['sometimes', 'uuid', 'exists:order_items,id'],
+            'items.*.service_id' => ['required_with:items', 'uuid', 'exists:services,id', 'distinct'],
+            'items.*.qty'        => ['required_with:items', 'integer', 'min:1'],
+            'items.*.note'       => ['sometimes', 'nullable', 'string', 'max:300'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $data = $this->all();
+        if (isset($data['discount']) && $data['discount'] !== null) {
+            $data['discount'] = is_numeric($data['discount']) ? (float) $data['discount'] : $data['discount'];
+        }
+        if (isset($data['items']) && is_array($data['items'])) {
+            foreach ($data['items'] as $k => $row) {
+                if (isset($row['qty'])) {
+                    $data['items'][$k]['qty'] = is_numeric($row['qty']) ? (int) $row['qty'] : $row['qty'];
+                }
+            }
+        }
+        $this->replace($data);
     }
 }
 
@@ -6451,8 +6524,8 @@ class OrderNumberService
 
 ### app/Services/OrderService.php
 
-- SHA: `bfcc80303024`  
-- Ukuran: 9 KB  
+- SHA: `e144c8503027`  
+- Ukuran: 11 KB  
 - Namespace: `App\Services`
 
 **Class `OrderService`**
@@ -6485,8 +6558,7 @@ class OrderService
     public function __construct(
         private PricingService $pricing,
         private InvoiceService $invoice,
-    ) {
-    }
+    ) {}
 
     /**
      * Create order (draft/queue) — hitung total dan harga per cabang.
@@ -6641,12 +6713,19 @@ class OrderService
      * @param array{
      *   customer_id?:string|null,
      *   notes?:string|null,
+     *   discount?:float|int|null,
      *   items?: array<int, array{id?:string, service_id:string, qty:float|int, note?:string|null}>
      * } $data
      */
     public function update(Order $order, array $data, User $actor): Order
     {
         return DB::transaction(function () use ($order, $data, $actor) {
+            // pastikan state fresh & terkunci selama perhitungan
+            $order->refresh();
+            if (in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true)) {
+                abort(403, 'Order pada status ini terkunci dan tidak dapat diedit.');
+            }
+
             if (array_key_exists('customer_id', $data)) {
                 $order->customer_id = $data['customer_id'];
             }
@@ -6654,39 +6733,90 @@ class OrderService
                 $order->notes = $data['notes'];
             }
 
+            if (array_key_exists('discount', $data)) {
+                // normalisasi di Request; di sini cukup set
+                $order->discount = $this->dec((float) max(0, (float) $data['discount']));
+            }
+
+            $recalcSubtotal = null;
             if (!empty($data['items'])) {
                 // strategi sederhana: hapus & tulis ulang
                 $order->items()->delete();
 
                 $subtotal = 0.0;
-
                 foreach ($data['items'] as $row) {
-                    $price = (float) app(PricingService::class)->getPrice($row['service_id'], $order->branch_id);
-                    $qty = (float) $row['qty'];
-                    $line = $price * $qty;
+                    $price = (float) $this->pricing->getPrice($row['service_id'], $order->branch_id);
+                    $qty   = (float) $row['qty'];
+                    $line  = $price * $qty;
                     $subtotal += $line;
 
                     OrderItem::query()->create([
-                        'id' => (string) Str::uuid(),
-                        'order_id' => $order->id,
+                        'id'        => (string) Str::uuid(),
+                        'order_id'  => $order->id,
                         'service_id' => $row['service_id'],
-                        'qty' => $this->dec($qty),
-                        'price' => $this->dec($price),
-                        'total' => $this->dec($line),
-                        'note' => $row['note'] ?? null,
+                        'qty'       => $this->dec($qty),
+                        'price'     => $this->dec($price),
+                        'total'     => $this->dec($line),
+                        'note'      => $row['note'] ?? null,
                     ]);
                 }
-
-                $order->subtotal = $this->dec($subtotal);
-                $order->grand_total = $this->dec(((float) $order->subtotal) - ((float) $order->discount));
-                $order->due_amount = $this->dec(((float) $order->grand_total) - ((float) $order->paid_amount));
+                $recalcSubtotal = $subtotal;
             }
+
+            // Hitung ulang total (selalu konsisten jika subtotal/discount berubah)
+            $effectiveSubtotal = $recalcSubtotal !== null ? $recalcSubtotal : (float) $order->subtotal;
+            $effectiveDiscount = (float) max(0, (float) $order->discount);
+            $grand = max(0, $effectiveSubtotal - $effectiveDiscount);
+            $due   = max(0, $grand - (float) $order->paid_amount);
+
+            $order->subtotal    = $this->dec($effectiveSubtotal);
+            $order->discount    = $this->dec($effectiveDiscount);
+            $order->grand_total = $this->dec($grand);
+            $order->due_amount  = $this->dec($due);
 
             $order->save();
 
+            if (Schema::hasTable('receivables')) {
+                $existing = DB::table('receivables')
+                    ->where('order_id', (string) $order->getKey())
+                    ->first();
+
+                if ($grand <= 0.0) {
+                    if ($existing) {
+                        DB::table('receivables')
+                            ->where('id', $existing->id)
+                            ->update([
+                                'remaining_amount' => 0,
+                                'status' => 'SETTLED',
+                                'updated_at' => now(),
+                            ]);
+                    }
+                } else {
+                    if ($existing) {
+                        DB::table('receivables')
+                            ->where('id', $existing->id)
+                            ->update([
+                                'remaining_amount' => $due,
+                                'status' => $due <= 0 ? 'SETTLED' : ($due < $grand ? 'PARTIAL' : 'OPEN'),
+                                'updated_at' => now(),
+                            ]);
+                    } else {
+                        // jika sebelumnya belum ada, buat baru saat kini grand_total > 0
+                        DB::table('receivables')->insert([
+                            'id' => (string) Str::uuid(),
+                            'order_id' => (string) $order->getKey(),
+                            'remaining_amount' => $due,
+                            'status' => $due <= 0 ? 'SETTLED' : 'OPEN',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
+
             // TODO: audit('ORDER_UPDATE', ['order_id' => $order->id, 'actor' => $actor->id]);
 
-            return $order->load(['items.service', 'customer']);
+            return $order->load(['items.service', 'customer', 'receivable']);
         });
     }
 
@@ -7556,155 +7686,220 @@ class UserSeeder extends Seeder
 
 ### resources/views/orders/receipt.blade.php
 
-- SHA: `1422883edf07`  
-- Ukuran: 4 KB  
+- SHA: `3e04782bbae3`  
+- Ukuran: 8 KB  
 - Namespace: ``
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
 {{-- resources/views/orders/receipt.blade.php --}}
 <!doctype html>
-<html>
-
+<html lang="id" data-theme="light">
 <head>
-    <meta charset="utf-8">
-    @php
-    // Hitung sisa, lalu tentukan apakah sudah lunas atau belum
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  @php
+    // Logika asli dipertahankan
     $sisa = max((float) $order->grand_total - (float) $order->paid_amount, 0);
     $isLunas = $sisa <= 0 && $order->payment_status === 'PAID';
-        $docTitle = $isLunas ? 'KUITANSI PEMBAYARAN' : 'TAGIHAN / INVOICE';
-        @endphp
-        <title>{{ $docTitle }} {{ $order->invoice_no ?? $order->number }}</title>
-        <style>
-            * {
-                font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            }
+    $docTitle = $isLunas ? 'KUITANSI PEMBAYARAN' : 'TAGIHAN / INVOICE';
+  @endphp
 
-            body {
-                width: 280px;
-                margin: 0;
-            }
+  <title>{{ $docTitle }} {{ $order->invoice_no ?? $order->number }}</title>
 
-            h1 {
-                font-size: 14px;
-                margin: 0 0 4px;
-                text-align: center;
-            }
+  <style>
+    /* ========= Design tokens SALVE (screen view) ========= */
+    :root{
+      --brand:#0000FF; --on-brand:#FFFFFF;
+      --text:#0B1220; --surface:#F5F7FB; --border:#E6EAF2;
+      --success:#11A362; --warning:#EF9300; --danger:#D92D20; --info:#2E7CF6;
+      --radius-sm:8px; --radius-md:12px; --radius-lg:16px;
+      --shadow-1:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.10);
+      --shadow-2:0 8px 16px rgba(16,24,40,.10),0 2px 6px rgba(16,24,40,.08);
+      --focus:0 0 0 3px rgba(0,0,255,.25);
+    }
+    [data-theme="dark"]{
+      --text:#F5F7FB; --surface:#0F172A; --border:#1E293B;
+    }
+    @media (prefers-color-scheme:dark){
+      html:not([data-theme="light"]){ --text:#F5F7FB; --surface:#0F172A; --border:#1E293B; }
+    }
 
-            .doc-type {
-                font-size: 12px;
-                text-align: center;
-                font-weight: bold;
-                margin-bottom: 4px;
-            }
+    /* ========= Base ========= */
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text); background:var(--surface);
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{ color:var(--brand); text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+    :focus-visible{ outline:0; box-shadow:var(--focus); border-radius:6px; }
 
-            .meta,
-            .totals {
-                font-size: 12px;
-            }
+    /* ========= Layout ========= */
+    .container{ max-width:720px; margin-inline:auto; padding:24px; display:grid; gap:16px; }
+    .header{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+    .brand{ font-weight:700; font-size:18px; line-height:1.2; }
+    .doctype{ font-weight:700; font-size:12px; color:#1A4BFF; background:#E6EDFF; padding:6px 10px; border-radius:999px; }
 
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 12px;
-            }
+    .card{ background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-1); }
+    .section{ padding:16px; }
+    .section + .section{ border-top:1px solid var(--border); }
 
-            td {
-                padding: 2px 0;
-                vertical-align: top;
-            }
+    /* ========= Meta grid ========= */
+    .meta{ display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:14px; }
+    .meta dt{ color:#475569; font-weight:500; }
+    .meta dd{ margin:0; }
 
-            .right {
-                text-align: right;
-            }
+    /* ========= Badge status ========= */
+    .badge{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:600; }
+    .badge--paid{ color:#065F46; background:rgba(17,163,98,.12); }
+    .badge--unpaid{ color:#7C2D12; background:rgba(217,45,32,.12); }
 
-            .sep {
-                border-top: 1px dashed #000;
-                margin: 6px 0;
-            }
+    /* ========= Table items ========= */
+    .table-wrap{ overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); }
+    table{ border-collapse:collapse; width:100%; font-size:14px; background:#fff; }
+    thead th{ text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:#334155; background:#E6EDFF; padding:10px 12px; position:sticky; top:0; z-index:1; }
+    tbody td{ padding:12px; border-top:1px solid var(--border); vertical-align:top; }
+    tbody tr:hover{ background:rgba(0,0,0,.04); }
 
-            /* Gambar QRIS untuk thermal 58mm (lebar konten ±280px) */
-            .qris {
-                display: block;
-                margin: 6px auto 0;
-                width: 160px;
-                /* aman untuk 58mm, silakan naikkan ke 180px bila perlu */
-                height: auto;
-                image-rendering: -webkit-optimize-contrast;
-            }
+    .right{text-align:right;}
+    .muted{ color:#475569; }
+    .bold{ font-weight:700; }
 
-            .qris-caption {
-                text-align: center;
-                font-size: 11px;
-                margin-top: 2px;
-            }
-        </style>
+    /* ========= Totals ========= */
+    .totals{ display:grid; gap:8px; }
+    .row{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .row--strong .label{ font-weight:700; }
+    .row--strong .value{ font-weight:800; font-size:18px; }
+
+    /* ========= QRIS ========= */
+    .qris-box{ display:grid; justify-items:center; gap:8px; text-align:center; }
+    .qris{ width:100%; max-width:220px; height:auto; image-rendering:-webkit-optimize-contrast; border-radius:var(--radius-sm); box-shadow:var(--shadow-1); }
+    .qris-caption{ font-size:12px; color:#334155; }
+
+    /* ========= Footer ========= */
+    .footer{ font-size:12px; color:#64748B; }
+
+    /* Card helpers */
+    .stack{ display:grid; gap:12px; }
+    .split{ display:grid; gap:16px; grid-template-columns:1fr; }
+    @media (min-width:720px){ .split{ grid-template-columns:1.2fr .8fr; } }
+
+  </style>
 </head>
-
 <body>
-    <h1>{{ $branch?->name ?? 'Salve Laundry' }}</h1>
-    <div class="doc-type">
-        {{ $docTitle }}
+  <main class="container" role="main">
+    <!-- Header -->
+    <div class="header">
+      <div class="stack">
+        <div class="brand">{{ $branch?->name ?? 'Salve Laundry' }}</div>
+        <div class="doctype">{{ $docTitle }}</div>
+      </div>
+      <div>
+        <span class="badge {{ $isLunas ? 'badge--paid' : 'badge--unpaid' }}">
+          {{ $isLunas ? 'Lunas' : 'Belum Lunas' }}
+        </span>
+      </div>
     </div>
-    <div class="meta">
-        No: {{ $order->invoice_no ?? $order->number }}<br>
-        Tgl: {{ \Illuminate\Support\Carbon::parse($order->created_at)->format('d/m/Y H:i') }}<br>
-        Status Bayar: {{ $order->payment_status }}
-    </div>
-    <div class="sep"></div>
-    <table>
-        <tbody>
-            @foreach($order->items as $it)
-            <tr>
-                <td>{{ $it->service->name ?? 'Layanan' }} x{{ (float) $it->qty }}</td>
-                <td class="right">{{ number_format((float) $it->total, 0, ',', '.') }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-    <div class="sep"></div>
-    <table class="totals">
-        <tr>
-            <td>Subtotal</td>
-            <td class="right">{{ number_format((float) $order->subtotal, 0, ',', '.') }}</td>
-        </tr>
-        <tr>
-            <td>Diskon</td>
-            <td class="right">{{ number_format((float) $order->discount, 0, ',', '.') }}</td>
-        </tr>
-        <tr>
-            <td><strong>Grand Total</strong></td>
-            <td class="right"><strong>{{ number_format((float) $order->grand_total, 0, ',', '.') }}</strong></td>
-        </tr>
-        <tr>
-            <td>Dibayar</td>
-            <td class="right">{{ number_format((float) $order->paid_amount, 0, ',', '.') }}</td>
-        </tr>
-        <tr>
-            <td>{{ $isLunas ? 'Sisa' : 'Sisa Tagihan' }}</td>
-            <td class="right">
-                {{ number_format($sisa, 0, ',', '.') }}
-            </td>
-        </tr>
-    </table>
-    <div class="sep"></div>
 
-    @php
-    // Ubah ke 'qris.jpg' jika file Anda .jpg
-    $qrisPath = 'qris.png';
-    $hasQris = \Illuminate\Support\Facades\Storage::disk('public')->exists($qrisPath);
-    @endphp
+    <!-- Identitas & Status -->
+    <section class="card">
+      <div class="section">
+        <dl class="meta">
+          <div>
+            <dt>No. Dokumen</dt>
+            <dd>{{ $order->invoice_no ?? $order->number }}</dd>
+          </div>
+          <div>
+            <dt>Tanggal</dt>
+            <dd>{{ \Illuminate\Support\Carbon::parse($order->created_at)->format('d/m/Y H:i') }}</dd>
+          </div>
+          <div>
+            <dt>Status Bayar</dt>
+            <dd>{{ $order->payment_status }}</dd>
+          </div>
+          <div>
+            <dt>Pelanggan</dt>
+            <dd>{{ $order->customer->name ?? '—' }}</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
 
-    @if(!$isLunas && $hasQris)
-    <div class="qris-caption">Scan untuk bayar (QRIS)</div>
-    <img class="qris" src="{{ asset('storage/'.$qrisPath) }}" alt="QRIS">
-    <div class="sep"></div>
-    @endif
+    <!-- Items + Ringkasan -->
+    <section class="split">
+      <!-- Items -->
+      <div class="card">
+        <div class="section">
+          <div class="muted" style="font-size:12px; margin-bottom:8px;">Rincian Layanan</div>
+          <div class="table-wrap">
+            <table aria-label="Tabel item layanan">
+              <thead>
+                <tr>
+                  <th>Layanan</th>
+                  <th class="right">Qty</th>
+                  <th class="right">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                @foreach($order->items as $it)
+                  <tr>
+                    <td>
+                      <div class="bold">{{ $it->service->name ?? 'Layanan' }}</div>
+                    </td>
+                    <td class="right">{{ (float) $it->qty }}</td>
+                    <td class="right">{{ number_format((float) $it->total, 0, ',', '.') }}</td>
+                  </tr>
+                @endforeach
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
-    <div class="meta">Dicetak: {{ $printedAt->format('d/m/Y H:i') }}</div>
+      <!-- Ringkasan Pembayaran -->
+      <div class="card">
+        <div class="section stack">
+          <div class="muted" style="font-size:12px;">Ringkasan Pembayaran</div>
+          <div class="totals">
+            <div class="row"><div class="label">Subtotal</div><div class="value">{{ number_format((float) $order->subtotal, 0, ',', '.') }}</div></div>
+            <div class="row"><div class="label">Diskon</div><div class="value">{{ number_format((float) $order->discount, 0, ',', '.') }}</div></div>
+            <div class="row row--strong"><div class="label">Grand Total</div><div class="value">{{ number_format((float) $order->grand_total, 0, ',', '.') }}</div></div>
+            <div class="row"><div class="label">Dibayar</div><div class="value">{{ number_format((float) $order->paid_amount, 0, ',', '.') }}</div></div>
+            <div class="row">
+              <div class="label">{{ $isLunas ? 'Sisa' : 'Sisa Tagihan' }}</div>
+              <div class="value">{{ number_format($sisa, 0, ',', '.') }}</div>
+            </div>
+          </div>
+        </div>
+
+        @php
+          $qrisPath = 'qris.png';
+          $hasQris = \Illuminate\Support\Facades\Storage::disk('public')->exists($qrisPath);
+        @endphp
+
+        @if(!$isLunas && $hasQris)
+          <div class="section qris-box">
+            <div class="qris-caption">Scan untuk bayar (QRIS)</div>
+            <img class="qris" src="{{ asset('storage/'.$qrisPath) }}" alt="QRIS">
+          </div>
+        @endif
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <section class="card">
+      <div class="section footer">
+        Dicetak: {{ $printedAt->format('d/m/Y H:i') }}
+      </div>
+    </section>
+  </main>
 </body>
-
 </html>
+
 ```
 </details>
 
@@ -7712,7 +7907,7 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `b4e5509bca81`  
+- SHA: `95b105649861`  
 - Ukuran: 7 KB
 
 **Ringkasan Routes (deteksi heuristik):**
@@ -7760,6 +7955,7 @@ class UserSeeder extends Seeder
 | PUT | `/customers/{customer}` | `CustomerController` | `update` |
 | DELETE | `/customers/{customer}` | `CustomerController` | `destroy` |
 | GET | `/orders/{order}/receipt` | `OrderController` | `receipt` |
+| POST | `/orders/{order}/share-link` | `OrderController` | `shareLink` |
 | POST | `/orders/{order}/payments` | `OrderPaymentsController` | `store` |
 | POST | `/orders/{order}/apply-voucher` | `` | `` |
 | GET | `/orders` | `OrderController` | `index` |
@@ -7866,6 +8062,7 @@ Route::prefix('v1')->group(function () {
 
         // Receipt (HTML)
         Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt']);
+        Route::post('/orders/{order}/share-link', [OrderController::class, 'shareLink']);
 
         // Payments
         Route::post('/orders/{order}/payments', [OrderPaymentsController::class, 'store']);

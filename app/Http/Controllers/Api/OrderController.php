@@ -24,7 +24,8 @@ class OrderController extends Controller
 
         $me = $request->user();
         $q = Order::query()
-            ->with(['customer', 'items.service'])
+            ->with(['customer', 'items.service', 'receivable'])
+            ->withCount('payments')
             ->orderByDesc('created_at');
 
         // scope cabang
@@ -46,7 +47,15 @@ class OrderController extends Controller
             $q->where('status', $st);
         }
 
-        $per = (int) $request->query('per_page', 10);
+        // Filter tanggal (opsional): from/to pada kolom created_at
+        if ($from = $request->query('from')) {
+            $q->whereDate('created_at', '>=', $from);
+        }
+        if ($to = $request->query('to')) {
+            $q->whereDate('created_at', '<=', $to);
+        }
+
+        $per = (int) max(1, min(100, (int) $request->query('per_page', 10)));
         $page = $q->paginate($per);
 
         return response()->json([
@@ -67,7 +76,7 @@ class OrderController extends Controller
         $this->authorize('view', $order);
 
         return response()->json([
-            'data' => $order->load(['customer', 'items.service', 'photos']),
+            'data' => $order->load(['customer', 'items.service', 'photos', 'receivable']),
             'meta' => [],
             'message' => 'OK',
             'errors' => null,
@@ -77,6 +86,7 @@ class OrderController extends Controller
     // POST /orders
     public function store(OrderStoreRequest $request)
     {
+        $this->authorize('create', Order::class);
         $payload = $request->validated();
 
         // Admin Cabang/Kasir: fallback branch ke cabang aktor
@@ -157,6 +167,7 @@ class OrderController extends Controller
     // POST /orders/{order}/status
     public function transitionStatus(OrderStatusRequest $request, Order $order)
     {
+        $this->authorize('transitionStatus', $order);
         $order = $this->svc->transition($order, $request->validated()['next'], $request->user());
 
         return response()->json([
