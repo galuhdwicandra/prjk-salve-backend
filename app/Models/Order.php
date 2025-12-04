@@ -39,6 +39,8 @@ class Order extends Model
         'due_amount',
         'notes',
         'created_by',
+        'received_at',
+        'ready_at',
     ];
 
     // Tetap pakai decimal:2 (Laravel mengembalikan string)
@@ -51,6 +53,8 @@ class Order extends Model
         'due_amount' => 'decimal:2',
         'paid_at' => 'datetime',
         'created_by' => 'integer',
+        'received_at' => 'datetime',
+        'ready_at'    => 'datetime',
     ];
 
     public function branch()

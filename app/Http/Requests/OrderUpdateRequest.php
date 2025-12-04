@@ -23,6 +23,8 @@ class OrderUpdateRequest extends FormRequest
             'items.*.service_id' => ['required_with:items', 'uuid', 'exists:services,id', 'distinct'],
             'items.*.qty'        => ['required_with:items', 'integer', 'min:1'],
             'items.*.note'       => ['sometimes', 'nullable', 'string', 'max:300'],
+            'received_at' => ['nullable', 'date'],
+            'ready_at'    => ['nullable', 'date', 'after_or_equal:received_at'],
         ];
     }
 

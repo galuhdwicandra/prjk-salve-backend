@@ -37,6 +37,8 @@ class OrderStoreRequest extends FormRequest
             'items' => ['required', 'array', 'min:1'],
             'items.*.service_id' => ['required', 'uuid', 'exists:services,id'],
             'items.*.qty' => ['required', 'numeric', 'gt:0'],
+            'received_at' => ['nullable', 'date'],
+            'ready_at'    => ['nullable', 'date', 'after_or_equal:received_at'],
             // price dari klien diabaikan; server akan hitung pakai PricingService
         ];
     }

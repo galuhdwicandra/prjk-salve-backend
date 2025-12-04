@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-04 18:32:41_  
+_Dihasilkan otomatis: 2025-12-04 23:41:56_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -1315,8 +1315,8 @@ class InvoiceCounterController extends Controller
 
 ### app/Http/Controllers/Api/OrderController.php
 
-- SHA: `7c05020cad0b`  
-- Ukuran: 5 KB  
+- SHA: `8f20e0e72171`  
+- Ukuran: 6 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `OrderController` extends `Controller`**
@@ -1360,10 +1360,15 @@ class OrderController extends Controller
         $me = $request->user();
         $q = Order::query()
             ->with(['customer', 'items.service', 'receivable'])
-            ->withCount('payments')
-            ->orderByDesc('created_at');
+            ->withCount('payments');
 
-        // scope cabang
+        // ===== (1) Sorting yang fleksibel =====
+        $sortBy  = in_array($request->query('sort_by'), ['created_at', 'received_at', 'ready_at'])
+            ? $request->query('sort_by') : 'created_at';
+        $sortDir = strtolower((string) $request->query('sort_dir')) === 'asc' ? 'asc' : 'desc';
+        $q->orderBy($sortBy, $sortDir);
+
+        // ===== (2) Scope cabang =====
         if ($me->hasRole('Superadmin')) {
             if ($branchId = (string) $request->query('branch_id')) {
                 $q->where('branch_id', $branchId);
@@ -1372,6 +1377,7 @@ class OrderController extends Controller
             $q->where('branch_id', $me->branch_id);
         }
 
+        // ===== (3) Pencarian cepat =====
         if ($s = $request->query('q')) {
             $q->where(function ($w) use ($s) {
                 $w->where('number', 'like', "%{$s}%")
@@ -1382,7 +1388,7 @@ class OrderController extends Controller
             $q->where('status', $st);
         }
 
-        // Filter tanggal (opsional): from/to pada kolom created_at
+        // ===== (4) Filter tanggal existing (created_at) — tetap dipertahankan =====
         if ($from = $request->query('from')) {
             $q->whereDate('created_at', '>=', $from);
         }
@@ -1390,21 +1396,40 @@ class OrderController extends Controller
             $q->whereDate('created_at', '<=', $to);
         }
 
-        $per = (int) max(1, min(100, (int) $request->query('per_page', 10)));
+        // ===== (5) Filter tanggal baru: received_at =====
+        if ($rf = $request->query('received_from')) {
+            $q->whereDate('received_at', '>=', $rf);
+        }
+        if ($rt = $request->query('received_to')) {
+            $q->whereDate('received_at', '<=', $rt);
+        }
+
+        // ===== (6) Filter tanggal baru: ready_at =====
+        if ($yf = $request->query('ready_from')) {
+            $q->whereDate('ready_at', '>=', $yf);
+        }
+        if ($yt = $request->query('ready_to')) {
+            $q->whereDate('ready_at', '<=', $yt);
+        }
+
+        $per  = (int) max(1, min(100, (int) $request->query('per_page', 10)));
         $page = $q->paginate($per);
 
         return response()->json([
             'data' => $page->items(),
             'meta' => [
                 'current_page' => $page->currentPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-                'last_page' => $page->lastPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+                'last_page'    => $page->lastPage(),
+                'sort_by'      => $sortBy,
+                'sort_dir'     => $sortDir,
             ],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
+
 
     public function show(Order $order)
     {
@@ -2745,7 +2770,7 @@ class InvoiceCounter extends Model
 
 ### app/Models/Order.php
 
-- SHA: `9b11b75d8528`  
+- SHA: `16ad84e636d2`  
 - Ukuran: 3 KB  
 - Namespace: `App\Models`
 
@@ -2806,6 +2831,8 @@ class Order extends Model
         'due_amount',
         'notes',
         'created_by',
+        'received_at',
+        'ready_at',
     ];
 
     // Tetap pakai decimal:2 (Laravel mengembalikan string)
@@ -2818,6 +2845,8 @@ class Order extends Model
         'due_amount' => 'decimal:2',
         'paid_at' => 'datetime',
         'created_by' => 'integer',
+        'received_at' => 'datetime',
+        'ready_at'    => 'datetime',
     ];
 
     public function branch()
@@ -5104,7 +5133,7 @@ class OrderStatusRequest extends FormRequest
 
 ### app/Http/Requests/OrderStoreRequest.php
 
-- SHA: `055a43d71ad3`  
+- SHA: `bed6c739ac9e`  
 - Ukuran: 2 KB  
 - Namespace: `App\Http\Requests`
 
@@ -5156,6 +5185,8 @@ class OrderStoreRequest extends FormRequest
             'items' => ['required', 'array', 'min:1'],
             'items.*.service_id' => ['required', 'uuid', 'exists:services,id'],
             'items.*.qty' => ['required', 'numeric', 'gt:0'],
+            'received_at' => ['nullable', 'date'],
+            'ready_at'    => ['nullable', 'date', 'after_or_equal:received_at'],
             // price dari klien diabaikan; server akan hitung pakai PricingService
         ];
     }
@@ -5175,7 +5206,7 @@ class OrderStoreRequest extends FormRequest
 
 ### app/Http/Requests/OrderUpdateRequest.php
 
-- SHA: `4e4df5baf7f5`  
+- SHA: `e5533dd32b61`  
 - Ukuran: 2 KB  
 - Namespace: `App\Http\Requests`
 
@@ -5212,6 +5243,8 @@ class OrderUpdateRequest extends FormRequest
             'items.*.service_id' => ['required_with:items', 'uuid', 'exists:services,id', 'distinct'],
             'items.*.qty'        => ['required_with:items', 'integer', 'min:1'],
             'items.*.note'       => ['sometimes', 'nullable', 'string', 'max:300'],
+            'received_at' => ['nullable', 'date'],
+            'ready_at'    => ['nullable', 'date', 'after_or_equal:received_at'],
         ];
     }
 
@@ -6524,8 +6557,8 @@ class OrderNumberService
 
 ### app/Services/OrderService.php
 
-- SHA: `e144c8503027`  
-- Ukuran: 11 KB  
+- SHA: `e3e3c26c3341`  
+- Ukuran: 12 KB  
 - Namespace: `App\Services`
 
 **Class `OrderService`**
@@ -6566,6 +6599,8 @@ class OrderService
      *   branch_id?:string|null,
      *   customer_id?:string|null,
      *   notes?:string|null,
+     *   received_at?:string|\DateTimeInterface|null,
+     *   ready_at?:string|\DateTimeInterface|null,
      *   items: array<int, array{service_id:string, qty:float|int, note?:string|null}>
      * } $data
      */
@@ -6593,6 +6628,8 @@ class OrderService
                 'notes' => $data['notes'] ?? null,
                 'created_by' => $actor->id,
             ]);
+            $order->received_at = $data['received_at'] ?? now(); // default: sekarang
+            $order->ready_at    = $data['ready_at']    ?? null;
             $order->save();
 
             $subtotal = 0.0;
@@ -6678,9 +6715,13 @@ class OrderService
         DB::transaction(function () use ($order, $next, $actor) {
             $from = $order->status;
             $order->status = $next;
+            // ===== Tambahan: set otomatis tgl selesai ketika READY =====
+            if ($next === 'READY' && !$order->ready_at) {
+                $order->ready_at = now();
+            }
+            // ===========================================================
             $order->save();
 
-            // POLA 1 — server-driven: saat masuk DELIVERING, bikin delivery + auto-assign kurir
             if ($next === 'DELIVERING') {
                 $exists = Delivery::query()
                     ->where('order_id', $order->id)
@@ -6737,6 +6778,16 @@ class OrderService
                 // normalisasi di Request; di sini cukup set
                 $order->discount = $this->dec((float) max(0, (float) $data['discount']));
             }
+
+            // ===== Tambahan: tanggal masuk & tanggal selesai =====
+            if (array_key_exists('received_at', $data)) {
+                $order->received_at = $data['received_at'];
+            }
+            if (array_key_exists('ready_at', $data)) {
+                $order->ready_at = $data['ready_at'];
+            }
+            // =====================================================
+
 
             $recalcSubtotal = null;
             if (!empty($data['items'])) {
@@ -7686,8 +7737,8 @@ class UserSeeder extends Seeder
 
 ### resources/views/orders/receipt.blade.php
 
-- SHA: `3e04782bbae3`  
-- Ukuran: 8 KB  
+- SHA: `0fd8e47a525d`  
+- Ukuran: 10 KB  
 - Namespace: ``
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -7695,101 +7746,291 @@ class UserSeeder extends Seeder
 {{-- resources/views/orders/receipt.blade.php --}}
 <!doctype html>
 <html lang="id" data-theme="light">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
   @php
-    // Logika asli dipertahankan
-    $sisa = max((float) $order->grand_total - (float) $order->paid_amount, 0);
-    $isLunas = $sisa <= 0 && $order->payment_status === 'PAID';
+  // Logika asli dipertahankan
+  $sisa = max((float) $order->grand_total - (float) $order->paid_amount, 0);
+  $isLunas = $sisa <= 0 && $order->payment_status === 'PAID';
     $docTitle = $isLunas ? 'KUITANSI PEMBAYARAN' : 'TAGIHAN / INVOICE';
-  @endphp
+    @endphp
 
-  <title>{{ $docTitle }} {{ $order->invoice_no ?? $order->number }}</title>
+    <title>{{ $docTitle }} {{ $order->invoice_no ?? $order->number }}</title>
 
-  <style>
-    /* ========= Design tokens SALVE (screen view) ========= */
-    :root{
-      --brand:#0000FF; --on-brand:#FFFFFF;
-      --text:#0B1220; --surface:#F5F7FB; --border:#E6EAF2;
-      --success:#11A362; --warning:#EF9300; --danger:#D92D20; --info:#2E7CF6;
-      --radius-sm:8px; --radius-md:12px; --radius-lg:16px;
-      --shadow-1:0 1px 2px rgba(16,24,40,.06),0 1px 3px rgba(16,24,40,.10);
-      --shadow-2:0 8px 16px rgba(16,24,40,.10),0 2px 6px rgba(16,24,40,.08);
-      --focus:0 0 0 3px rgba(0,0,255,.25);
-    }
-    [data-theme="dark"]{
-      --text:#F5F7FB; --surface:#0F172A; --border:#1E293B;
-    }
-    @media (prefers-color-scheme:dark){
-      html:not([data-theme="light"]){ --text:#F5F7FB; --surface:#0F172A; --border:#1E293B; }
-    }
+    <style>
+      /* ========= Design tokens SALVE (screen view) ========= */
+      :root {
+        --brand: #0000FF;
+        --on-brand: #FFFFFF;
+        --text: #0B1220;
+        --surface: #F5F7FB;
+        --border: #E6EAF2;
+        --success: #11A362;
+        --warning: #EF9300;
+        --danger: #D92D20;
+        --info: #2E7CF6;
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --shadow-1: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .10);
+        --shadow-2: 0 8px 16px rgba(16, 24, 40, .10), 0 2px 6px rgba(16, 24, 40, .08);
+        --focus: 0 0 0 3px rgba(0, 0, 255, .25);
+      }
 
-    /* ========= Base ========= */
-    *{ box-sizing:border-box; }
-    html,body{ height:100%; }
-    body{
-      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
-      color:var(--text); background:var(--surface);
-      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-    }
-    a{ color:var(--brand); text-decoration:none; }
-    a:hover{ text-decoration:underline; }
-    :focus-visible{ outline:0; box-shadow:var(--focus); border-radius:6px; }
+      [data-theme="dark"] {
+        --text: #F5F7FB;
+        --surface: #0F172A;
+        --border: #1E293B;
+      }
 
-    /* ========= Layout ========= */
-    .container{ max-width:720px; margin-inline:auto; padding:24px; display:grid; gap:16px; }
-    .header{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
-    .brand{ font-weight:700; font-size:18px; line-height:1.2; }
-    .doctype{ font-weight:700; font-size:12px; color:#1A4BFF; background:#E6EDFF; padding:6px 10px; border-radius:999px; }
+      @media (prefers-color-scheme:dark) {
+        html:not([data-theme="light"]) {
+          --text: #F5F7FB;
+          --surface: #0F172A;
+          --border: #1E293B;
+        }
+      }
 
-    .card{ background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-1); }
-    .section{ padding:16px; }
-    .section + .section{ border-top:1px solid var(--border); }
+      /* ========= Base ========= */
+      * {
+        box-sizing: border-box;
+      }
 
-    /* ========= Meta grid ========= */
-    .meta{ display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:14px; }
-    .meta dt{ color:#475569; font-weight:500; }
-    .meta dd{ margin:0; }
+      html,
+      body {
+        height: 100%;
+      }
 
-    /* ========= Badge status ========= */
-    .badge{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:600; }
-    .badge--paid{ color:#065F46; background:rgba(17,163,98,.12); }
-    .badge--unpaid{ color:#7C2D12; background:rgba(217,45,32,.12); }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+        color: var(--text);
+        background: var(--surface);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
 
-    /* ========= Table items ========= */
-    .table-wrap{ overflow:auto; border:1px solid var(--border); border-radius:var(--radius-md); }
-    table{ border-collapse:collapse; width:100%; font-size:14px; background:#fff; }
-    thead th{ text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:#334155; background:#E6EDFF; padding:10px 12px; position:sticky; top:0; z-index:1; }
-    tbody td{ padding:12px; border-top:1px solid var(--border); vertical-align:top; }
-    tbody tr:hover{ background:rgba(0,0,0,.04); }
+      a {
+        color: var(--brand);
+        text-decoration: none;
+      }
 
-    .right{text-align:right;}
-    .muted{ color:#475569; }
-    .bold{ font-weight:700; }
+      a:hover {
+        text-decoration: underline;
+      }
 
-    /* ========= Totals ========= */
-    .totals{ display:grid; gap:8px; }
-    .row{ display:flex; justify-content:space-between; align-items:center; gap:12px; }
-    .row--strong .label{ font-weight:700; }
-    .row--strong .value{ font-weight:800; font-size:18px; }
+      :focus-visible {
+        outline: 0;
+        box-shadow: var(--focus);
+        border-radius: 6px;
+      }
 
-    /* ========= QRIS ========= */
-    .qris-box{ display:grid; justify-items:center; gap:8px; text-align:center; }
-    .qris{ width:100%; max-width:220px; height:auto; image-rendering:-webkit-optimize-contrast; border-radius:var(--radius-sm); box-shadow:var(--shadow-1); }
-    .qris-caption{ font-size:12px; color:#334155; }
+      /* ========= Layout ========= */
+      .container {
+        max-width: 720px;
+        margin-inline: auto;
+        padding: 24px;
+        display: grid;
+        gap: 16px;
+      }
 
-    /* ========= Footer ========= */
-    .footer{ font-size:12px; color:#64748B; }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+      }
 
-    /* Card helpers */
-    .stack{ display:grid; gap:12px; }
-    .split{ display:grid; gap:16px; grid-template-columns:1fr; }
-    @media (min-width:720px){ .split{ grid-template-columns:1.2fr .8fr; } }
+      .brand {
+        font-weight: 700;
+        font-size: 18px;
+        line-height: 1.2;
+      }
 
-  </style>
+      .doctype {
+        font-weight: 700;
+        font-size: 12px;
+        color: #1A4BFF;
+        background: #E6EDFF;
+        padding: 6px 10px;
+        border-radius: 999px;
+      }
+
+      .card {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-1);
+      }
+
+      .section {
+        padding: 16px;
+      }
+
+      .section+.section {
+        border-top: 1px solid var(--border);
+      }
+
+      /* ========= Meta grid ========= */
+      .meta {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        font-size: 14px;
+      }
+
+      .meta dt {
+        color: #475569;
+        font-weight: 500;
+      }
+
+      .meta dd {
+        margin: 0;
+      }
+
+      /* ========= Badge status ========= */
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .badge--paid {
+        color: #065F46;
+        background: rgba(17, 163, 98, .12);
+      }
+
+      .badge--unpaid {
+        color: #7C2D12;
+        background: rgba(217, 45, 32, .12);
+      }
+
+      /* ========= Table items ========= */
+      .table-wrap {
+        overflow: auto;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 14px;
+        background: #fff;
+      }
+
+      thead th {
+        text-align: left;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #334155;
+        background: #E6EDFF;
+        padding: 10px 12px;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+
+      tbody td {
+        padding: 12px;
+        border-top: 1px solid var(--border);
+        vertical-align: top;
+      }
+
+      tbody tr:hover {
+        background: rgba(0, 0, 0, .04);
+      }
+
+      .right {
+        text-align: right;
+      }
+
+      .muted {
+        color: #475569;
+      }
+
+      .bold {
+        font-weight: 700;
+      }
+
+      /* ========= Totals ========= */
+      .totals {
+        display: grid;
+        gap: 8px;
+      }
+
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .row--strong .label {
+        font-weight: 700;
+      }
+
+      .row--strong .value {
+        font-weight: 800;
+        font-size: 18px;
+      }
+
+      /* ========= QRIS ========= */
+      .qris-box {
+        display: grid;
+        justify-items: center;
+        gap: 8px;
+        text-align: center;
+      }
+
+      .qris {
+        width: 100%;
+        max-width: 220px;
+        height: auto;
+        image-rendering: -webkit-optimize-contrast;
+        border-radius: var(--radius-sm);
+        box-shadow: var(--shadow-1);
+      }
+
+      .qris-caption {
+        font-size: 12px;
+        color: #334155;
+      }
+
+      /* ========= Footer ========= */
+      .footer {
+        font-size: 12px;
+        color: #64748B;
+      }
+
+      /* Card helpers */
+      .stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .split {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: 1fr;
+      }
+
+      @media (min-width:720px) {
+        .split {
+          grid-template-columns: 1.2fr .8fr;
+        }
+      }
+    </style>
 </head>
+
 <body>
   <main class="container" role="main">
     <!-- Header -->
@@ -7814,7 +8055,7 @@ class UserSeeder extends Seeder
             <dd>{{ $order->invoice_no ?? $order->number }}</dd>
           </div>
           <div>
-            <dt>Tanggal</dt>
+            <dt>Tgl Dibuat</dt>
             <dd>{{ \Illuminate\Support\Carbon::parse($order->created_at)->format('d/m/Y H:i') }}</dd>
           </div>
           <div>
@@ -7824,6 +8065,18 @@ class UserSeeder extends Seeder
           <div>
             <dt>Pelanggan</dt>
             <dd>{{ $order->customer->name ?? '—' }}</dd>
+          </div>
+          <div>
+            <dt>Tgl Masuk</dt>
+            <dd>
+              {{ $order->received_at ? \Illuminate\Support\Carbon::parse($order->received_at)->format('d/m/Y H:i') : '—' }}
+            </dd>
+          </div>
+          <div>
+            <dt>Tgl Selesai</dt>
+            <dd>
+              {{ $order->ready_at ? \Illuminate\Support\Carbon::parse($order->ready_at)->format('d/m/Y H:i') : '—' }}
+            </dd>
           </div>
         </dl>
       </div>
@@ -7846,13 +8099,13 @@ class UserSeeder extends Seeder
               </thead>
               <tbody>
                 @foreach($order->items as $it)
-                  <tr>
-                    <td>
-                      <div class="bold">{{ $it->service->name ?? 'Layanan' }}</div>
-                    </td>
-                    <td class="right">{{ (float) $it->qty }}</td>
-                    <td class="right">{{ number_format((float) $it->total, 0, ',', '.') }}</td>
-                  </tr>
+                <tr>
+                  <td>
+                    <div class="bold">{{ $it->service->name ?? 'Layanan' }}</div>
+                  </td>
+                  <td class="right">{{ (float) $it->qty }}</td>
+                  <td class="right">{{ number_format((float) $it->total, 0, ',', '.') }}</td>
+                </tr>
                 @endforeach
               </tbody>
             </table>
@@ -7865,10 +8118,22 @@ class UserSeeder extends Seeder
         <div class="section stack">
           <div class="muted" style="font-size:12px;">Ringkasan Pembayaran</div>
           <div class="totals">
-            <div class="row"><div class="label">Subtotal</div><div class="value">{{ number_format((float) $order->subtotal, 0, ',', '.') }}</div></div>
-            <div class="row"><div class="label">Diskon</div><div class="value">{{ number_format((float) $order->discount, 0, ',', '.') }}</div></div>
-            <div class="row row--strong"><div class="label">Grand Total</div><div class="value">{{ number_format((float) $order->grand_total, 0, ',', '.') }}</div></div>
-            <div class="row"><div class="label">Dibayar</div><div class="value">{{ number_format((float) $order->paid_amount, 0, ',', '.') }}</div></div>
+            <div class="row">
+              <div class="label">Subtotal</div>
+              <div class="value">{{ number_format((float) $order->subtotal, 0, ',', '.') }}</div>
+            </div>
+            <div class="row">
+              <div class="label">Diskon</div>
+              <div class="value">{{ number_format((float) $order->discount, 0, ',', '.') }}</div>
+            </div>
+            <div class="row row--strong">
+              <div class="label">Grand Total</div>
+              <div class="value">{{ number_format((float) $order->grand_total, 0, ',', '.') }}</div>
+            </div>
+            <div class="row">
+              <div class="label">Dibayar</div>
+              <div class="value">{{ number_format((float) $order->paid_amount, 0, ',', '.') }}</div>
+            </div>
             <div class="row">
               <div class="label">{{ $isLunas ? 'Sisa' : 'Sisa Tagihan' }}</div>
               <div class="value">{{ number_format($sisa, 0, ',', '.') }}</div>
@@ -7877,15 +8142,15 @@ class UserSeeder extends Seeder
         </div>
 
         @php
-          $qrisPath = 'qris.png';
-          $hasQris = \Illuminate\Support\Facades\Storage::disk('public')->exists($qrisPath);
+        $qrisPath = 'qris.png';
+        $hasQris = \Illuminate\Support\Facades\Storage::disk('public')->exists($qrisPath);
         @endphp
 
         @if(!$isLunas && $hasQris)
-          <div class="section qris-box">
-            <div class="qris-caption">Scan untuk bayar (QRIS)</div>
-            <img class="qris" src="{{ asset('storage/'.$qrisPath) }}" alt="QRIS">
-          </div>
+        <div class="section qris-box">
+          <div class="qris-caption">Scan untuk bayar (QRIS)</div>
+          <img class="qris" src="{{ asset('storage/'.$qrisPath) }}" alt="QRIS">
+        </div>
         @endif
       </div>
     </section>
@@ -7898,8 +8163,8 @@ class UserSeeder extends Seeder
     </section>
   </main>
 </body>
-</html>
 
+</html>
 ```
 </details>
 

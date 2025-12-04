@@ -25,6 +25,8 @@ class OrderService
      *   branch_id?:string|null,
      *   customer_id?:string|null,
      *   notes?:string|null,
+     *   received_at?:string|\DateTimeInterface|null,
+     *   ready_at?:string|\DateTimeInterface|null,
      *   items: array<int, array{service_id:string, qty:float|int, note?:string|null}>
      * } $data
      */
@@ -52,6 +54,8 @@ class OrderService
                 'notes' => $data['notes'] ?? null,
                 'created_by' => $actor->id,
             ]);
+            $order->received_at = $data['received_at'] ?? now(); // default: sekarang
+            $order->ready_at    = $data['ready_at']    ?? null;
             $order->save();
 
             $subtotal = 0.0;
@@ -137,9 +141,13 @@ class OrderService
         DB::transaction(function () use ($order, $next, $actor) {
             $from = $order->status;
             $order->status = $next;
+            // ===== Tambahan: set otomatis tgl selesai ketika READY =====
+            if ($next === 'READY' && !$order->ready_at) {
+                $order->ready_at = now();
+            }
+            // ===========================================================
             $order->save();
 
-            // POLA 1 — server-driven: saat masuk DELIVERING, bikin delivery + auto-assign kurir
             if ($next === 'DELIVERING') {
                 $exists = Delivery::query()
                     ->where('order_id', $order->id)
@@ -196,6 +204,16 @@ class OrderService
                 // normalisasi di Request; di sini cukup set
                 $order->discount = $this->dec((float) max(0, (float) $data['discount']));
             }
+
+            // ===== Tambahan: tanggal masuk & tanggal selesai =====
+            if (array_key_exists('received_at', $data)) {
+                $order->received_at = $data['received_at'];
+            }
+            if (array_key_exists('ready_at', $data)) {
+                $order->ready_at = $data['ready_at'];
+            }
+            // =====================================================
+
 
             $recalcSubtotal = null;
             if (!empty($data['items'])) {

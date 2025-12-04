@@ -25,10 +25,15 @@ class OrderController extends Controller
         $me = $request->user();
         $q = Order::query()
             ->with(['customer', 'items.service', 'receivable'])
-            ->withCount('payments')
-            ->orderByDesc('created_at');
+            ->withCount('payments');
 
-        // scope cabang
+        // ===== (1) Sorting yang fleksibel =====
+        $sortBy  = in_array($request->query('sort_by'), ['created_at', 'received_at', 'ready_at'])
+            ? $request->query('sort_by') : 'created_at';
+        $sortDir = strtolower((string) $request->query('sort_dir')) === 'asc' ? 'asc' : 'desc';
+        $q->orderBy($sortBy, $sortDir);
+
+        // ===== (2) Scope cabang =====
         if ($me->hasRole('Superadmin')) {
             if ($branchId = (string) $request->query('branch_id')) {
                 $q->where('branch_id', $branchId);
@@ -37,6 +42,7 @@ class OrderController extends Controller
             $q->where('branch_id', $me->branch_id);
         }
 
+        // ===== (3) Pencarian cepat =====
         if ($s = $request->query('q')) {
             $q->where(function ($w) use ($s) {
                 $w->where('number', 'like', "%{$s}%")
@@ -47,7 +53,7 @@ class OrderController extends Controller
             $q->where('status', $st);
         }
 
-        // Filter tanggal (opsional): from/to pada kolom created_at
+        // ===== (4) Filter tanggal existing (created_at) — tetap dipertahankan =====
         if ($from = $request->query('from')) {
             $q->whereDate('created_at', '>=', $from);
         }
@@ -55,21 +61,40 @@ class OrderController extends Controller
             $q->whereDate('created_at', '<=', $to);
         }
 
-        $per = (int) max(1, min(100, (int) $request->query('per_page', 10)));
+        // ===== (5) Filter tanggal baru: received_at =====
+        if ($rf = $request->query('received_from')) {
+            $q->whereDate('received_at', '>=', $rf);
+        }
+        if ($rt = $request->query('received_to')) {
+            $q->whereDate('received_at', '<=', $rt);
+        }
+
+        // ===== (6) Filter tanggal baru: ready_at =====
+        if ($yf = $request->query('ready_from')) {
+            $q->whereDate('ready_at', '>=', $yf);
+        }
+        if ($yt = $request->query('ready_to')) {
+            $q->whereDate('ready_at', '<=', $yt);
+        }
+
+        $per  = (int) max(1, min(100, (int) $request->query('per_page', 10)));
         $page = $q->paginate($per);
 
         return response()->json([
             'data' => $page->items(),
             'meta' => [
                 'current_page' => $page->currentPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-                'last_page' => $page->lastPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+                'last_page'    => $page->lastPage(),
+                'sort_by'      => $sortBy,
+                'sort_dir'     => $sortDir,
             ],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
+
 
     public function show(Order $order)
     {
