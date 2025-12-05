@@ -17,6 +17,7 @@ class OrderService
     public function __construct(
         private PricingService $pricing,
         private InvoiceService $invoice,
+        private LoyaltyService $loyalty,
     ) {}
 
     /**
@@ -79,9 +80,10 @@ class OrderService
 
             $order->subtotal = $this->dec($subtotal);
             $order->discount = $this->dec(0);
-            $order->grand_total = $this->dec(((float) $order->subtotal) - ((float) $order->discount));
-            $order->due_amount = $this->dec(((float) $order->grand_total) - ((float) $order->paid_amount));
+            $this->loyalty->applyToOrder($order, $branchId);
             $order->save();
+
+            $this->loyalty->finalizeEarn($order);
 
             if (Schema::hasTable('receivables')) {
                 $grand = (float) $order->getAttribute('grand_total');
@@ -240,9 +242,15 @@ class OrderService
                 $recalcSubtotal = $subtotal;
             }
 
-            // Hitung ulang total (selalu konsisten jika subtotal/discount berubah)
             $effectiveSubtotal = $recalcSubtotal !== null ? $recalcSubtotal : (float) $order->subtotal;
-            $effectiveDiscount = (float) max(0, (float) $order->discount);
+            $baseDiscount      = (float) max(0, (float) $order->discount);
+
+            // Re-preview loyalti berdasarkan subtotal terbaru
+            $preview = $this->loyalty->previewReward($order->customer_id, (string) $order->branch_id, $effectiveSubtotal);
+            $order->loyalty_reward   = $preview['reward'];
+            $order->loyalty_discount = $this->dec($preview['discount']);
+            $effectiveDiscount       = $baseDiscount + (float) $preview['discount'];
+
             $grand = max(0, $effectiveSubtotal - $effectiveDiscount);
             $due   = max(0, $grand - (float) $order->paid_amount);
 

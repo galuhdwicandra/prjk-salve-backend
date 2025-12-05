@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict JFOPaSxBcQTcggBuouyFi6DRxhiDVOwt5LzNNlgo2SJnK2shU5bJdEuIahhLEz0
+\restrict Rx6pp1hhWhtobcNPksBMGM4YeEUrKFDH1TGBbIihkJjmF83jymCT5MmdYUdJSPs
 
 -- Dumped from database version 18.1 (Ubuntu 18.1-1.pgdg24.04+2)
 -- Dumped by pg_dump version 18.1 (Ubuntu 18.1-1.pgdg24.04+2)
@@ -252,6 +252,38 @@ ALTER SEQUENCE "public"."jobs_id_seq" OWNED BY "public"."jobs"."id";
 
 
 --
+-- Name: loyalty_accounts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE "public"."loyalty_accounts" (
+    "id" "uuid" NOT NULL,
+    "customer_id" "uuid" NOT NULL,
+    "branch_id" "uuid" NOT NULL,
+    "stamps" smallint DEFAULT '0'::smallint NOT NULL,
+    "lifetime" integer DEFAULT 0 NOT NULL,
+    "created_at" timestamp(0) without time zone,
+    "updated_at" timestamp(0) without time zone
+);
+
+
+--
+-- Name: loyalty_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE "public"."loyalty_logs" (
+    "id" "uuid" NOT NULL,
+    "order_id" "uuid",
+    "customer_id" "uuid" NOT NULL,
+    "branch_id" "uuid" NOT NULL,
+    "action" character varying(20) NOT NULL,
+    "before" smallint DEFAULT '0'::smallint NOT NULL,
+    "after" smallint DEFAULT '0'::smallint NOT NULL,
+    "created_at" timestamp(0) without time zone,
+    "updated_at" timestamp(0) without time zone
+);
+
+
+--
 -- Name: migrations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -376,7 +408,9 @@ CREATE TABLE "public"."orders" (
     "invoice_no" character varying(40),
     "created_by" bigint,
     "received_at" timestamp(0) without time zone,
-    "ready_at" timestamp(0) without time zone
+    "ready_at" timestamp(0) without time zone,
+    "loyalty_reward" character varying(16) DEFAULT 'NONE'::character varying NOT NULL,
+    "loyalty_discount" numeric(12,2) DEFAULT '0'::numeric NOT NULL
 );
 
 
@@ -705,7 +739,7 @@ ALTER TABLE ONLY "public"."users" ALTER COLUMN "id" SET DEFAULT "nextval"('"publ
 --
 
 COPY "public"."branches" ("id", "code", "name", "address", "invoice_prefix", "reset_policy", "created_at", "updated_at") FROM stdin;
-71adee1b-91d7-43cc-a712-9eaac873c6a5	CBG-001	Cabang Utama	Alamat Cabang Utama	SLV	monthly	2025-11-25 14:29:33	2025-11-25 14:29:33
+71adee1b-91d7-43cc-a712-9eaac873c6a5	CBG-001	Cabang Utama	Alamat Cabang Utama	SLV	never	2025-11-25 14:29:33	2025-12-05 02:08:37
 \.
 
 
@@ -714,7 +748,7 @@ COPY "public"."branches" ("id", "code", "name", "address", "invoice_prefix", "re
 --
 
 COPY "public"."cache" ("key", "value", "expiration") FROM stdin;
-salve-cache-spatie.permission.cache	a:3:{s:5:"alias";a:0:{}s:11:"permissions";a:0:{}s:5:"roles";a:0:{}}	1764958127
+salve-cache-spatie.permission.cache	a:3:{s:5:"alias";a:0:{}s:11:"permissions";a:0:{}s:5:"roles";a:0:{}}	1765010135
 \.
 
 
@@ -741,8 +775,8 @@ d699897e-14c0-417c-b745-5904d8e554ec	71adee1b-91d7-43cc-a712-9eaac873c6a5	Custom
 --
 
 COPY "public"."deliveries" ("id", "order_id", "type", "zone_id", "fee", "assigned_to", "auto_assigned", "status", "handover_photo", "created_at", "updated_at") FROM stdin;
-019aba00-13be-72ac-9670-48efb8385682	019ab9ff-23cc-7064-978b-e932acbffe33	delivery	\N	0.00	5	t	ASSIGNED	\N	2025-11-25 14:52:38	2025-11-25 14:52:38
-019aba2d-b26d-705c-ae5b-62dc30e0ebde	019aba2d-6a28-72ef-b18c-8c7a1f7d318e	delivery	\N	0.00	5	t	ASSIGNED	\N	2025-11-25 15:42:28	2025-11-25 15:42:28
+019aba2d-b26d-705c-ae5b-62dc30e0ebde	019aba2d-6a28-72ef-b18c-8c7a1f7d318e	delivery	\N	0.00	5	t	ON_THE_WAY	\N	2025-11-25 15:42:28	2025-12-05 02:51:32
+019aba00-13be-72ac-9670-48efb8385682	019ab9ff-23cc-7064-978b-e932acbffe33	delivery	\N	0.00	5	t	ON_THE_WAY	\N	2025-11-25 14:52:38	2025-12-05 02:51:34
 \.
 
 
@@ -755,6 +789,8 @@ COPY "public"."delivery_events" ("id", "delivery_id", "status", "note", "created
 019aba00-13da-7273-a32c-66697e5beaf8	019aba00-13be-72ac-9670-48efb8385682	ASSIGNED	Auto-assigned courier #5	2025-11-25 14:52:38	2025-11-25 14:52:38
 019aba2d-b272-7083-9cdd-5abfd5f3b2ff	019aba2d-b26d-705c-ae5b-62dc30e0ebde	CREATED	Delivery created	2025-11-25 15:42:28	2025-11-25 15:42:28
 019aba2d-b282-7311-8289-85e728c2f934	019aba2d-b26d-705c-ae5b-62dc30e0ebde	ASSIGNED	Auto-assigned courier #5	2025-11-25 15:42:28	2025-11-25 15:42:28
+019aeaeb-7aaf-700e-9df2-f35cfefa2a7e	019aba2d-b26d-705c-ae5b-62dc30e0ebde	ON_THE_WAY	\N	2025-12-05 02:51:32	2025-12-05 02:51:32
+019aeaeb-833d-7189-8bb4-bf477bcbbeb7	019aba00-13be-72ac-9670-48efb8385682	ON_THE_WAY	\N	2025-12-05 02:51:34	2025-12-05 02:51:34
 \.
 
 
@@ -779,7 +815,7 @@ COPY "public"."failed_jobs" ("id", "uuid", "connection", "queue", "payload", "ex
 --
 
 COPY "public"."invoice_counters" ("id", "branch_id", "prefix", "seq", "reset_policy", "last_reset_month", "created_at", "updated_at") FROM stdin;
-019ab9f5-1df2-719c-ab37-1f6b4ef59514	71adee1b-91d7-43cc-a712-9eaac873c6a5	SLV	7525	never	\N	2025-11-25 14:40:40	2025-12-05 00:13:41
+019ab9f5-1df2-719c-ab37-1f6b4ef59514	71adee1b-91d7-43cc-a712-9eaac873c6a5	SLV	7531	never	\N	2025-11-25 14:40:40	2025-12-05 15:35:51
 \.
 
 
@@ -796,6 +832,29 @@ COPY "public"."job_batches" ("id", "name", "total_jobs", "pending_jobs", "failed
 --
 
 COPY "public"."jobs" ("id", "queue", "payload", "attempts", "reserved_at", "available_at", "created_at") FROM stdin;
+\.
+
+
+--
+-- Data for Name: loyalty_accounts; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY "public"."loyalty_accounts" ("id", "customer_id", "branch_id", "stamps", "lifetime", "created_at", "updated_at") FROM stdin;
+019aed52-0df6-73a7-b9f1-933f8f3c3bbb	d699897e-14c0-417c-b745-5904d8e554ec	71adee1b-91d7-43cc-a712-9eaac873c6a5	1	1	2025-12-05 14:02:49	2025-12-05 14:09:42
+019aed50-ff95-703e-9f77-527f2b1d249f	1ec7273c-d85e-4d92-a10b-545820df93b8	71adee1b-91d7-43cc-a712-9eaac873c6a5	4	4	2025-12-05 14:01:39	2025-12-05 15:35:51
+\.
+
+
+--
+-- Data for Name: loyalty_logs; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY "public"."loyalty_logs" ("id", "order_id", "customer_id", "branch_id", "action", "before", "after", "created_at", "updated_at") FROM stdin;
+019aed58-5cba-718d-bd4a-5cef9662446f	019aed52-0dec-72c7-b0fd-30eeb63efc55	d699897e-14c0-417c-b745-5904d8e554ec	71adee1b-91d7-43cc-a712-9eaac873c6a5	EARN	0	1	2025-12-05 14:09:42	2025-12-05 14:09:42
+019aed5c-18c9-70fe-b98e-cf7f53767cb6	019aed5c-18b6-722c-bfb4-6c61f5c50085	1ec7273c-d85e-4d92-a10b-545820df93b8	71adee1b-91d7-43cc-a712-9eaac873c6a5	EARN	0	1	2025-12-05 14:13:47	2025-12-05 14:13:47
+019aed94-0c5f-71c1-b822-f19e6de6b09a	019aed94-0c47-7188-acfd-7ddd7446abc1	1ec7273c-d85e-4d92-a10b-545820df93b8	71adee1b-91d7-43cc-a712-9eaac873c6a5	EARN	1	2	2025-12-05 15:14:54	2025-12-05 15:14:54
+019aed9c-a6e8-735c-9011-790a72f90cc3	019aed9c-a6d3-7198-adc0-dc84bb42bd39	1ec7273c-d85e-4d92-a10b-545820df93b8	71adee1b-91d7-43cc-a712-9eaac873c6a5	EARN	2	3	2025-12-05 15:24:17	2025-12-05 15:24:17
+019aeda7-3d32-739f-a866-cf62bfb66c79	019aeda7-3d1f-72c2-a267-17649f860a2d	1ec7273c-d85e-4d92-a10b-545820df93b8	71adee1b-91d7-43cc-a712-9eaac873c6a5	EARN	3	4	2025-12-05 15:35:51	2025-12-05 15:35:51
 \.
 
 
@@ -835,6 +894,9 @@ COPY "public"."migrations" ("id", "migration", "batch") FROM stdin;
 29	2025_11_25_145010_fix_orders_created_by_to_bigint	2
 30	2025_12_04_224859_add_dates_to_orders_table	3
 31	2025_12_05_004843_add_username_to_users_table	4
+32	2025_12_05_134121_create_loyalty_accounts_table	5
+33	2025_12_05_134150_create_loyalty_logs_table	5
+34	2025_12_05_134214_alter_orders_add_loyalty_columns	5
 \.
 
 
@@ -856,6 +918,7 @@ COPY "public"."model_has_roles" ("role_id", "model_type", "model_id") FROM stdin
 5	App\\Models\\User	5
 2	App\\Models\\User	2
 3	App\\Models\\User	3
+3	App\\Models\\User	6
 \.
 
 
@@ -891,6 +954,12 @@ COPY "public"."order_items" ("id", "order_id", "service_id", "qty", "price", "to
 019ae94b-e3fd-7027-bce6-59c44857b9db	019ae94b-e3f8-738c-9f34-e08d91ee7699	2f310fc1-a7ca-4b4e-88ff-391392b35215	2.00	125000.00	250000.00	\N	2025-12-04 19:17:36	2025-12-04 19:17:36
 019aea3a-5f96-738d-8b12-601863f10da5	019aea3a-5f8a-70a1-9c9d-054f570702af	2f310fc1-a7ca-4b4e-88ff-391392b35215	1.00	125000.00	125000.00	\N	2025-12-04 23:38:05	2025-12-04 23:38:05
 019aea5a-f64c-7218-958a-059df091e480	019aea5a-f645-7183-a2e1-3959e5057158	2f310fc1-a7ca-4b4e-88ff-391392b35215	1.00	125000.00	125000.00	\N	2025-12-05 00:13:41	2025-12-05 00:13:41
+019aed50-ff8d-72b6-9add-19a8be36b6dc	019aed50-ff83-7018-becb-e2dd61cfc781	2f310fc1-a7ca-4b4e-88ff-391392b35215	1.00	125000.00	125000.00	\N	2025-12-05 14:01:39	2025-12-05 14:01:39
+019aed52-0df2-7202-ac8e-36d6e85779f1	019aed52-0dec-72c7-b0fd-30eeb63efc55	fde10d28-7dc9-4ffc-8630-b71e75b85345	2.00	50000.00	100000.00	\N	2025-12-05 14:02:49	2025-12-05 14:02:49
+019aed5c-18be-73ed-bb09-1bc3b7426b4a	019aed5c-18b6-722c-bfb4-6c61f5c50085	2f310fc1-a7ca-4b4e-88ff-391392b35215	1.00	125000.00	125000.00	\N	2025-12-05 14:13:47	2025-12-05 14:13:47
+019aed94-0c50-7355-86e0-ae663a3999f7	019aed94-0c47-7188-acfd-7ddd7446abc1	2f310fc1-a7ca-4b4e-88ff-391392b35215	1.00	125000.00	125000.00	\N	2025-12-05 15:14:54	2025-12-05 15:14:54
+019aed9c-a6da-7045-8769-41155491d4fe	019aed9c-a6d3-7198-adc0-dc84bb42bd39	2f310fc1-a7ca-4b4e-88ff-391392b35215	1.00	125000.00	125000.00	\N	2025-12-05 15:24:17	2025-12-05 15:24:17
+019aeda7-3d25-7071-87d5-d4ce5110c150	019aeda7-3d1f-72c2-a267-17649f860a2d	2f310fc1-a7ca-4b4e-88ff-391392b35215	1.00	125000.00	125000.00	\N	2025-12-05 15:35:51	2025-12-05 15:35:51
 \.
 
 
@@ -916,31 +985,37 @@ COPY "public"."order_vouchers" ("id", "order_id", "voucher_id", "applied_amount"
 -- Data for Name: orders; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY "public"."orders" ("id", "branch_id", "customer_id", "number", "status", "subtotal", "discount", "grand_total", "paid_amount", "due_amount", "notes", "created_at", "updated_at", "payment_status", "dp_amount", "paid_at", "invoice_no", "created_by", "received_at", "ready_at") FROM stdin;
-019ae552-85a9-71d2-b3bb-6c0e9dc72e7d	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007511	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 00:46:21	2025-12-04 00:46:47	PAID	0.00	2025-12-03 10:46:00	INV-04-12-7511	3	\N	\N
-019ab9ff-23cc-7064-978b-e932acbffe33	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202511-007502	DELIVERING	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-11-25 14:51:37	2025-11-25 14:57:34	PAID	0.00	2025-11-25 07:57:00	INV-25-11-7502	3	\N	\N
-019aba2d-6a28-72ef-b18c-8c7a1f7d318e	71adee1b-91d7-43cc-a712-9eaac873c6a5	d699897e-14c0-417c-b745-5904d8e554ec	SLV-202511-007503	DELIVERING	50000.00	0.00	50000.00	50000.00	0.00	\N	2025-11-25 15:42:09	2025-11-25 15:42:28	PAID	0.00	2025-11-25 08:42:12	INV-25-11-7503	3	\N	\N
-019ac9ab-c3aa-7207-8ad0-0524b80f2762	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202511-007504	QUEUE	50000.00	20000.00	30000.00	30000.00	0.00	\N	2025-11-28 15:54:28	2025-11-28 15:57:33	PAID	0.00	2025-11-28 01:57:00	INV-28-11-7504	2	\N	\N
-019aea5a-f645-7183-a2e1-3959e5057158	71adee1b-91d7-43cc-a712-9eaac873c6a5	d699897e-14c0-417c-b745-5904d8e554ec	SLV-202512-007525	QUEUE	125000.00	0.00	125000.00	0.00	125000.00	\N	2025-12-05 00:13:41	2025-12-05 00:13:41	PENDING	0.00	\N	INV-05-12-7525	3	2025-12-04 17:13:00	2025-12-08 05:50:00
-019ae4af-2b4f-73a8-b133-f860a306ea5a	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007507	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-03 21:47:56	2025-12-03 23:46:48	PAID	0.00	2025-12-03 09:46:00	INV-03-12-7507	3	\N	\N
-019ae556-5326-715f-80b7-ce7109cd3119	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007512	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 00:50:31	2025-12-04 00:55:55	PAID	0.00	2025-12-03 10:55:00	INV-04-12-7512	3	\N	\N
-019ae52d-b3cd-7257-a377-b2c5eb8630c2	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007508	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 00:06:08	2025-12-04 00:06:09	PAID	0.00	2025-12-03 17:06:12	INV-04-12-7508	3	\N	\N
-019ae4ac-c8b8-71d6-a56f-986362087721	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007506	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-03 21:45:20	2025-12-04 00:34:04	PAID	0.00	2025-12-03 10:34:00	INV-03-12-7506	3	\N	\N
-019ae4a1-eee9-7278-9dad-9b8b62abfc04	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007505	QUEUE	50000.00	0.00	50000.00	50000.00	0.00	\N	2025-12-03 21:33:29	2025-12-04 00:42:10	PAID	0.00	2025-12-03 10:42:00	INV-03-12-7505	3	\N	\N
-019ae54f-0561-71ee-afe9-ba6b3e36da21	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007509	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 00:42:32	2025-12-04 00:42:38	PAID	0.00	2025-12-03 10:42:00	INV-04-12-7509	3	\N	\N
-019ae559-4e2c-7015-8de9-7edffd25cb86	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007513	QUEUE	50000.00	0.00	50000.00	50000.00	0.00	\N	2025-12-04 00:53:46	2025-12-04 00:59:58	PAID	0.00	2025-12-03 10:59:00	INV-04-12-7513	3	\N	\N
-019ae54f-ef5b-7231-b71e-5818469d5122	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007510	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 00:43:32	2025-12-04 00:45:36	PAID	0.00	2025-12-03 10:45:00	INV-04-12-7510	3	\N	\N
-019ae55b-2d29-7336-bb94-19e2d2f46bdf	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007514	WASHING	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 00:55:49	2025-12-04 01:01:01	PAID	0.00	2025-12-03 11:00:00	INV-04-12-7514	3	\N	\N
-019ae5b4-c8eb-71a1-9037-02655a4401f5	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007521	DRYING	300000.00	0.00	300000.00	0.00	300000.00	\N	2025-12-04 02:33:41	2025-12-04 18:24:51	PENDING	0.00	\N	INV-04-12-7521	3	\N	\N
-019ae560-4035-7356-8340-77b46924dd8f	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007515	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 01:01:21	2025-12-04 01:02:26	PAID	0.00	2025-12-03 11:02:00	INV-04-12-7515	3	\N	\N
-019ae560-5908-72d5-abbc-d29028453a48	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007516	QUEUE	50000.00	0.00	50000.00	50000.00	0.00	\N	2025-12-04 01:01:28	2025-12-04 01:33:46	PAID	0.00	2025-12-03 11:33:00	INV-04-12-7516	3	\N	\N
-019ae583-58b3-7200-b75b-fc0fd5a1b57d	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007517	QUEUE	125000.00	0.00	125000.00	0.00	125000.00	\N	2025-12-04 01:39:41	2025-12-04 01:39:41	PENDING	0.00	\N	INV-04-12-7517	3	\N	\N
-019ae5a3-ccbf-7226-8cd4-2fa82c64b148	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007518	QUEUE	300000.00	0.00	300000.00	300000.00	0.00	\N	2025-12-04 02:15:08	2025-12-04 18:25:55	PAID	0.00	2025-12-04 04:25:00	INV-04-12-7518	3	\N	\N
-019ae5a4-5c9b-7056-a395-2b715e3f3854	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007519	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 02:15:45	2025-12-04 02:18:17	PAID	20000.00	2025-12-03 12:18:00	INV-04-12-7519	3	\N	\N
-019ae5a5-3cc9-7004-b6db-797b465b84f8	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007520	QUEUE	225000.00	0.00	225000.00	125000.00	100000.00	\N	2025-12-04 02:16:42	2025-12-04 18:29:43	PAID	0.00	2025-12-03 19:16:42	INV-04-12-7520	3	\N	\N
-019ae94b-75a8-724e-8bf5-1515a82d99d8	71adee1b-91d7-43cc-a712-9eaac873c6a5	d699897e-14c0-417c-b745-5904d8e554ec	SLV-202512-007522	QUEUE	125000.00	0.00	125000.00	25000.00	100000.00	\N	2025-12-04 19:17:08	2025-12-04 19:17:08	DP	25000.00	\N	INV-04-12-7522	3	\N	\N
-019ae94b-e3f8-738c-9f34-e08d91ee7699	71adee1b-91d7-43cc-a712-9eaac873c6a5	d699897e-14c0-417c-b745-5904d8e554ec	SLV-202512-007523	QUEUE	250000.00	0.00	250000.00	50000.00	200000.00	\N	2025-12-04 19:17:36	2025-12-04 19:17:36	DP	50000.00	\N	INV-04-12-7523	3	\N	\N
-019aea3a-5f8a-70a1-9c9d-054f570702af	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007524	QUEUE	125000.00	0.00	125000.00	0.00	125000.00	\N	2025-12-04 23:38:05	2025-12-04 23:38:05	PENDING	0.00	\N	INV-04-12-7524	2	2025-12-04 16:37:52	\N
+COPY "public"."orders" ("id", "branch_id", "customer_id", "number", "status", "subtotal", "discount", "grand_total", "paid_amount", "due_amount", "notes", "created_at", "updated_at", "payment_status", "dp_amount", "paid_at", "invoice_no", "created_by", "received_at", "ready_at", "loyalty_reward", "loyalty_discount") FROM stdin;
+019ae552-85a9-71d2-b3bb-6c0e9dc72e7d	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007511	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 00:46:21	2025-12-04 00:46:47	PAID	0.00	2025-12-03 10:46:00	INV-04-12-7511	3	\N	\N	NONE	0.00
+019ab9ff-23cc-7064-978b-e932acbffe33	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202511-007502	DELIVERING	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-11-25 14:51:37	2025-11-25 14:57:34	PAID	0.00	2025-11-25 07:57:00	INV-25-11-7502	3	\N	\N	NONE	0.00
+019aba2d-6a28-72ef-b18c-8c7a1f7d318e	71adee1b-91d7-43cc-a712-9eaac873c6a5	d699897e-14c0-417c-b745-5904d8e554ec	SLV-202511-007503	DELIVERING	50000.00	0.00	50000.00	50000.00	0.00	\N	2025-11-25 15:42:09	2025-11-25 15:42:28	PAID	0.00	2025-11-25 08:42:12	INV-25-11-7503	3	\N	\N	NONE	0.00
+019ac9ab-c3aa-7207-8ad0-0524b80f2762	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202511-007504	QUEUE	50000.00	20000.00	30000.00	30000.00	0.00	\N	2025-11-28 15:54:28	2025-11-28 15:57:33	PAID	0.00	2025-11-28 01:57:00	INV-28-11-7504	2	\N	\N	NONE	0.00
+019aea5a-f645-7183-a2e1-3959e5057158	71adee1b-91d7-43cc-a712-9eaac873c6a5	d699897e-14c0-417c-b745-5904d8e554ec	SLV-202512-007525	QUEUE	125000.00	0.00	125000.00	0.00	125000.00	\N	2025-12-05 00:13:41	2025-12-05 00:13:41	PENDING	0.00	\N	INV-05-12-7525	3	2025-12-04 17:13:00	2025-12-08 05:50:00	NONE	0.00
+019ae4af-2b4f-73a8-b133-f860a306ea5a	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007507	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-03 21:47:56	2025-12-03 23:46:48	PAID	0.00	2025-12-03 09:46:00	INV-03-12-7507	3	\N	\N	NONE	0.00
+019ae556-5326-715f-80b7-ce7109cd3119	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007512	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 00:50:31	2025-12-04 00:55:55	PAID	0.00	2025-12-03 10:55:00	INV-04-12-7512	3	\N	\N	NONE	0.00
+019ae52d-b3cd-7257-a377-b2c5eb8630c2	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007508	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 00:06:08	2025-12-04 00:06:09	PAID	0.00	2025-12-03 17:06:12	INV-04-12-7508	3	\N	\N	NONE	0.00
+019ae4ac-c8b8-71d6-a56f-986362087721	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007506	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-03 21:45:20	2025-12-04 00:34:04	PAID	0.00	2025-12-03 10:34:00	INV-03-12-7506	3	\N	\N	NONE	0.00
+019ae4a1-eee9-7278-9dad-9b8b62abfc04	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007505	QUEUE	50000.00	0.00	50000.00	50000.00	0.00	\N	2025-12-03 21:33:29	2025-12-04 00:42:10	PAID	0.00	2025-12-03 10:42:00	INV-03-12-7505	3	\N	\N	NONE	0.00
+019ae54f-0561-71ee-afe9-ba6b3e36da21	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007509	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 00:42:32	2025-12-04 00:42:38	PAID	0.00	2025-12-03 10:42:00	INV-04-12-7509	3	\N	\N	NONE	0.00
+019ae559-4e2c-7015-8de9-7edffd25cb86	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007513	QUEUE	50000.00	0.00	50000.00	50000.00	0.00	\N	2025-12-04 00:53:46	2025-12-04 00:59:58	PAID	0.00	2025-12-03 10:59:00	INV-04-12-7513	3	\N	\N	NONE	0.00
+019ae54f-ef5b-7231-b71e-5818469d5122	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007510	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 00:43:32	2025-12-04 00:45:36	PAID	0.00	2025-12-03 10:45:00	INV-04-12-7510	3	\N	\N	NONE	0.00
+019ae55b-2d29-7336-bb94-19e2d2f46bdf	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007514	WASHING	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 00:55:49	2025-12-04 01:01:01	PAID	0.00	2025-12-03 11:00:00	INV-04-12-7514	3	\N	\N	NONE	0.00
+019ae5b4-c8eb-71a1-9037-02655a4401f5	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007521	DRYING	300000.00	0.00	300000.00	0.00	300000.00	\N	2025-12-04 02:33:41	2025-12-04 18:24:51	PENDING	0.00	\N	INV-04-12-7521	3	\N	\N	NONE	0.00
+019ae560-4035-7356-8340-77b46924dd8f	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007515	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 01:01:21	2025-12-04 01:02:26	PAID	0.00	2025-12-03 11:02:00	INV-04-12-7515	3	\N	\N	NONE	0.00
+019ae560-5908-72d5-abbc-d29028453a48	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007516	QUEUE	50000.00	0.00	50000.00	50000.00	0.00	\N	2025-12-04 01:01:28	2025-12-04 01:33:46	PAID	0.00	2025-12-03 11:33:00	INV-04-12-7516	3	\N	\N	NONE	0.00
+019ae583-58b3-7200-b75b-fc0fd5a1b57d	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007517	QUEUE	125000.00	0.00	125000.00	0.00	125000.00	\N	2025-12-04 01:39:41	2025-12-04 01:39:41	PENDING	0.00	\N	INV-04-12-7517	3	\N	\N	NONE	0.00
+019aed50-ff83-7018-becb-e2dd61cfc781	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007526	QUEUE	125000.00	0.00	125000.00	0.00	125000.00	\N	2025-12-05 14:01:39	2025-12-05 14:01:39	PENDING	0.00	\N	INV-05-12-7526	3	2025-12-05 07:01:20	2025-12-09 09:00:00	NONE	0.00
+019ae5a3-ccbf-7226-8cd4-2fa82c64b148	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007518	QUEUE	300000.00	0.00	300000.00	300000.00	0.00	\N	2025-12-04 02:15:08	2025-12-04 18:25:55	PAID	0.00	2025-12-04 04:25:00	INV-04-12-7518	3	\N	\N	NONE	0.00
+019ae5a4-5c9b-7056-a395-2b715e3f3854	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007519	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-04 02:15:45	2025-12-04 02:18:17	PAID	20000.00	2025-12-03 12:18:00	INV-04-12-7519	3	\N	\N	NONE	0.00
+019ae5a5-3cc9-7004-b6db-797b465b84f8	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007520	QUEUE	225000.00	0.00	225000.00	125000.00	100000.00	\N	2025-12-04 02:16:42	2025-12-04 18:29:43	PAID	0.00	2025-12-03 19:16:42	INV-04-12-7520	3	\N	\N	NONE	0.00
+019ae94b-75a8-724e-8bf5-1515a82d99d8	71adee1b-91d7-43cc-a712-9eaac873c6a5	d699897e-14c0-417c-b745-5904d8e554ec	SLV-202512-007522	QUEUE	125000.00	0.00	125000.00	25000.00	100000.00	\N	2025-12-04 19:17:08	2025-12-04 19:17:08	DP	25000.00	\N	INV-04-12-7522	3	\N	\N	NONE	0.00
+019ae94b-e3f8-738c-9f34-e08d91ee7699	71adee1b-91d7-43cc-a712-9eaac873c6a5	d699897e-14c0-417c-b745-5904d8e554ec	SLV-202512-007523	QUEUE	250000.00	0.00	250000.00	50000.00	200000.00	\N	2025-12-04 19:17:36	2025-12-04 19:17:36	DP	50000.00	\N	INV-04-12-7523	3	\N	\N	NONE	0.00
+019aea3a-5f8a-70a1-9c9d-054f570702af	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007524	QUEUE	125000.00	0.00	125000.00	0.00	125000.00	\N	2025-12-04 23:38:05	2025-12-04 23:38:05	PENDING	0.00	\N	INV-04-12-7524	2	2025-12-04 16:37:52	\N	NONE	0.00
+019aed52-0dec-72c7-b0fd-30eeb63efc55	71adee1b-91d7-43cc-a712-9eaac873c6a5	d699897e-14c0-417c-b745-5904d8e554ec	SLV-202512-007527	PICKED_UP	100000.00	0.00	100000.00	100000.00	0.00	\N	2025-12-05 14:02:49	2025-12-05 14:09:42	PAID	0.00	2025-12-05 00:03:00	INV-05-12-7527	3	2025-12-05 07:02:08	2025-12-09 05:00:00	NONE	0.00
+019aed5c-18b6-722c-bfb4-6c61f5c50085	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007528	QUEUE	125000.00	0.00	125000.00	0.00	125000.00	\N	2025-12-05 14:13:47	2025-12-05 14:13:47	PENDING	0.00	\N	INV-05-12-7528	3	2025-12-05 07:13:28	2025-12-09 05:00:00	NONE	0.00
+019aed94-0c47-7188-acfd-7ddd7446abc1	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007529	QUEUE	125000.00	0.00	125000.00	125000.00	0.00	\N	2025-12-05 15:14:54	2025-12-05 15:14:54	PAID	0.00	2025-12-05 08:14:54	INV-05-12-7529	3	2025-12-05 08:14:39	\N	NONE	0.00
+019aed9c-a6d3-7198-adc0-dc84bb42bd39	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007530	QUEUE	125000.00	0.00	125000.00	0.00	125000.00	\N	2025-12-05 15:24:17	2025-12-05 15:24:17	PENDING	0.00	\N	INV-05-12-7530	3	2025-12-05 08:23:31	2025-12-09 05:00:00	NONE	0.00
+019aeda7-3d1f-72c2-a267-17649f860a2d	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007531	QUEUE	125000.00	0.00	125000.00	0.00	125000.00	\N	2025-12-05 15:35:51	2025-12-05 15:35:51	PENDING	0.00	\N	INV-05-12-7531	3	2025-12-05 08:35:35	2025-12-09 05:03:00	NONE	0.00
 \.
 
 
@@ -978,6 +1053,8 @@ f03f73ba-7f74-49b6-b196-1646ee799e30	019ae559-4e2c-7015-8de9-7edffd25cb86	CASH	5
 1f446fbc-987a-4b8b-8630-26aa14db01da	019ae5a3-ccbf-7226-8cd4-2fa82c64b148	CASH	300000.00	2025-12-04 04:25:00+07	\N	2025-12-04 18:25:55+07	2025-12-04 18:25:55+07
 d73b7af7-f767-4862-83da-c51422a05650	019ae94b-75a8-724e-8bf5-1515a82d99d8	DP	25000.00	2025-12-04 12:17:07+07	\N	2025-12-04 19:17:08+07	2025-12-04 19:17:08+07
 8591f201-bc7e-4785-b532-470a130b7da2	019ae94b-e3f8-738c-9f34-e08d91ee7699	DP	50000.00	2025-12-04 12:17:36+07	\N	2025-12-04 19:17:36+07	2025-12-04 19:17:36+07
+32367823-25ce-4d5d-846e-60f29e816acf	019aed52-0dec-72c7-b0fd-30eeb63efc55	CASH	100000.00	2025-12-05 00:03:00+07	\N	2025-12-05 14:03:07+07	2025-12-05 14:03:07+07
+6adc4985-2eb7-4659-b3d5-d64ad44d4071	019aed94-0c47-7188-acfd-7ddd7446abc1	QRIS	125000.00	2025-12-05 08:14:54+07	\N	2025-12-05 15:14:54+07	2025-12-05 15:14:54+07
 \.
 
 
@@ -994,7 +1071,7 @@ COPY "public"."permissions" ("id", "name", "guard_name", "created_at", "updated_
 --
 
 COPY "public"."personal_access_tokens" ("id", "tokenable_type", "tokenable_id", "name", "token", "abilities", "last_used_at", "expires_at", "created_at", "updated_at") FROM stdin;
-24	App\\Models\\User	1	auth-token	f0792d1aea5adc8ba56d845408bd7eebe265ce84ec20b7d248907edea27f6bdc	["*"]	2025-12-05 01:30:46	\N	2025-12-05 01:08:46	2025-12-05 01:30:46
+31	App\\Models\\User	3	auth-token	912edeb580b05e1fa534e7398838e227b3d98600199a7ad9516d4536c84547f8	["*"]	2025-12-05 15:35:58	\N	2025-12-05 14:01:19	2025-12-05 15:35:58
 10	App\\Models\\User	3	auth-token	d51a1bc76154bc2b19d261f9baaa4d45f0e9a0fadc1e8b3616c3d68f409c7c6c	["*"]	2025-12-03 21:45:22	\N	2025-12-03 21:30:10	2025-12-03 21:45:22
 \.
 
@@ -1028,6 +1105,12 @@ a59237fd-aa78-4d9f-b26a-eab6e35c2ada	019ae94b-75a8-724e-8bf5-1515a82d99d8	100000
 f2717552-f726-4e23-8504-6152a71502cb	019ae94b-e3f8-738c-9f34-e08d91ee7699	200000.00	PARTIAL	\N	2025-12-04 19:17:36+07	2025-12-04 19:17:36+07
 4dc8979c-de42-430b-a017-dd6e283f62d0	019aea3a-5f8a-70a1-9c9d-054f570702af	125000.00	OPEN	\N	2025-12-04 23:38:05+07	2025-12-04 23:38:05+07
 5ce4fafd-2ab0-4026-99b5-661f17293f48	019aea5a-f645-7183-a2e1-3959e5057158	125000.00	OPEN	\N	2025-12-05 00:13:41+07	2025-12-05 00:13:41+07
+b2fcb131-98c2-463b-b07e-98b88b292beb	019aed50-ff83-7018-becb-e2dd61cfc781	125000.00	OPEN	\N	2025-12-05 14:01:39+07	2025-12-05 14:01:39+07
+8bf779d7-f792-4c1a-9c8e-b1a385b97eab	019aed52-0dec-72c7-b0fd-30eeb63efc55	0.00	SETTLED	\N	2025-12-05 14:02:49+07	2025-12-05 14:03:07+07
+0de5689d-64c6-4f2a-90d6-97d89af86db9	019aed5c-18b6-722c-bfb4-6c61f5c50085	125000.00	OPEN	\N	2025-12-05 14:13:47+07	2025-12-05 14:13:47+07
+49164c8a-7d64-4ae4-9b81-0dead122c90a	019aed94-0c47-7188-acfd-7ddd7446abc1	0.00	SETTLED	\N	2025-12-05 15:14:54+07	2025-12-05 15:14:54+07
+a242b7be-7b0e-49a8-8fe0-3b948ead9690	019aed9c-a6d3-7198-adc0-dc84bb42bd39	125000.00	OPEN	\N	2025-12-05 15:24:17+07	2025-12-05 15:24:17+07
+a0e5af96-24f8-4f9c-bf96-392869ba6bc3	019aeda7-3d1f-72c2-a267-17649f860a2d	125000.00	OPEN	\N	2025-12-05 15:35:51+07	2025-12-05 15:35:51+07
 \.
 
 
@@ -1101,6 +1184,7 @@ COPY "public"."users" ("id", "name", "email", "email_verified_at", "password", "
 3	Kasir	kasir@gmail.com	\N	$2y$12$nSxty7PQT4znogW351TdjOD0z4K6CWnclNuCB7qMtFCkP2m1cuOZK	\N	2025-11-25 14:29:33	2025-11-25 14:29:33	t	71adee1b-91d7-43cc-a712-9eaac873c6a5	kasir
 4	Petugas Cuci	petugascuci@gmail.com	\N	$2y$12$rx4se8DkoqdSNzXVToFggef5vnUr5K22LT4J.aZ/o3jxJ4Mw5I.Ue	\N	2025-11-25 14:29:33	2025-11-25 14:29:33	t	71adee1b-91d7-43cc-a712-9eaac873c6a5	petugascuci
 5	Kurir	kurir@gmail.com	\N	$2y$12$IHhqywfyAqaKN3FN.bCHZ.y3/SZBL1x5hOfLXibpaF85NgyrmRR3.	\N	2025-11-25 14:29:34	2025-11-25 14:29:34	t	71adee1b-91d7-43cc-a712-9eaac873c6a5	kurir
+6	galuh	galuhdwic@gmail.com	\N	$2y$12$kSKSrZRI1MjRKkO4pIKjFOo3K8tRrZElpwHFag0kyGMfUAhN6XaQe	\N	2025-12-05 01:32:32	2025-12-05 01:52:51	t	71adee1b-91d7-43cc-a712-9eaac873c6a5	galuhdwic
 \.
 
 
@@ -1131,7 +1215,7 @@ SELECT pg_catalog.setval('"public"."jobs_id_seq"', 1, false);
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('"public"."migrations_id_seq"', 31, true);
+SELECT pg_catalog.setval('"public"."migrations_id_seq"', 34, true);
 
 
 --
@@ -1145,7 +1229,7 @@ SELECT pg_catalog.setval('"public"."permissions_id_seq"', 1, false);
 -- Name: personal_access_tokens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('"public"."personal_access_tokens_id_seq"', 24, true);
+SELECT pg_catalog.setval('"public"."personal_access_tokens_id_seq"', 31, true);
 
 
 --
@@ -1159,7 +1243,7 @@ SELECT pg_catalog.setval('"public"."roles_id_seq"', 5, true);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('"public"."users_id_seq"', 5, true);
+SELECT pg_catalog.setval('"public"."users_id_seq"', 6, true);
 
 
 --
@@ -1280,6 +1364,38 @@ ALTER TABLE ONLY "public"."job_batches"
 
 ALTER TABLE ONLY "public"."jobs"
     ADD CONSTRAINT "jobs_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: loyalty_accounts loyalty_accounts_customer_id_branch_id_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY "public"."loyalty_accounts"
+    ADD CONSTRAINT "loyalty_accounts_customer_id_branch_id_unique" UNIQUE ("customer_id", "branch_id");
+
+
+--
+-- Name: loyalty_accounts loyalty_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY "public"."loyalty_accounts"
+    ADD CONSTRAINT "loyalty_accounts_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: loyalty_logs loyalty_logs_order_id_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY "public"."loyalty_logs"
+    ADD CONSTRAINT "loyalty_logs_order_id_unique" UNIQUE ("order_id");
+
+
+--
+-- Name: loyalty_logs loyalty_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY "public"."loyalty_logs"
+    ADD CONSTRAINT "loyalty_logs_pkey" PRIMARY KEY ("id");
 
 
 --
@@ -1680,6 +1796,34 @@ CREATE INDEX "jobs_queue_index" ON "public"."jobs" USING "btree" ("queue");
 
 
 --
+-- Name: loyalty_accounts_branch_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "loyalty_accounts_branch_id_index" ON "public"."loyalty_accounts" USING "btree" ("branch_id");
+
+
+--
+-- Name: loyalty_accounts_customer_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "loyalty_accounts_customer_id_index" ON "public"."loyalty_accounts" USING "btree" ("customer_id");
+
+
+--
+-- Name: loyalty_logs_branch_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "loyalty_logs_branch_id_index" ON "public"."loyalty_logs" USING "btree" ("branch_id");
+
+
+--
+-- Name: loyalty_logs_customer_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "loyalty_logs_customer_id_index" ON "public"."loyalty_logs" USING "btree" ("customer_id");
+
+
+--
 -- Name: model_has_permissions_model_id_model_type_index; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2024,5 +2168,5 @@ ALTER TABLE ONLY "public"."vouchers"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict JFOPaSxBcQTcggBuouyFi6DRxhiDVOwt5LzNNlgo2SJnK2shU5bJdEuIahhLEz0
+\unrestrict Rx6pp1hhWhtobcNPksBMGM4YeEUrKFDH1TGBbIihkJjmF83jymCT5MmdYUdJSPs
 

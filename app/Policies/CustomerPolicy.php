@@ -41,6 +41,15 @@ class CustomerPolicy
         return false;
     }
 
+    public function viewLoyalty(User $user, Customer $customer): bool
+    {
+        if ($user->hasRole('Superadmin')) return true;
+        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
+            return (string)$user->branch_id === (string)$customer->branch_id;
+        }
+        return false;
+    }
+
     public function delete(User $user, Customer $c): bool
     {
         if ($user->hasRole('Admin Cabang')) {

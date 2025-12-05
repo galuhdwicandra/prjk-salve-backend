@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\DeliveryController;
 use App\Http\Controllers\Api\ReceivableController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\LoyaltyController;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
@@ -76,6 +77,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/customers', [CustomerController::class, 'store']);
         Route::put('/customers/{customer}', [CustomerController::class, 'update']);
         Route::delete('/customers/{customer}', [CustomerController::class, 'destroy']);
+
+        // Loyalty (Stamp) — butuh login & scope cabang
+        Route::get('/loyalty/{customer}', [LoyaltyController::class, 'summary']);
+        Route::get('/loyalty/{customer}/history', [LoyaltyController::class, 'history']);
 
         // Receipt (HTML)
         Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt']);

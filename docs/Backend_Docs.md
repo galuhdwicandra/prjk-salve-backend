@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-05 01:31:33_  
+_Dihasilkan otomatis: 2025-12-05 15:36:30_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -15,6 +15,7 @@ _Dihasilkan otomatis: 2025-12-05 01:31:33_
   - [app/Http/Controllers/Api/DeliveryController.php](#file-apphttpcontrollersapideliverycontrollerphp)
   - [app/Http/Controllers/Api/ExpenseController.php](#file-apphttpcontrollersapiexpensecontrollerphp)
   - [app/Http/Controllers/Api/InvoiceCounterController.php](#file-apphttpcontrollersapiinvoicecountercontrollerphp)
+  - [app/Http/Controllers/Api/LoyaltyController.php](#file-apphttpcontrollersapiloyaltycontrollerphp)
   - [app/Http/Controllers/Api/OrderController.php](#file-apphttpcontrollersapiordercontrollerphp)
   - [app/Http/Controllers/Api/OrderPaymentsController.php](#file-apphttpcontrollersapiorderpaymentscontrollerphp)
   - [app/Http/Controllers/Api/OrderPhotosController.php](#file-apphttpcontrollersapiorderphotoscontrollerphp)
@@ -31,6 +32,8 @@ _Dihasilkan otomatis: 2025-12-05 01:31:33_
   - [app/Models/DeliveryEvent.php](#file-appmodelsdeliveryeventphp)
   - [app/Models/Expense.php](#file-appmodelsexpensephp)
   - [app/Models/InvoiceCounter.php](#file-appmodelsinvoicecounterphp)
+  - [app/Models/LoyaltyAccount.php](#file-appmodelsloyaltyaccountphp)
+  - [app/Models/LoyaltyLog.php](#file-appmodelsloyaltylogphp)
   - [app/Models/Order.php](#file-appmodelsorderphp)
   - [app/Models/OrderItem.php](#file-appmodelsorderitemphp)
   - [app/Models/OrderPhoto.php](#file-appmodelsorderphotophp)
@@ -49,6 +52,7 @@ _Dihasilkan otomatis: 2025-12-05 01:31:33_
   - [app/Policies/CustomerPolicy.php](#file-apppoliciescustomerpolicyphp)
   - [app/Policies/DeliveryPolicy.php](#file-apppoliciesdeliverypolicyphp)
   - [app/Policies/ExpensePolicy.php](#file-apppoliciesexpensepolicyphp)
+  - [app/Policies/LoyaltyPolicy.php](#file-apppoliciesloyaltypolicyphp)
   - [app/Policies/OrderPolicy.php](#file-apppoliciesorderpolicyphp)
   - [app/Policies/ReceivablePolicy.php](#file-apppoliciesreceivablepolicyphp)
   - [app/Policies/ServicePolicy.php](#file-apppoliciesservicepolicyphp)
@@ -95,6 +99,7 @@ _Dihasilkan otomatis: 2025-12-05 01:31:33_
   - [app/Services/DeliveryService.php](#file-appservicesdeliveryservicephp)
   - [app/Services/InvoiceNumberService.php](#file-appservicesinvoicenumberservicephp)
   - [app/Services/InvoiceService.php](#file-appservicesinvoiceservicephp)
+  - [app/Services/LoyaltyService.php](#file-appservicesloyaltyservicephp)
   - [app/Services/OrderNumberService.php](#file-appservicesordernumberservicephp)
   - [app/Services/OrderService.php](#file-appservicesorderservicephp)
   - [app/Services/PaymentService.php](#file-appservicespaymentservicephp)
@@ -1311,6 +1316,77 @@ class InvoiceCounterController extends Controller
 ```
 </details>
 
+### app/Http/Controllers/Api/LoyaltyController.php
+
+- SHA: `326b00f4e1e6`  
+- Ukuran: 2 KB  
+- Namespace: `App\Http\Controllers\Api`
+
+**Class `LoyaltyController` extends `Controller`**
+
+Metode Publik:
+- **__construct**(private LoyaltyService $svc)
+- **summary**(Request $req, Customer $customer)
+- **history**(Request $req, Customer $customer)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Customer;
+use App\Models\LoyaltyLog;
+use App\Services\LoyaltyService;
+use Illuminate\Http\Request;
+
+class LoyaltyController extends Controller
+{
+    public function __construct(private LoyaltyService $svc) {}
+
+    public function summary(Request $req, Customer $customer)
+    {
+        $this->authorize('view', [\App\Policies\LoyaltyPolicy::class, $customer]);
+
+        $branchId = (string) ($req->query('branch_id') ?: $req->user()->branch_id ?: $customer->branch_id);
+        $acc = $this->svc->getOrCreateAccount((string) $customer->getKey(), $branchId);
+
+        return response()->json([
+            'data' => [
+                'stamps' => (int) $acc->stamps,
+                'cycle'  => 10,
+                'next'   => (($acc->stamps % 10) + 1),
+            ],
+            'meta' => [],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
+    public function history(Request $req, Customer $customer)
+    {
+        $this->authorize('view', [\App\Policies\LoyaltyPolicy::class, $customer]);
+
+        $branchId = (string) ($req->query('branch_id') ?: $req->user()->branch_id ?: $customer->branch_id);
+        $logs = LoyaltyLog::query()
+            ->where('customer_id', (string) $customer->getKey())
+            ->where('branch_id', $branchId)
+            ->orderByDesc('created_at')
+            ->paginate(20);
+
+        return response()->json([
+            'data' => $logs->items(),
+            'meta' => ['current_page' => $logs->currentPage(), 'last_page' => $logs->lastPage()],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+}
+
+```
+</details>
+
 ### app/Http/Controllers/Api/OrderController.php
 
 - SHA: `8f20e0e72171`  
@@ -2050,7 +2126,7 @@ class ServicePriceController extends Controller
 
 ### app/Http/Controllers/Api/UserController.php
 
-- SHA: `46d1c51ba1d3`  
+- SHA: `89c4aa70fdf4`  
 - Ukuran: 6 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -2109,6 +2185,7 @@ class UserController extends Controller
                 'id'        => $u->id,
                 'name'      => $u->name,
                 'email'     => $u->email,
+                'username'  => $u->username,
                 'branch_id' => $u->branch_id,
                 'is_active' => (bool) $u->is_active,
                 'roles'     => $u->getRoleNames()->values(), // ← ["Kurir", ...]
@@ -2141,6 +2218,7 @@ class UserController extends Controller
             'id'        => $user->id,
             'name'      => $user->name,
             'email'     => $user->email,
+            'username'  => $user->username,
             'branch_id' => $user->branch_id,
             'is_active' => (bool) $user->is_active,
             'roles'     => $user->getRoleNames()->values(),
@@ -2761,6 +2839,61 @@ class InvoiceCounter extends Model
     {
         return $this->belongsTo(Branch::class, 'branch_id', 'id');
     }
+}
+
+```
+</details>
+
+### app/Models/LoyaltyAccount.php
+
+- SHA: `7a064f5dd330`  
+- Ukuran: 323 B  
+- Namespace: `App\Models`
+
+**Class `LoyaltyAccount` extends `Model`**
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+
+class LoyaltyAccount extends Model
+{
+    use HasUuids;
+    public $incrementing = false;
+    protected $keyType = 'string';
+    protected $fillable = ['customer_id','branch_id','stamps','lifetime'];
+}
+```
+</details>
+
+### app/Models/LoyaltyLog.php
+
+- SHA: `7da979e5c9a6`  
+- Ukuran: 342 B  
+- Namespace: `App\Models`
+
+**Class `LoyaltyLog` extends `Model`**
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+
+class LoyaltyLog extends Model
+{
+    use HasUuids;
+    public $incrementing = false;
+    protected $keyType = 'string';
+    protected $fillable = ['order_id', 'customer_id', 'branch_id', 'action', 'before', 'after'];
 }
 
 ```
@@ -3805,6 +3938,43 @@ class ExpensePolicy
     public function delete(User $user, Expense $expense): bool
     {
         return $this->view($user, $expense);
+    }
+}
+
+```
+</details>
+
+### app/Policies/LoyaltyPolicy.php
+
+- SHA: `1792a12c3762`  
+- Ukuran: 382 B  
+- Namespace: `App\Policies`
+
+**Class `LoyaltyPolicy`**
+
+Metode Publik:
+- **before**(User $actor, string $ability) : *bool|null*
+- **view**(User $actor, Customer $customer) : *bool*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Policies;
+
+use App\Models\User;
+use App\Models\Customer;
+
+class LoyaltyPolicy
+{
+    public function before(User $actor, string $ability): bool|null
+    {
+        return $actor->hasRole('Superadmin') ? true : null;
+    }
+
+    public function view(User $actor, Customer $customer): bool
+    {
+        return $actor->hasAnyRole(['Admin Cabang', 'Kasir']);
     }
 }
 
@@ -6540,6 +6710,140 @@ class InvoiceService
 ```
 </details>
 
+### app/Services/LoyaltyService.php
+
+- SHA: `21207bc97be0`  
+- Ukuran: 5 KB  
+- Namespace: `App\Services`
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Services;
+
+use App\Models\LoyaltyAccount;
+use App\Models\LoyaltyLog;
+use App\Models\Order;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+final class LoyaltyService
+{
+    public const CYCLE = 10;
+
+    public function getOrCreateAccount(string $customerId, string $branchId): LoyaltyAccount
+    {
+        return DB::transaction(function () use ($customerId, $branchId) {
+            $acc = LoyaltyAccount::query()
+                ->where('customer_id', $customerId)
+                ->where('branch_id', $branchId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$acc) {
+                $acc = LoyaltyAccount::create([
+                    'id' => (string) Str::uuid(),
+                    'customer_id' => $customerId,
+                    'branch_id' => $branchId,
+                    'stamps' => 0,
+                    'lifetime' => 0,
+                ]);
+            }
+            return $acc;
+        });
+    }
+
+    /** Hitung reward untuk order baru (tanpa mengubah state). */
+    public function previewReward(?string $customerId, string $branchId, float $subtotal): array
+    {
+        if (!$customerId || $subtotal <= 0) {
+            return ['reward' => 'NONE', 'discount' => 0.0];
+        }
+        $acc = $this->getOrCreateAccount($customerId, $branchId);
+        $next = ($acc->stamps % self::CYCLE) + 1; // 1..10
+
+        if ($next === 5)  return ['reward' => 'DISC25',  'discount' => round($subtotal * 0.25, 2)];
+        if ($next === 10) return ['reward' => 'FREE100', 'discount' => round($subtotal, 2)];
+        return ['reward' => 'NONE', 'discount' => 0.0];
+    }
+
+    /** Terapkan loyalti pada draft order (mengisi kolom meta & perhitungan total). */
+    public function applyToOrder(Order $order, string $branchId): void
+    {
+        $subtotal = (float) $order->getAttribute('subtotal');
+        $p = $this->previewReward($order->customer_id, $branchId, $subtotal);
+
+        $order->loyalty_reward   = $p['reward'];     // NONE|DISC25|FREE100
+        $order->loyalty_discount = $p['discount'];   // angka rupiah
+        $order->discount         = (float) $order->discount + $p['discount'];
+        $order->grand_total      = max(0, $subtotal - (float) $order->discount);
+        $order->due_amount       = max(0, (float) $order->grand_total - (float) $order->paid_amount);
+    }
+
+    /** Earn + logging saat order dinyatakan selesai (PICKED_UP). */
+    public function finalizeEarn(Order $order): void
+    {
+        if (!$order->customer_id) return;
+
+        DB::transaction(function () use ($order) {
+            // idempotensi per order
+            if (LoyaltyLog::query()->where('order_id', (string) $order->getKey())->exists()) {
+                return;
+            }
+
+            $acc = $this->getOrCreateAccount((string) $order->customer_id, (string) $order->branch_id);
+            $before = (int) $acc->stamps;
+
+            // catat reward yang dipakai di order ini
+            if ($order->loyalty_reward === 'DISC25') {
+                LoyaltyLog::create([
+                    'id' => (string) Str::uuid(),
+                    'order_id' => (string) $order->getKey(),
+                    'customer_id' => (string) $order->customer_id,
+                    'branch_id' => (string) $order->branch_id,
+                    'action' => 'REWARD25',
+                    'before' => $before,
+                    'after' => $before,
+                ]);
+            } elseif ($order->loyalty_reward === 'FREE100') {
+                LoyaltyLog::create([
+                    'id' => (string) Str::uuid(),
+                    'order_id' => (string) $order->getKey(),
+                    'customer_id' => (string) $order->customer_id,
+                    'branch_id' => (string) $order->branch_id,
+                    'action' => 'REWARD100',
+                    'before' => $before,
+                    'after' => $before,
+                ]);
+            }
+
+            // earn +1, reset jika mencapai 10
+            $after = $before + 1;
+            $didReset = false;
+            if ($after >= self::CYCLE) {
+                $after = 0;
+                $didReset = true;
+            }
+
+            $acc->update(['stamps' => $after, 'lifetime' => (int) $acc->lifetime + 1]);
+
+            LoyaltyLog::create([
+                'id' => (string) Str::uuid(),
+                'order_id' => (string) $order->getKey(),
+                'customer_id' => (string) $order->customer_id,
+                'branch_id' => (string) $order->branch_id,
+                'action' => $didReset ? 'RESET' : 'EARN',
+                'before' => $before,
+                'after' => $after,
+            ]);
+        });
+    }
+}
+
+```
+</details>
+
 ### app/Services/OrderNumberService.php
 
 - SHA: `f822f2ab3c8b`  
@@ -6609,14 +6913,14 @@ class OrderNumberService
 
 ### app/Services/OrderService.php
 
-- SHA: `e3e3c26c3341`  
+- SHA: `4152ab7d4bc5`  
 - Ukuran: 12 KB  
 - Namespace: `App\Services`
 
 **Class `OrderService`**
 
 Metode Publik:
-- **__construct**(private PricingService $pricing, private InvoiceService $invoice,)
+- **__construct**(private PricingService $pricing, private InvoiceService $invoice, private LoyaltyService $loyalty,)
 - **createDraft**(array $data, User $actor) : *Order* — Create order (draft/queue) — hitung total dan harga per cabang.
 - **attachPhotos**(Order $order, array $photos) : *Order* — Create order (draft/queue) — hitung total dan harga per cabang.
 - **transition**(Order $order, string $next, User $actor) : *Order* — Create order (draft/queue) — hitung total dan harga per cabang.
@@ -6643,6 +6947,7 @@ class OrderService
     public function __construct(
         private PricingService $pricing,
         private InvoiceService $invoice,
+        private LoyaltyService $loyalty,
     ) {}
 
     /**
@@ -6705,9 +7010,10 @@ class OrderService
 
             $order->subtotal = $this->dec($subtotal);
             $order->discount = $this->dec(0);
-            $order->grand_total = $this->dec(((float) $order->subtotal) - ((float) $order->discount));
-            $order->due_amount = $this->dec(((float) $order->grand_total) - ((float) $order->paid_amount));
+            $this->loyalty->applyToOrder($order, $branchId);
             $order->save();
+
+            $this->loyalty->finalizeEarn($order);
 
             if (Schema::hasTable('receivables')) {
                 $grand = (float) $order->getAttribute('grand_total');
@@ -6866,9 +7172,15 @@ class OrderService
                 $recalcSubtotal = $subtotal;
             }
 
-            // Hitung ulang total (selalu konsisten jika subtotal/discount berubah)
             $effectiveSubtotal = $recalcSubtotal !== null ? $recalcSubtotal : (float) $order->subtotal;
-            $effectiveDiscount = (float) max(0, (float) $order->discount);
+            $baseDiscount      = (float) max(0, (float) $order->discount);
+
+            // Re-preview loyalti berdasarkan subtotal terbaru
+            $preview = $this->loyalty->previewReward($order->customer_id, (string) $order->branch_id, $effectiveSubtotal);
+            $order->loyalty_reward   = $preview['reward'];
+            $order->loyalty_discount = $this->dec($preview['discount']);
+            $effectiveDiscount       = $baseDiscount + (float) $preview['discount'];
+
             $grand = max(0, $effectiveSubtotal - $effectiveDiscount);
             $due   = max(0, $grand - (float) $order->paid_amount);
 
@@ -7187,8 +7499,8 @@ class ReceivableService
 
 ### app/Services/UserService.php
 
-- SHA: `e1d4fbb51eb5`  
-- Ukuran: 5 KB  
+- SHA: `cc2814ba0167`  
+- Ukuran: 6 KB  
 - Namespace: `App\Services`
 
 **Class `UserService`**
@@ -7226,7 +7538,8 @@ class UserService
                 $s = $filters['search'];
                 $q->where(function ($w) use ($s) {
                     $w->where('name', 'like', "%{$s}%")
-                        ->orWhere('email', 'like', "%{$s}%");
+                        ->orWhere('email', 'like', "%{$s}%")
+                        ->orWhere('username', 'like', "%{$s}%");
                 });
             })
             ->when(!empty($filters['branch_id']), fn($q) => $q->where('branch_id', $filters['branch_id']))
@@ -7243,6 +7556,7 @@ class UserService
      * @param array{
      *   name:string,
      *   email:string,
+     *   username?:string,
      *   password:string,
      *   is_active?:bool,
      *   branch_id?:string|null,
@@ -7256,6 +7570,9 @@ class UserService
             $user = new User();
             $user->name = $data['name'];
             $user->email = $data['email'];
+            if (array_key_exists('username', $data)) {
+                $user->username = strtolower(trim((string) $data['username'])); // NEW
+            }
 
             // PILIH SALAH SATU:
             // 1) Jika model punya casts: 'password' => 'hashed', boleh langsung assign:
@@ -7281,6 +7598,7 @@ class UserService
      * @param array{
      *   name?:string,
      *   email?:string,
+     *   username?:string,
      *   password?:string|null,
      *   is_active?:bool,
      *   branch_id?:string|null,
@@ -7296,6 +7614,9 @@ class UserService
             }
             if (array_key_exists('email', $data)) {
                 $user->email = $data['email'];
+            }
+            if (array_key_exists('username', $data)) {
+                $user->username = strtolower(trim((string) $data['username'])); // NEW
             }
             if (!empty($data['password'])) {
                 // Sama catatan seperti create():
@@ -8224,7 +8545,7 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `95b105649861`  
+- SHA: `1318b89aba3b`  
 - Ukuran: 7 KB
 
 **Ringkasan Routes (deteksi heuristik):**
@@ -8271,6 +8592,8 @@ class UserSeeder extends Seeder
 | POST | `/customers` | `CustomerController` | `store` |
 | PUT | `/customers/{customer}` | `CustomerController` | `update` |
 | DELETE | `/customers/{customer}` | `CustomerController` | `destroy` |
+| GET | `/loyalty/{customer}` | `LoyaltyController` | `summary` |
+| GET | `/loyalty/{customer}/history` | `LoyaltyController` | `history` |
 | GET | `/orders/{order}/receipt` | `OrderController` | `receipt` |
 | POST | `/orders/{order}/share-link` | `OrderController` | `shareLink` |
 | POST | `/orders/{order}/payments` | `OrderPaymentsController` | `store` |
@@ -8316,6 +8639,7 @@ use App\Http\Controllers\Api\DeliveryController;
 use App\Http\Controllers\Api\ReceivableController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\LoyaltyController;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
@@ -8376,6 +8700,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/customers', [CustomerController::class, 'store']);
         Route::put('/customers/{customer}', [CustomerController::class, 'update']);
         Route::delete('/customers/{customer}', [CustomerController::class, 'destroy']);
+
+        // Loyalty (Stamp) — butuh login & scope cabang
+        Route::get('/loyalty/{customer}', [LoyaltyController::class, 'summary']);
+        Route::get('/loyalty/{customer}/history', [LoyaltyController::class, 'history']);
 
         // Receipt (HTML)
         Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt']);
