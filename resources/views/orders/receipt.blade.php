@@ -266,6 +266,43 @@
         color: #64748B;
       }
 
+      /* ========= Stamp Loyalty ========= */
+      .stamps {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 6px;
+        margin-top: 8px;
+      }
+
+      .stamp {
+        height: 22px;
+        border: 1px dashed var(--border);
+        border-radius: var(--radius-sm);
+        background: #fff;
+        box-shadow: var(--shadow-1);
+      }
+
+      .stamp--filled {
+        border-style: solid;
+        border-color: #1A4BFF;
+        background: #E6EDFF;
+      }
+
+      .stamp--milestone {
+        position: relative;
+      }
+
+      .stamp--milestone::after {
+        content: attr(data-m);
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: #1A4BFF;
+      }
+
       /* Card helpers */
       .stack {
         display: grid;
@@ -396,17 +433,71 @@
           </div>
         </div>
 
-        @php
-        $qrisPath = 'qris.png';
-        $hasQris = \Illuminate\Support\Facades\Storage::disk('public')->exists($qrisPath);
-        @endphp
+        {{-- === Stamp Loyalty (tampil hanya jika data tersedia dari controller) === --}}
+        @if(isset($loy) && $loy)
+        <div class="section">
+          <div class="muted" style="font-size:12px; margin-bottom:8px;">Stamp Loyalty</div>
 
-        @if(!$isLunas && $hasQris)
-        <div class="section qris-box">
-          <div class="qris-caption">Scan untuk bayar (QRIS)</div>
-          <img class="qris" src="{{ asset('storage/'.$qrisPath) }}" alt="QRIS">
+          <div class="row">
+            <div class="label">Progress</div>
+            <div class="value">{{ $loy['stamps'] }} / {{ $loy['cycle'] }}</div>
+          </div>
+
+          @php
+          $cycle = (int)($loy['cycle'] ?? 10);
+          $stamps = (int)($loy['stamps'] ?? 0);
+          $filled = $cycle > 0 ? ($stamps % $cycle) : 0;
+          // Jika tepat jatuh reward pada transaksi ini (mod 0), tampilkan penuh:
+          if ($filled === 0 && !empty($order->loyalty_reward)) {
+          $filled = $cycle;
+          }
+          @endphp
+          <div class="stamps" role="list" aria-label="Progres stamp loyalty">
+            @for ($i = 1; $i <= $cycle; $i++)
+              @php
+              $isFilled=$i <=$filled;
+              $milestone=($i===5 || $i===10) ? $i : null; // penanda 5 & 10
+              @endphp
+              <div
+              role="listitem"
+              class="stamp {{ $isFilled ? 'stamp--filled' : '' }} {{ $milestone ? 'stamp--milestone' : '' }}"
+              @if($milestone) data-m="{{ $milestone }}" @endif>
+          </div>
+          @endfor
+        </div>
+
+        @if(!empty($order->loyalty_reward))
+        <div style="font-size:12px; margin:6px 0 8px 0;">
+          Reward diterapkan pada transaksi ini:
+          @if($order->loyalty_reward === 'DISC25') <strong>Diskon 25%</strong>.
+          @elseif($order->loyalty_reward === 'FREE100') <strong>Gratis 100%</strong>.
+          @else <strong>{{ $order->loyalty_reward }}</strong>.
+          @endif
         </div>
         @endif
+
+        <div class="row">
+          <div class="label">Sisa ke Diskon 25%</div>
+          <div class="value">{{ $loy['sisa25'] }}</div>
+        </div>
+        <div class="row">
+          <div class="label">Sisa ke Gratis 100%</div>
+          <div class="value">{{ $loy['sisa100'] }}</div>
+        </div>
+      </div>
+      @endif
+
+      @php
+      $qrisPath = 'qris.png';
+      $hasQris = \Illuminate\Support\Facades\Storage::disk('public')->exists($qrisPath);
+      @endphp
+
+      @if(!$isLunas && $hasQris)
+      <div class="section qris-box">
+        <div class="qris-caption">Scan untuk bayar (QRIS)</div>
+        <img class="qris" src="{{ asset('storage/'.$qrisPath) }}" alt="QRIS">
+      </div>
+      @endif
       </div>
     </section>
 

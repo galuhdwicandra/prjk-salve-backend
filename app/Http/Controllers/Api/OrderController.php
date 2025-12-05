@@ -8,6 +8,7 @@ use App\Http\Requests\OrderUpdateRequest;
 use App\Http\Requests\OrderStatusRequest;
 use App\Models\Order;
 use App\Services\OrderService;
+use App\Services\LoyaltyService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
@@ -156,10 +157,36 @@ class OrderController extends Controller
             'branch:id,name,address',
         ]);
 
+        $loy = null;
+        if ($order->customer_id) {
+            /** @var \App\Services\LoyaltyService $loySvc */
+            $loySvc = app(LoyaltyService::class);
+            $acc    = $loySvc->getOrCreateAccount(
+                (string) $order->customer_id,
+                (string) $order->branch_id
+            );
+            $cycle   = LoyaltyService::CYCLE;
+            $stamps  = (int) $acc->stamps;
+            $next    = ($stamps % $cycle) + 1;
+            $target25  = 5;
+            $target100 = 10;
+            // sisa transaksi (0 artinya reward terjadi pada transaksi ini)
+            $sisa25   = ($target25  - $next + $cycle) % $cycle;
+            $sisa100  = ($target100 - $next + $cycle) % $cycle;
+            $loy = [
+                'stamps'  => $stamps,
+                'cycle'   => $cycle,
+                'next'    => $next,
+                'sisa25'  => $sisa25,
+                'sisa100' => $sisa100,
+            ];
+        }
+
         $html = view('orders.receipt', [
-            'order' => $order,
-            'branch' => $order->getRelation('branch'),
+            'order'     => $order,
+            'branch'    => $order->getRelation('branch'),
             'printedAt' => now(),
+            'loy'       => $loy,
         ])->render();
 
         return new Response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);

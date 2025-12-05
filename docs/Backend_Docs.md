@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-05 15:36:30_  
+_Dihasilkan otomatis: 2025-12-05 16:40:33_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -1318,7 +1318,7 @@ class InvoiceCounterController extends Controller
 
 ### app/Http/Controllers/Api/LoyaltyController.php
 
-- SHA: `326b00f4e1e6`  
+- SHA: `5d35fd551cef`  
 - Ukuran: 2 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -1347,7 +1347,7 @@ class LoyaltyController extends Controller
 
     public function summary(Request $req, Customer $customer)
     {
-        $this->authorize('view', [\App\Policies\LoyaltyPolicy::class, $customer]);
+        $this->authorize('viewLoyalty', $customer);
 
         $branchId = (string) ($req->query('branch_id') ?: $req->user()->branch_id ?: $customer->branch_id);
         $acc = $this->svc->getOrCreateAccount((string) $customer->getKey(), $branchId);
@@ -1366,7 +1366,7 @@ class LoyaltyController extends Controller
 
     public function history(Request $req, Customer $customer)
     {
-        $this->authorize('view', [\App\Policies\LoyaltyPolicy::class, $customer]);
+        $this->authorize('viewLoyalty', $customer);
 
         $branchId = (string) ($req->query('branch_id') ?: $req->user()->branch_id ?: $customer->branch_id);
         $logs = LoyaltyLog::query()
@@ -3723,8 +3723,8 @@ class CategoryPolicy
 
 ### app/Policies/CustomerPolicy.php
 
-- SHA: `1e54bc29353f`  
-- Ukuran: 1 KB  
+- SHA: `246ec52cc10f`  
+- Ukuran: 2 KB  
 - Namespace: `App\Policies`
 
 **Class `CustomerPolicy`**
@@ -3735,6 +3735,7 @@ Metode Publik:
 - **view**(User $user, Customer $c) : *bool*
 - **create**(User $user) : *bool*
 - **update**(User $user, Customer $c) : *bool*
+- **viewLoyalty**(User $user, Customer $customer) : *bool*
 - **delete**(User $user, Customer $c) : *bool*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -3778,6 +3779,15 @@ class CustomerPolicy
     {
         if ($user->hasRole('Admin Cabang') || $user->hasRole('Kasir')) {
             return (string) $user->branch_id === (string) $c->branch_id;
+        }
+        return false;
+    }
+
+    public function viewLoyalty(User $user, Customer $customer): bool
+    {
+        if ($user->hasRole('Superadmin')) return true;
+        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
+            return (string)$user->branch_id === (string)$customer->branch_id;
         }
         return false;
     }
@@ -6712,7 +6722,7 @@ class InvoiceService
 
 ### app/Services/LoyaltyService.php
 
-- SHA: `21207bc97be0`  
+- SHA: `73dcead351ef`  
 - Ukuran: 5 KB  
 - Namespace: `App\Services`
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
@@ -6799,7 +6809,7 @@ final class LoyaltyService
             if ($order->loyalty_reward === 'DISC25') {
                 LoyaltyLog::create([
                     'id' => (string) Str::uuid(),
-                    'order_id' => (string) $order->getKey(),
+                    'order_id' => null,
                     'customer_id' => (string) $order->customer_id,
                     'branch_id' => (string) $order->branch_id,
                     'action' => 'REWARD25',
@@ -6809,7 +6819,7 @@ final class LoyaltyService
             } elseif ($order->loyalty_reward === 'FREE100') {
                 LoyaltyLog::create([
                     'id' => (string) Str::uuid(),
-                    'order_id' => (string) $order->getKey(),
+                    'order_id' => null,
                     'customer_id' => (string) $order->customer_id,
                     'branch_id' => (string) $order->branch_id,
                     'action' => 'REWARD100',
@@ -6819,24 +6829,35 @@ final class LoyaltyService
             }
 
             // earn +1, reset jika mencapai 10
-            $after = $before + 1;
-            $didReset = false;
-            if ($after >= self::CYCLE) {
-                $after = 0;
-                $didReset = true;
-            }
+            $afterEarn = $before + 1;     // nilai setelah earn
+            $didReset  = $afterEarn >= self::CYCLE;
+            $after     = $didReset ? 0 : $afterEarn;
 
             $acc->update(['stamps' => $after, 'lifetime' => (int) $acc->lifetime + 1]);
 
+            // SATU-SATUNYA log yang mengikat order_id: EARN
             LoyaltyLog::create([
                 'id' => (string) Str::uuid(),
                 'order_id' => (string) $order->getKey(),
                 'customer_id' => (string) $order->customer_id,
                 'branch_id' => (string) $order->branch_id,
-                'action' => $didReset ? 'RESET' : 'EARN',
+                'action' => 'EARN',
                 'before' => $before,
                 'after' => $after,
             ]);
+
+            // Jika terjadi reset (menyentuh ke-10), catat RESET sebagai histori tambahan TANPA order_id
+            if ($didReset) {
+                LoyaltyLog::create([
+                    'id' => (string) Str::uuid(),
+                    'order_id' => null,
+                    'customer_id' => (string) $order->customer_id,
+                    'branch_id' => (string) $order->branch_id,
+                    'action' => 'RESET',
+                    'before' => $afterEarn,
+                    'after' => 0,
+                ]);
+            }
         });
     }
 }
