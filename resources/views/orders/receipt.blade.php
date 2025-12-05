@@ -501,6 +501,21 @@
       </div>
     </section>
 
+    <!-- PERHATIAN / Ketentuan Layanan -->
+    <section class="card">
+      <div class="section">
+        <div class="muted" style="font-size:12px; font-weight:700; margin-bottom:8px;">PERHATIAN!</div>
+        <ul style="margin:0; padding-left:18px; font-size:12px; color:#334155; display:grid; gap:4px;">
+          <li>sampaikan pada petugas jika ada sepatu yang perlu perlakuan khusus.</li>
+          <li>pengambilan harus di sertai link struk, jika link struk hilang atau terhapus bawa kartu identitas diri (KTP/SIM).</li>
+          <li>pengaduan maksimal 1x24 jam setelah sepatu di terima, disertai link struk.</li>
+          <li>sepatu tidak di ambil setelah tanggal kesepakatan pengambilan, jika mengalami kerusakan, kehilangan dan Kembali kotor bukan menjadi tanggung jawab kami.</li>
+          <li>jika terjadi kerusakan dalam pengerjaan sepatu, penggantian kerugian maksimal 3x Harga pengerjaan sepatu tsb.</li>
+          <li>jika terjadi hal yang bersifat force majeure, sepatu yang berada di store bukan menjadi tanggung jawab kami!</li>
+        </ul>
+      </div>
+    </section>
+
     <!-- Footer -->
     <section class="card">
       <div class="section footer">
