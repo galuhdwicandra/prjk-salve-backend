@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-05 19:07:50_  
+_Dihasilkan otomatis: 2025-12-05 19:46:46_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -6405,8 +6405,8 @@ class AuthService
 
 ### app/Services/DashboardService.php
 
-- SHA: `a5574bfaf3e1`  
-- Ukuran: 4 KB  
+- SHA: `f3a332e48a13`  
+- Ukuran: 5 KB  
 - Namespace: `App\Services`
 
 **Class `DashboardService`**
@@ -6475,6 +6475,13 @@ class DashboardService
             ', [$now, $now])
             ->first();
 
+        $dp = DB::table('receivables')
+            ->join('orders', 'orders.id', '=', 'receivables.order_id')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereIn('receivables.status', ['OPEN', 'PARTIAL'])
+            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(receivables.remaining_amount),0) as amt')
+            ->first();
+
         // TOP LAYANAN: top 5 by omzet (order_items.total) dalam window orders.created_at
         $topServices = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
@@ -6500,6 +6507,8 @@ class DashboardService
                 'open_count' => (int) ($piutang->open_count ?? 0),
                 'overdue_amount' => (float) ($piutang->overdue_amount ?? 0),
                 'overdue_count' => (int) ($piutang->overdue_count ?? 0),
+                'dp_outstanding_count' => (int) ($dp->cnt ?? 0),
+                'dp_outstanding_amount' => (float) ($dp->amt ?? 0),
             ],
             'top_services' => $topServices,
         ];
@@ -8222,8 +8231,8 @@ class UserSeeder extends Seeder
 
 ### resources/views/orders/receipt.blade.php
 
-- SHA: `ef4cfdc3fb67`  
-- Ukuran: 13 KB  
+- SHA: `620374e4da34`  
+- Ukuran: 14 KB  
 - Namespace: ``
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -8728,6 +8737,21 @@ class UserSeeder extends Seeder
         <img class="qris" src="{{ asset('storage/'.$qrisPath) }}" alt="QRIS">
       </div>
       @endif
+      </div>
+    </section>
+
+    <!-- PERHATIAN / Ketentuan Layanan -->
+    <section class="card">
+      <div class="section">
+        <div class="muted" style="font-size:12px; font-weight:700; margin-bottom:8px;">PERHATIAN!</div>
+        <ul style="margin:0; padding-left:18px; font-size:12px; color:#334155; display:grid; gap:4px;">
+          <li>sampaikan pada petugas jika ada sepatu yang perlu perlakuan khusus.</li>
+          <li>pengambilan harus di sertai link struk, jika link struk hilang atau terhapus bawa kartu identitas diri (KTP/SIM).</li>
+          <li>pengaduan maksimal 1x24 jam setelah sepatu di terima, disertai link struk.</li>
+          <li>sepatu tidak di ambil setelah tanggal kesepakatan pengambilan, jika mengalami kerusakan, kehilangan dan Kembali kotor bukan menjadi tanggung jawab kami.</li>
+          <li>jika terjadi kerusakan dalam pengerjaan sepatu, penggantian kerugian maksimal 3x Harga pengerjaan sepatu tsb.</li>
+          <li>jika terjadi hal yang bersifat force majeure, sepatu yang berada di store bukan menjadi tanggung jawab kami!</li>
+        </ul>
       </div>
     </section>
 
