@@ -12,12 +12,43 @@ class OrderStoreRequest extends FormRequest
         return $this->user()?->can('create', \App\Models\Order::class) ?? false;
     }
 
+    /**
+     * Normalisasi waktu lokal "naif" ke 'Y-m-d H:i:s' tanpa konversi zona waktu.
+     */
+    protected function normalizeLocal(?string $dt): ?string
+    {
+        if (!$dt) return null;
+        $s = str_replace('T', ' ', trim($dt));
+        $s = preg_replace('/Z$/', '', $s); // buang Z bila ada
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
+            $s .= ':00';
+        }
+        try {
+            return \Carbon\CarbonImmutable::createFromFormat('Y-m-d H:i:s', $s)->format('Y-m-d H:i:s');
+        } catch (\Throwable) {
+            // Jika format tak cocok, biarkan apa adanya agar validator 'date' menangkapnya.
+            return $s;
+        }
+    }
+
     protected function prepareForValidation(): void
     {
+        $data = [];
         if ($this->has('customer_id')) {
-            $this->merge([
-                'customer_id' => trim((string) $this->input('customer_id')),
-            ]);
+            $data['customer_id'] = trim((string) $this->input('customer_id'));
+        }
+        if ($this->has('notes')) {
+            $data['notes'] = ($this->input('notes') === null) ? null : trim((string) $this->input('notes'));
+        }
+        // Normalisasi datetime lokal (tanpa konversi TZ) untuk kolom TIMESTAMP WITHOUT TIME ZONE
+        if ($this->has('received_at')) {
+            $data['received_at'] = $this->normalizeLocal($this->input('received_at'));
+        }
+        if ($this->has('ready_at')) {
+            $data['ready_at'] = $this->normalizeLocal($this->input('ready_at'));
+        }
+        if ($data !== []) {
+            $this->merge($data);
         }
     }
 

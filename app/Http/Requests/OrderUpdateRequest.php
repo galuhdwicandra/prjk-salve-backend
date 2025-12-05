@@ -11,6 +11,25 @@ class OrderUpdateRequest extends FormRequest
         return true;
     }
 
+    /**
+     * Normalisasi waktu lokal "naif" ke 'Y-m-d H:i:s' tanpa konversi zona waktu.
+     */
+    protected function normalizeLocal(?string $dt): ?string
+    {
+        if (!$dt) return null;
+        $s = str_replace('T', ' ', trim($dt));
+        $s = preg_replace('/Z$/', '', $s); // buang Z bila ada
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
+            $s .= ':00';
+        }
+        try {
+            return \Carbon\CarbonImmutable::createFromFormat('Y-m-d H:i:s', $s)->format('Y-m-d H:i:s');
+        } catch (\Throwable) {
+            // Jika format tak cocok, biarkan apa adanya agar validator 'date' menangkapnya.
+            return $s;
+        }
+    }
+
     public function rules(): array
     {
         return [
@@ -31,6 +50,13 @@ class OrderUpdateRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $data = $this->all();
+        // Trim field sederhana bila dikirim
+        if (array_key_exists('customer_id', $data) && $data['customer_id'] !== null) {
+            $data['customer_id'] = trim((string) $data['customer_id']);
+        }
+        if (array_key_exists('notes', $data)) {
+            $data['notes'] = $data['notes'] === null ? null : trim((string) $data['notes']);
+        }
         if (isset($data['discount']) && $data['discount'] !== null) {
             $data['discount'] = is_numeric($data['discount']) ? (float) $data['discount'] : $data['discount'];
         }
@@ -40,6 +66,13 @@ class OrderUpdateRequest extends FormRequest
                     $data['items'][$k]['qty'] = is_numeric($row['qty']) ? (int) $row['qty'] : $row['qty'];
                 }
             }
+        }
+        // Normalisasi datetime lokal (tanpa konversi TZ) untuk kolom TIMESTAMP WITHOUT TIME ZONE
+        if (array_key_exists('received_at', $data)) {
+            $data['received_at'] = $this->normalizeLocal($data['received_at']);
+        }
+        if (array_key_exists('ready_at', $data)) {
+            $data['ready_at'] = $this->normalizeLocal($data['ready_at']);
         }
         $this->replace($data);
     }

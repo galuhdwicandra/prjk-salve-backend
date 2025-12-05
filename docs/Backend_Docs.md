@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-05 16:40:33_  
+_Dihasilkan otomatis: 2025-12-05 18:07:18_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -1389,8 +1389,8 @@ class LoyaltyController extends Controller
 
 ### app/Http/Controllers/Api/OrderController.php
 
-- SHA: `8f20e0e72171`  
-- Ukuran: 6 KB  
+- SHA: `b21ecbafe3cb`  
+- Ukuran: 7 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `OrderController` extends `Controller`**
@@ -1402,8 +1402,8 @@ Metode Publik:
 - **store**(OrderStoreRequest $request)
 - **update**(OrderUpdateRequest $request, Order $order)
 - **receipt**(Request $request, Order $order)
-- **shareLink**(Request $request, Order $order) : *JsonResponse*
-- **transitionStatus**(OrderStatusRequest $request, Order $order)
+- **shareLink**(Request $request, Order $order) : *JsonResponse* — @var \App\Services\LoyaltyService $loySvc
+- **transitionStatus**(OrderStatusRequest $request, Order $order) — @var \App\Services\LoyaltyService $loySvc
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -1417,6 +1417,7 @@ use App\Http\Requests\OrderUpdateRequest;
 use App\Http\Requests\OrderStatusRequest;
 use App\Models\Order;
 use App\Services\OrderService;
+use App\Services\LoyaltyService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
@@ -1565,10 +1566,36 @@ class OrderController extends Controller
             'branch:id,name,address',
         ]);
 
+        $loy = null;
+        if ($order->customer_id) {
+            /** @var \App\Services\LoyaltyService $loySvc */
+            $loySvc = app(LoyaltyService::class);
+            $acc    = $loySvc->getOrCreateAccount(
+                (string) $order->customer_id,
+                (string) $order->branch_id
+            );
+            $cycle   = LoyaltyService::CYCLE;
+            $stamps  = (int) $acc->stamps;
+            $next    = ($stamps % $cycle) + 1;
+            $target25  = 5;
+            $target100 = 10;
+            // sisa transaksi (0 artinya reward terjadi pada transaksi ini)
+            $sisa25   = ($target25  - $next + $cycle) % $cycle;
+            $sisa100  = ($target100 - $next + $cycle) % $cycle;
+            $loy = [
+                'stamps'  => $stamps,
+                'cycle'   => $cycle,
+                'next'    => $next,
+                'sisa25'  => $sisa25,
+                'sisa100' => $sisa100,
+            ];
+        }
+
         $html = view('orders.receipt', [
-            'order' => $order,
-            'branch' => $order->getRelation('branch'),
+            'order'     => $order,
+            'branch'    => $order->getRelation('branch'),
             'printedAt' => now(),
+            'loy'       => $loy,
         ])->render();
 
         return new Response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
@@ -5318,16 +5345,16 @@ class OrderStatusRequest extends FormRequest
 
 ### app/Http/Requests/OrderStoreRequest.php
 
-- SHA: `bed6c739ac9e`  
-- Ukuran: 2 KB  
+- SHA: `cc1faa755d53`  
+- Ukuran: 3 KB  
 - Namespace: `App\Http\Requests`
 
 **Class `OrderStoreRequest` extends `FormRequest`**
 
 Metode Publik:
 - **authorize**() : *bool*
-- **rules**() : *array*
-- **messages**() : *array*
+- **rules**() : *array* — Normalisasi waktu lokal "naif" ke 'Y-m-d H:i:s' tanpa konversi zona waktu.
+- **messages**() : *array* — Normalisasi waktu lokal "naif" ke 'Y-m-d H:i:s' tanpa konversi zona waktu.
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -5345,12 +5372,43 @@ class OrderStoreRequest extends FormRequest
         return $this->user()?->can('create', \App\Models\Order::class) ?? false;
     }
 
+    /**
+     * Normalisasi waktu lokal "naif" ke 'Y-m-d H:i:s' tanpa konversi zona waktu.
+     */
+    protected function normalizeLocal(?string $dt): ?string
+    {
+        if (!$dt) return null;
+        $s = str_replace('T', ' ', trim($dt));
+        $s = preg_replace('/Z$/', '', $s); // buang Z bila ada
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
+            $s .= ':00';
+        }
+        try {
+            return \Carbon\CarbonImmutable::createFromFormat('Y-m-d H:i:s', $s)->format('Y-m-d H:i:s');
+        } catch (\Throwable) {
+            // Jika format tak cocok, biarkan apa adanya agar validator 'date' menangkapnya.
+            return $s;
+        }
+    }
+
     protected function prepareForValidation(): void
     {
+        $data = [];
         if ($this->has('customer_id')) {
-            $this->merge([
-                'customer_id' => trim((string) $this->input('customer_id')),
-            ]);
+            $data['customer_id'] = trim((string) $this->input('customer_id'));
+        }
+        if ($this->has('notes')) {
+            $data['notes'] = ($this->input('notes') === null) ? null : trim((string) $this->input('notes'));
+        }
+        // Normalisasi datetime lokal (tanpa konversi TZ) untuk kolom TIMESTAMP WITHOUT TIME ZONE
+        if ($this->has('received_at')) {
+            $data['received_at'] = $this->normalizeLocal($this->input('received_at'));
+        }
+        if ($this->has('ready_at')) {
+            $data['ready_at'] = $this->normalizeLocal($this->input('ready_at'));
+        }
+        if ($data !== []) {
+            $this->merge($data);
         }
     }
 
@@ -5391,15 +5449,15 @@ class OrderStoreRequest extends FormRequest
 
 ### app/Http/Requests/OrderUpdateRequest.php
 
-- SHA: `e5533dd32b61`  
-- Ukuran: 2 KB  
+- SHA: `848783099280`  
+- Ukuran: 3 KB  
 - Namespace: `App\Http\Requests`
 
 **Class `OrderUpdateRequest` extends `FormRequest`**
 
 Metode Publik:
 - **authorize**() : *bool*
-- **rules**() : *array*
+- **rules**() : *array* — Normalisasi waktu lokal "naif" ke 'Y-m-d H:i:s' tanpa konversi zona waktu.
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -5414,6 +5472,25 @@ class OrderUpdateRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    /**
+     * Normalisasi waktu lokal "naif" ke 'Y-m-d H:i:s' tanpa konversi zona waktu.
+     */
+    protected function normalizeLocal(?string $dt): ?string
+    {
+        if (!$dt) return null;
+        $s = str_replace('T', ' ', trim($dt));
+        $s = preg_replace('/Z$/', '', $s); // buang Z bila ada
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
+            $s .= ':00';
+        }
+        try {
+            return \Carbon\CarbonImmutable::createFromFormat('Y-m-d H:i:s', $s)->format('Y-m-d H:i:s');
+        } catch (\Throwable) {
+            // Jika format tak cocok, biarkan apa adanya agar validator 'date' menangkapnya.
+            return $s;
+        }
     }
 
     public function rules(): array
@@ -5436,6 +5513,13 @@ class OrderUpdateRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $data = $this->all();
+        // Trim field sederhana bila dikirim
+        if (array_key_exists('customer_id', $data) && $data['customer_id'] !== null) {
+            $data['customer_id'] = trim((string) $data['customer_id']);
+        }
+        if (array_key_exists('notes', $data)) {
+            $data['notes'] = $data['notes'] === null ? null : trim((string) $data['notes']);
+        }
         if (isset($data['discount']) && $data['discount'] !== null) {
             $data['discount'] = is_numeric($data['discount']) ? (float) $data['discount'] : $data['discount'];
         }
@@ -5445,6 +5529,13 @@ class OrderUpdateRequest extends FormRequest
                     $data['items'][$k]['qty'] = is_numeric($row['qty']) ? (int) $row['qty'] : $row['qty'];
                 }
             }
+        }
+        // Normalisasi datetime lokal (tanpa konversi TZ) untuk kolom TIMESTAMP WITHOUT TIME ZONE
+        if (array_key_exists('received_at', $data)) {
+            $data['received_at'] = $this->normalizeLocal($data['received_at']);
+        }
+        if (array_key_exists('ready_at', $data)) {
+            $data['ready_at'] = $this->normalizeLocal($data['ready_at']);
         }
         $this->replace($data);
     }
@@ -8131,8 +8222,8 @@ class UserSeeder extends Seeder
 
 ### resources/views/orders/receipt.blade.php
 
-- SHA: `0fd8e47a525d`  
-- Ukuran: 10 KB  
+- SHA: `ef4cfdc3fb67`  
+- Ukuran: 13 KB  
 - Namespace: ``
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -8405,6 +8496,43 @@ class UserSeeder extends Seeder
         color: #64748B;
       }
 
+      /* ========= Stamp Loyalty ========= */
+      .stamps {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 6px;
+        margin-top: 8px;
+      }
+
+      .stamp {
+        height: 22px;
+        border: 1px dashed var(--border);
+        border-radius: var(--radius-sm);
+        background: #fff;
+        box-shadow: var(--shadow-1);
+      }
+
+      .stamp--filled {
+        border-style: solid;
+        border-color: #1A4BFF;
+        background: #E6EDFF;
+      }
+
+      .stamp--milestone {
+        position: relative;
+      }
+
+      .stamp--milestone::after {
+        content: attr(data-m);
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: #1A4BFF;
+      }
+
       /* Card helpers */
       .stack {
         display: grid;
@@ -8535,17 +8663,71 @@ class UserSeeder extends Seeder
           </div>
         </div>
 
-        @php
-        $qrisPath = 'qris.png';
-        $hasQris = \Illuminate\Support\Facades\Storage::disk('public')->exists($qrisPath);
-        @endphp
+        {{-- === Stamp Loyalty (tampil hanya jika data tersedia dari controller) === --}}
+        @if(isset($loy) && $loy)
+        <div class="section">
+          <div class="muted" style="font-size:12px; margin-bottom:8px;">Stamp Loyalty</div>
 
-        @if(!$isLunas && $hasQris)
-        <div class="section qris-box">
-          <div class="qris-caption">Scan untuk bayar (QRIS)</div>
-          <img class="qris" src="{{ asset('storage/'.$qrisPath) }}" alt="QRIS">
+          <div class="row">
+            <div class="label">Progress</div>
+            <div class="value">{{ $loy['stamps'] }} / {{ $loy['cycle'] }}</div>
+          </div>
+
+          @php
+          $cycle = (int)($loy['cycle'] ?? 10);
+          $stamps = (int)($loy['stamps'] ?? 0);
+          $filled = $cycle > 0 ? ($stamps % $cycle) : 0;
+          // Jika tepat jatuh reward pada transaksi ini (mod 0), tampilkan penuh:
+          if ($filled === 0 && !empty($order->loyalty_reward)) {
+          $filled = $cycle;
+          }
+          @endphp
+          <div class="stamps" role="list" aria-label="Progres stamp loyalty">
+            @for ($i = 1; $i <= $cycle; $i++)
+              @php
+              $isFilled=$i <=$filled;
+              $milestone=($i===5 || $i===10) ? $i : null; // penanda 5 & 10
+              @endphp
+              <div
+              role="listitem"
+              class="stamp {{ $isFilled ? 'stamp--filled' : '' }} {{ $milestone ? 'stamp--milestone' : '' }}"
+              @if($milestone) data-m="{{ $milestone }}" @endif>
+          </div>
+          @endfor
+        </div>
+
+        @if(!empty($order->loyalty_reward))
+        <div style="font-size:12px; margin:6px 0 8px 0;">
+          Reward diterapkan pada transaksi ini:
+          @if($order->loyalty_reward === 'DISC25') <strong>Diskon 25%</strong>.
+          @elseif($order->loyalty_reward === 'FREE100') <strong>Gratis 100%</strong>.
+          @else <strong>{{ $order->loyalty_reward }}</strong>.
+          @endif
         </div>
         @endif
+
+        <div class="row">
+          <div class="label">Sisa ke Diskon 25%</div>
+          <div class="value">{{ $loy['sisa25'] }}</div>
+        </div>
+        <div class="row">
+          <div class="label">Sisa ke Gratis 100%</div>
+          <div class="value">{{ $loy['sisa100'] }}</div>
+        </div>
+      </div>
+      @endif
+
+      @php
+      $qrisPath = 'qris.png';
+      $hasQris = \Illuminate\Support\Facades\Storage::disk('public')->exists($qrisPath);
+      @endphp
+
+      @if(!$isLunas && $hasQris)
+      <div class="section qris-box">
+        <div class="qris-caption">Scan untuk bayar (QRIS)</div>
+        <img class="qris" src="{{ asset('storage/'.$qrisPath) }}" alt="QRIS">
+      </div>
+      @endif
       </div>
     </section>
 
