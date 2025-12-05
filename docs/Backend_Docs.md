@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-05 19:46:46_  
+_Dihasilkan otomatis: 2025-12-05 20:11:37_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -6405,14 +6405,14 @@ class AuthService
 
 ### app/Services/DashboardService.php
 
-- SHA: `f3a332e48a13`  
-- Ukuran: 5 KB  
+- SHA: `56f00aba7078`  
+- Ukuran: 6 KB  
 - Namespace: `App\Services`
 
 **Class `DashboardService`**
 
 Metode Publik:
-- **summary**(Carbon $from, Carbon $to, ?string $branchId) : *array* — @param Carbon $from  mulai (awal hari)
+- **summary**(Carbon $from, Carbon $to, ?string $branchId) : *array* — @param Carbon $from  awal hari (inklusif)
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -6426,91 +6426,132 @@ use Illuminate\Support\Facades\DB;
 class DashboardService
 {
     /**
-     * @param Carbon $from  mulai (awal hari)
-     * @param Carbon $to    akhir (akhir hari)
+     * @param Carbon $from  awal hari (inklusif)
+     * @param Carbon $to    akhir hari (inklusif)
      * @param string|null $branchId
      * @return array<string,mixed>
      */
     public function summary(Carbon $from, Carbon $to, ?string $branchId): array
     {
-        // OMZET (basis kas): sum payments.amount dalam window paid_at
-        $omzet = DB::table('payments')
+        // === OMZET (basis kas) ===
+        $omzetTotal = (float) DB::table('payments')
             ->join('orders', 'orders.id', '=', 'payments.order_id')
             ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
             ->whereBetween('payments.paid_at', [$from, $to])
             ->sum('payments.amount');
 
-        // TRANSAKSI: count orders by created_at
-        $transaksi = DB::table('orders')
+        // === TRANSAKSI (jumlah order dibuat) ===
+        $ordersCount = (int) DB::table('orders')
             ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
             ->whereBetween('orders.created_at', [$from, $to])
             ->count();
 
-        // ONGKIR: sum deliveries.fee by deliveries.created_at
-        $ongkir = DB::table('deliveries')
+        // === ONGKIR (jumlah fee pengantaran) ===
+        $shippingFee = (float) DB::table('deliveries')
             ->join('orders', 'orders.id', '=', 'deliveries.order_id')
             ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
             ->whereBetween('deliveries.created_at', [$from, $to])
             ->sum('deliveries.fee');
 
-        // VOUCHER: jumlah order yang pakai voucher & total applied_amount by applied_at
-        $voucher = DB::table('order_vouchers')
+        // === VOUCHER (penggunaan & nilai) ===
+        $voucherAgg = DB::table('order_vouchers')
             ->join('orders', 'orders.id', '=', 'order_vouchers.order_id')
             ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
             ->whereBetween('order_vouchers.applied_at', [$from, $to])
-            ->selectRaw('COUNT(DISTINCT order_vouchers.order_id) as used_count, COALESCE(SUM(order_vouchers.applied_amount),0) as used_amount')
+            ->selectRaw('COUNT(DISTINCT order_vouchers.order_id) AS used_count,
+                         COALESCE(SUM(order_vouchers.applied_amount),0) AS used_amount')
             ->first();
 
-        // PIUTANG: outstanding (OPEN/PARTIAL/OVERDUE) per due_date vs now()
+        $vouchersUsedCount  = (int) ($voucherAgg->used_count  ?? 0);
+        $vouchersUsedAmount = (float) ($voucherAgg->used_amount ?? 0);
+
+        // === PIUTANG (outstanding & overdue) ===
         $now = now();
-        $piutang = DB::table('receivables')
+        $recv = DB::table('receivables')
             ->join('orders', 'orders.id', '=', 'receivables.order_id')
             ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
             ->whereIn('receivables.status', ['OPEN', 'PARTIAL', 'OVERDUE'])
-            ->selectRaw('
-                COALESCE(SUM(receivables.remaining_amount),0) as remaining,
-                COUNT(*) as open_count,
-                COALESCE(SUM(CASE WHEN receivables.due_date < ? THEN receivables.remaining_amount ELSE 0 END),0) as overdue_amount,
-                SUM(CASE WHEN receivables.due_date < ? THEN 1 ELSE 0 END) as overdue_count
-            ', [$now, $now])
+            ->selectRaw("
+                COALESCE(SUM(receivables.remaining_amount),0) AS remaining_amount,
+                COUNT(*) AS open_count,
+                COALESCE(SUM(CASE WHEN receivables.due_date < ? THEN receivables.remaining_amount ELSE 0 END),0) AS overdue_amount,
+                SUM(CASE WHEN receivables.due_date < ? THEN 1 ELSE 0 END) AS overdue_count
+            ", [$now, $now])
             ->first();
 
+        $receivablesOpenAmount = (float) ($recv->remaining_amount ?? 0);
+        $receivablesOpenCount  = (int)   ($recv->open_count       ?? 0);
+        $overdueAmount         = (float) ($recv->overdue_amount   ?? 0);
+        $overdueCount          = (int)   ($recv->overdue_count    ?? 0);
+
+        // === DP Outstanding (diletakkan di root KPI) ===
         $dp = DB::table('receivables')
             ->join('orders', 'orders.id', '=', 'receivables.order_id')
             ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
             ->whereIn('receivables.status', ['OPEN', 'PARTIAL'])
-            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(receivables.remaining_amount),0) as amt')
+            ->selectRaw('COUNT(*) AS cnt, COALESCE(SUM(receivables.remaining_amount),0) AS amt')
             ->first();
 
-        // TOP LAYANAN: top 5 by omzet (order_items.total) dalam window orders.created_at
+        $dpOutstandingCount  = (int)   ($dp->cnt ?? 0);
+        $dpOutstandingAmount = (float) ($dp->amt ?? 0);
+
+        // === TOP LAYANAN (Top 5 by omzet dalam window order dibuat) ===
         $topServices = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('services', 'services.id', '=', 'order_items.service_id')
             ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
             ->whereBetween('orders.created_at', [$from, $to])
             ->groupBy('order_items.service_id', 'services.name')
-            ->selectRaw('order_items.service_id, services.name, SUM(order_items.qty) as qty, SUM(order_items.total) as amount')
+            ->selectRaw('order_items.service_id, services.name, SUM(order_items.qty) AS qty, SUM(order_items.total) AS amount')
             ->orderByDesc('amount')
             ->limit(5)
             ->get();
 
+        // === OMZET HARIAN (time-series untuk grafik) ===
+        $daily = DB::table('payments')
+            ->join('orders', 'orders.id', '=', 'payments.order_id')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereBetween('payments.paid_at', [$from, $to])
+            ->selectRaw("date_trunc('day', payments.paid_at)::date AS d, SUM(payments.amount) AS sum")
+            ->groupBy('d')
+            ->orderBy('d')
+            ->get()
+            ->map(fn($r) => ['date' => (string) $r->d, 'amount' => (float) $r->sum])
+            ->all();
+
+        // === OMZET BULANAN (time-series untuk grafik) ===
+        $monthly = DB::table('payments')
+            ->join('orders', 'orders.id', '=', 'payments.order_id')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereBetween('payments.paid_at', [$from, $to])
+            ->selectRaw("to_char(date_trunc('month', payments.paid_at), 'YYYY-MM') AS m, SUM(payments.amount) AS sum")
+            ->groupBy('m')
+            ->orderBy('m')
+            ->get()
+            ->map(fn($r) => ['month' => (string) $r->m, 'amount' => (float) $r->sum])
+            ->all();
+
+        // === Payload yang DIHARAPKAN Frontend (flatten + time-series) ===
         return [
-            'omzet' => (float) $omzet,
-            'transaksi' => (int) $transaksi,
-            'ongkir' => (float) $ongkir,
-            'voucher' => [
-                'used_count' => (int) ($voucher->used_count ?? 0),
-                'used_amount' => (float) ($voucher->used_amount ?? 0),
-            ],
-            'piutang' => [
-                'remaining' => (float) ($piutang->remaining ?? 0),
-                'open_count' => (int) ($piutang->open_count ?? 0),
-                'overdue_amount' => (float) ($piutang->overdue_amount ?? 0),
-                'overdue_count' => (int) ($piutang->overdue_count ?? 0),
-                'dp_outstanding_count' => (int) ($dp->cnt ?? 0),
-                'dp_outstanding_amount' => (float) ($dp->amt ?? 0),
-            ],
-            'top_services' => $topServices,
+            'omzet_total' => $omzetTotal,
+            'orders_count' => $ordersCount,
+
+            'delivery_shipping_fee' => $shippingFee,
+
+            'vouchers_used_count'  => $vouchersUsedCount,
+            'vouchers_used_amount' => $vouchersUsedAmount,
+
+            'receivables_open_count'  => $receivablesOpenCount,
+            'receivables_open_amount' => $receivablesOpenAmount,
+            'overdue_count'           => $overdueCount,
+            'overdue_amount'          => $overdueAmount,
+
+            'dp_outstanding_count'  => $dpOutstandingCount,
+            'dp_outstanding_amount' => $dpOutstandingAmount,
+
+            'omzet_daily'   => $daily,    // [{ date: 'YYYY-MM-DD', amount: number }, ...]
+            'omzet_monthly' => $monthly,  // [{ month: 'YYYY-MM', amount: number }, ...]
+            'top_services'  => $topServices,
         ];
     }
 }
