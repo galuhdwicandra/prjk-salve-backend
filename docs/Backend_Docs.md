@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-05 20:11:37_  
+_Dihasilkan otomatis: 2025-12-05 22:30:59_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -20,6 +20,7 @@ _Dihasilkan otomatis: 2025-12-05 20:11:37_
   - [app/Http/Controllers/Api/OrderPaymentsController.php](#file-apphttpcontrollersapiorderpaymentscontrollerphp)
   - [app/Http/Controllers/Api/OrderPhotosController.php](#file-apphttpcontrollersapiorderphotoscontrollerphp)
   - [app/Http/Controllers/Api/ReceivableController.php](#file-apphttpcontrollersapireceivablecontrollerphp)
+  - [app/Http/Controllers/Api/ReportController.php](#file-apphttpcontrollersapireportcontrollerphp)
   - [app/Http/Controllers/Api/ServiceController.php](#file-apphttpcontrollersapiservicecontrollerphp)
   - [app/Http/Controllers/Api/ServicePriceController.php](#file-apphttpcontrollersapiservicepricecontrollerphp)
   - [app/Http/Controllers/Api/UserController.php](#file-apphttpcontrollersapiusercontrollerphp)
@@ -84,6 +85,7 @@ _Dihasilkan otomatis: 2025-12-05 20:11:37_
   - [app/Http/Requests/Payments/PaymentRequest.php](#file-apphttprequestspaymentspaymentrequestphp)
   - [app/Http/Requests/Receivables/ReceivableCreateRequest.php](#file-apphttprequestsreceivablesreceivablecreaterequestphp)
   - [app/Http/Requests/Receivables/ReceivableSettleRequest.php](#file-apphttprequestsreceivablesreceivablesettlerequestphp)
+  - [app/Http/Requests/Reports/ReportFilterRequest.php](#file-apphttprequestsreportsreportfilterrequestphp)
   - [app/Http/Requests/ResetPasswordRequest.php](#file-apphttprequestsresetpasswordrequestphp)
   - [app/Http/Requests/ServicePriceSetRequest.php](#file-apphttprequestsservicepricesetrequestphp)
   - [app/Http/Requests/ServiceStoreRequest.php](#file-apphttprequestsservicestorerequestphp)
@@ -105,6 +107,7 @@ _Dihasilkan otomatis: 2025-12-05 20:11:37_
   - [app/Services/PaymentService.php](#file-appservicespaymentservicephp)
   - [app/Services/PricingService.php](#file-appservicespricingservicephp)
   - [app/Services/ReceivableService.php](#file-appservicesreceivableservicephp)
+  - [app/Services/ReportService.php](#file-appservicesreportservicephp)
   - [app/Services/UserService.php](#file-appservicesuserservicephp)
   - [app/Services/VoucherService.php](#file-appservicesvoucherservicephp)
 
@@ -1890,6 +1893,122 @@ class ReceivableController extends Controller
             'message' => 'Pelunasan berhasil.',
             'errors' => null,
         ]);
+    }
+}
+
+```
+</details>
+
+### app/Http/Controllers/Api/ReportController.php
+
+- SHA: `5ed7a88f5417`  
+- Ukuran: 4 KB  
+- Namespace: `App\Http\Controllers\Api`
+
+**Class `ReportController` extends `Controller`**
+
+Metode Publik:
+- **__construct**(private ReportService $svc)
+- **preview**(string $kind, ReportFilterRequest $req) : *JsonResponse* — GET /reports/{kind} – preview JSON (paginated)
+- **export**(string $kind, ReportFilterRequest $req) — GET /reports/{kind} – preview JSON (paginated)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Reports\ReportFilterRequest;
+use App\Services\ReportService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Str;
+
+class ReportController extends Controller
+{
+    public function __construct(private ReportService $svc) {}
+
+    /** GET /reports/{kind} – preview JSON (paginated) */
+    public function preview(string $kind, ReportFilterRequest $req): JsonResponse
+    {
+        [$q, $columns] = $this->resolveQuery($kind, $req);
+
+        $perPage = (int) max(1, min(100, (int) $req->input('per_page', 20)));
+        $page = $this->svc->paginate($q, $perPage);
+
+        return response()->json([
+            'data' => $page->items(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+                'last_page'    => $page->lastPage(),
+                'kind'         => $kind,
+                'columns'      => $columns,
+            ],
+            'message' => 'OK',
+            'errors'  => null,
+        ]);
+    }
+
+    /** GET /reports/{kind}/export?format=csv|xlsx – file download (CSV baseline) */
+    public function export(string $kind, ReportFilterRequest $req)
+    {
+        [$q, $columns] = $this->resolveQuery($kind, $req);
+
+        // format saat ini: CSV (Excel-ready). XLSX bisa ditambahkan kemudian.
+        $format = $req->input('format', 'csv');
+        $from   = $req->input('from');
+        $to     = $req->input('to');
+        $branch = $req->branchId() ? 'branch' : 'all';
+        $filename = sprintf('%s_%s-%s_%s.%s', $kind, str_replace('-', '', $from), str_replace('-', '', $to), $branch, $format);
+        $delimiterKey = $req->input('delimiter', 'semicolon');
+        $delimiter = match ($delimiterKey) {
+            'comma' => ',',
+            'tab' => "\t",
+            default => ';', // 'semicolon'
+        };
+
+        if ($format === 'csv') {
+            return $this->svc->streamCsv($q, $columns, $filename, $delimiter);
+        }
+
+        // Fallback, untuk saat ini tetap CSV bila XLSX belum diaktifkan
+        return $this->svc->streamCsv($q, $columns, Str::replaceLast('.xlsx', '.csv', $filename), $delimiter);
+    }
+
+    /** Resolver: mapping jenis report -> query builder + urutan kolom */
+    private function resolveQuery(string $kind, ReportFilterRequest $req): array
+    {
+        $from = $req->fromDate();
+        $to   = $req->toDate();
+        $bid  = $req->branchId();
+
+        switch ($kind) {
+            case 'sales':
+            case 'payments':
+                $q = $this->svc->buildSalesQuery($from, $to, $bid, $req->input('method'));
+                // alias kolom SELECT sudah snake_case agar pas ke CSV
+                $columns = ['branch', 'paid_at', 'invoice', 'method', 'amount', 'cashier'];
+                return [$q, $columns];
+
+            case 'orders':
+                $q = $this->svc->buildOrdersQuery($from, $to, $bid, $req->input('status'));
+                $columns = ['branch', 'created_at', 'number', 'invoice_no', 'customer', 'status', 'grand_total', 'paid_amount', 'payment_status'];
+                return [$q, $columns];
+
+            case 'receivables':
+                $q = $this->svc->buildReceivablesQuery($from, $to, $bid, $req->input('status'));
+                $columns = ['branch', 'date', 'invoice', 'remaining_amount', 'status'];
+                return [$q, $columns];
+
+            case 'expenses':
+                $q = $this->svc->buildExpensesQuery($from, $to, $bid);
+                $columns = ['branch', 'created_at', 'category', 'amount', 'note'];
+                return [$q, $columns];
+        }
+
+        abort(404, 'Unknown report kind.');
     }
 }
 
@@ -5784,6 +5903,80 @@ class ReceivableSettleRequest extends FormRequest
 ```
 </details>
 
+### app/Http/Requests/Reports/ReportFilterRequest.php
+
+- SHA: `6ee01e303594`  
+- Ukuran: 2 KB  
+- Namespace: `App\Http\Requests\Reports`
+
+**Class `ReportFilterRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **fromDate**() : *Carbon*
+- **toDate**() : *Carbon*
+- **branchId**() : *?string*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Reports;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Carbon;
+
+class ReportFilterRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        // Selaras dengan DashboardSummaryRequest (gate/ability yang sama)
+        return $this->user()?->can('dashboard.summary') === true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+            'branch_id' => ['nullable', 'uuid'],
+            // filter spesifik opsional
+            'method' => ['nullable', 'string', 'max:32'], // untuk sales (payments)
+            'status' => ['nullable', 'string', 'max:32'], // untuk orders/receivables
+            'format' => ['nullable', 'in:csv,xlsx'],
+            'delimiter' => ['nullable', 'in:comma,semicolon,tab'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $u = $this->user();
+        if ($u && !$u->hasRole('Superadmin') && !$this->input('branch_id')) {
+            $this->merge(['branch_id' => $u->branch_id]);
+        }
+    }
+
+    public function fromDate(): Carbon
+    {
+        return Carbon::createFromFormat('Y-m-d', $this->input('from'))->startOfDay();
+    }
+
+    public function toDate(): Carbon
+    {
+        return Carbon::createFromFormat('Y-m-d', $this->input('to'))->endOfDay();
+    }
+
+    public function branchId(): ?string
+    {
+        return $this->input('branch_id');
+    }
+}
+
+```
+</details>
+
 ### app/Http/Requests/ResetPasswordRequest.php
 
 - SHA: `7973077d9c62`  
@@ -7659,6 +7852,170 @@ class ReceivableService
 ```
 </details>
 
+### app/Services/ReportService.php
+
+- SHA: `33399c277e93`  
+- Ukuran: 5 KB  
+- Namespace: `App\Services`
+
+**Class `ReportService`**
+
+Metode Publik:
+- **buildSalesQuery**(Carbon $from, Carbon $to, ?string $branchId, ?string $method = null) — SALES (basis kas) – window: payments.paid_at
+- **buildOrdersQuery**(Carbon $from, Carbon $to, ?string $branchId, ?string $status = null) — SALES (basis kas) – window: payments.paid_at
+- **buildReceivablesQuery**(Carbon $from, Carbon $to, ?string $branchId, ?string $status = null) — SALES (basis kas) – window: payments.paid_at
+- **buildExpensesQuery**(Carbon $from, Carbon $to, ?string $branchId) — SALES (basis kas) – window: payments.paid_at
+- **paginate**($builder, int $perPage = 20) : *LengthAwarePaginator* — SALES (basis kas) – window: payments.paid_at
+- **streamCsv**($builder, array $headers, string $filename, string $delimiter = ';') — SALES (basis kas) – window: payments.paid_at
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Services;
+
+use Illuminate\Support\Carbon;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
+
+class ReportService
+{
+    /** SALES (basis kas) – window: payments.paid_at */
+    public function buildSalesQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $method = null)
+    {
+        $q = DB::table('payments')
+            ->join('orders', 'orders.id', '=', 'payments.order_id')
+            ->leftJoin('branches', 'branches.id', '=', 'orders.branch_id')
+            ->leftJoin('users', 'users.id', '=', 'orders.created_by') // kasir (opsional)
+            ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
+            ->whereBetween('payments.paid_at', [$from, $to])
+            ->selectRaw("
+                branches.name AS branch,
+                payments.paid_at,
+                COALESCE(orders.invoice_no, orders.number) AS invoice,
+                payments.method,
+                payments.amount,
+                users.name AS cashier
+            ");
+
+        if ($method) {
+            $q->where('payments.method', $method);
+        }
+
+        return $q->orderBy('payments.paid_at', 'asc');
+    }
+
+    /** ORDERS (basis transaksi dibuat) – window: orders.created_at */
+    public function buildOrdersQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $status = null)
+    {
+        $q = DB::table('orders')
+            ->leftJoin('branches', 'branches.id', '=', 'orders.branch_id')
+            ->leftJoin('customers', 'customers.id', '=', 'orders.customer_id')
+            ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
+            ->whereBetween('orders.created_at', [$from, $to])
+            ->selectRaw("
+                branches.name AS branch,
+                orders.created_at,
+                orders.number,
+                orders.invoice_no,
+                customers.name AS customer,
+                orders.status,
+                orders.grand_total,
+                orders.paid_amount,
+                orders.payment_status
+            ")
+            ->orderBy('orders.created_at', 'asc');
+
+        if ($status) {
+            $q->where('orders.status', $status);
+        }
+
+        return $q;
+    }
+
+    /** RECEIVABLES (Piutang) – window: receivables.due_date (atau created_at bila due_date null) */
+    public function buildReceivablesQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $status = null)
+    {
+        $q = DB::table('receivables')
+            ->join('orders', 'orders.id', '=', 'receivables.order_id')
+            ->leftJoin('branches', 'branches.id', '=', 'orders.branch_id')
+            ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
+            ->where(function ($w) use ($from, $to) {
+                $w->whereBetween('receivables.due_date', [$from->toDateString(), $to->toDateString()])
+                    ->orWhereBetween('receivables.created_at', [$from, $to]);
+            })
+            ->selectRaw("
+                branches.name AS branch,
+                COALESCE(receivables.due_date::text, to_char(receivables.created_at, 'YYYY-MM-DD')) AS date,
+                COALESCE(orders.invoice_no, orders.number) AS invoice,
+                receivables.remaining_amount,
+                receivables.status
+            ")
+            ->orderByRaw("COALESCE(receivables.due_date, receivables.created_at) ASC");
+
+        if ($status) {
+            $q->where('receivables.status', $status);
+        }
+
+        return $q;
+    }
+
+    /** EXPENSES – window: expenses.created_at */
+    public function buildExpensesQuery(Carbon $from, Carbon $to, ?string $branchId)
+    {
+        return DB::table('expenses')
+            ->leftJoin('branches', 'branches.id', '=', 'expenses.branch_id')
+            ->when($branchId, fn($qq) => $qq->where('expenses.branch_id', $branchId))
+            ->whereBetween('expenses.created_at', [$from, $to])
+            ->selectRaw("
+                branches.name AS branch,
+                expenses.created_at,
+                expenses.category,
+                expenses.amount,
+                expenses.note
+            ")
+            ->orderBy('expenses.created_at', 'asc');
+    }
+
+    /** Paginate untuk preview JSON */
+    public function paginate($builder, int $perPage = 20): LengthAwarePaginator
+    {
+        return $builder->paginate($perPage);
+    }
+
+    /** Stream CSV dengan header kolom berurutan */
+    public function streamCsv($builder, array $headers, string $filename, string $delimiter = ';')
+    {
+        return response()->streamDownload(function () use ($builder, $headers, $delimiter) {
+            $out = fopen('php://output', 'w');
+            // BOM agar Excel nyaman membaca UTF-8 (opsional)
+            fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fputcsv($out, $headers, $delimiter);
+            foreach ($builder->cursor() as $row) {
+                // urutkan nilai sesuai headers
+                $line = [];
+                foreach ($headers as $h) {
+                    $key = $this->normalizeKey($h);
+                    $line[] = $row->{$key} ?? null;
+                }
+                fputcsv($out, $line, $delimiter);
+            }
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    private function normalizeKey(string $header): string
+    {
+        // "Tanggal Bayar" -> "tanggal_bayar" (mapping sederhana: gunakan alias di SELECT agar sudah snake_case)
+        return str_replace(' ', '_', strtolower($header));
+    }
+}
+
+```
+</details>
+
 ### app/Services/UserService.php
 
 - SHA: `cc2814ba0167`  
@@ -8813,7 +9170,7 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `1318b89aba3b`  
+- SHA: `b71556f69452`  
 - Ukuran: 7 KB
 
 **Ringkasan Routes (deteksi heuristik):**
@@ -8860,6 +9217,8 @@ class UserSeeder extends Seeder
 | POST | `/customers` | `CustomerController` | `store` |
 | PUT | `/customers/{customer}` | `CustomerController` | `update` |
 | DELETE | `/customers/{customer}` | `CustomerController` | `destroy` |
+| GET | `/reports/{kind}` | `ReportController` | `preview` |
+| GET | `/reports/{kind}/export` | `ReportController` | `export` |
 | GET | `/loyalty/{customer}` | `LoyaltyController` | `summary` |
 | GET | `/loyalty/{customer}/history` | `LoyaltyController` | `history` |
 | GET | `/orders/{order}/receipt` | `OrderController` | `receipt` |
@@ -8908,6 +9267,7 @@ use App\Http\Controllers\Api\ReceivableController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\LoyaltyController;
+use App\Http\Controllers\Api\ReportController;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
@@ -8968,6 +9328,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/customers', [CustomerController::class, 'store']);
         Route::put('/customers/{customer}', [CustomerController::class, 'update']);
         Route::delete('/customers/{customer}', [CustomerController::class, 'destroy']);
+
+        // Reports
+        Route::get('/reports/{kind}', [ReportController::class, 'preview']);
+        Route::get('/reports/{kind}/export', [ReportController::class, 'export']);
 
         // Loyalty (Stamp) — butuh login & scope cabang
         Route::get('/loyalty/{customer}', [LoyaltyController::class, 'summary']);
