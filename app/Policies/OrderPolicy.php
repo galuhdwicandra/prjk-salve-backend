@@ -34,7 +34,7 @@ class OrderPolicy
 
     public function update(User $user, Order $order): bool
     {
-        if (! $user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
+        if (! $user->hasRole('Admin Cabang')) {
             return false;
         }
         // Harus satu cabang

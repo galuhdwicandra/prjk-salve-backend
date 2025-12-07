@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-07 22:42:41_  
+_Dihasilkan otomatis: 2025-12-08 02:07:23_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -4579,7 +4579,7 @@ class LoyaltyPolicy
 
 ### app/Policies/OrderPolicy.php
 
-- SHA: `c5b59f925b9d`  
+- SHA: `5d88ccb506d5`  
 - Ukuran: 2 KB  
 - Namespace: `App\Policies`
 
@@ -4633,7 +4633,7 @@ class OrderPolicy
 
     public function update(User $user, Order $order): bool
     {
-        if (! $user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
+        if (! $user->hasRole('Admin Cabang')) {
             return false;
         }
         // Harus satu cabang
@@ -7029,8 +7029,8 @@ class VoucherUpdateRequest extends FormRequest
 
 ### app/Http/Requests/WashNoteStoreRequest.php
 
-- SHA: `bb09ababf341`  
-- Ukuran: 3 KB  
+- SHA: `e5cd8c6c346f`  
+- Ukuran: 4 KB  
 - Namespace: `App\Http\Requests`
 
 **Class `WashNoteStoreRequest` extends `FormRequest`**
@@ -7059,21 +7059,53 @@ class WashNoteStoreRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        // Normalizer waktu: ubah "HH:MM:SS" → "HH:MM"
+        $normTime = function ($t) {
+            if ($t === null || $t === '') return null;
+            $t = trim((string) $t);
+            if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $t)) {
+                return substr($t, 0, 5);
+            }
+            return $t; // biarkan "HH:MM" apa adanya
+        };
+
+        // note_date tetap dirapikan
         if ($this->has('note_date')) {
-            $this->merge(['note_date' => trim((string)$this->input('note_date'))]);
+            $this->merge(['note_date' => trim((string) $this->input('note_date'))]);
         }
+
+        // items: pangkas detik untuk started_at/finished_at, kosong → null
         if ($this->has('items') && is_array($this->input('items'))) {
-            $items = array_map(function ($it) {
-                foreach (['started_at', 'finished_at', 'note'] as $k) {
+            $items = array_map(function ($it) use ($normTime) {
+                $it = (array) $it;
+
+                // Kosong "" → null untuk field tertentu
+                foreach (['started_at', 'finished_at', 'note', 'process_status'] as $k) {
                     if (array_key_exists($k, $it) && $it[$k] === '') {
                         $it[$k] = null;
                     }
                 }
+
+                // Normalisasi format waktu agar sesuai rule date_format:H:i
+                if (array_key_exists('started_at', $it)) {
+                    $it['started_at'] = $normTime($it['started_at']);
+                }
+                if (array_key_exists('finished_at', $it)) {
+                    $it['finished_at'] = $normTime($it['finished_at']);
+                }
+
+                // Rapikan order_id bila ada
+                if (array_key_exists('order_id', $it) && $it['order_id'] !== null) {
+                    $it['order_id'] = trim((string) $it['order_id']);
+                }
+
                 return $it;
             }, $this->input('items', []));
+
             $this->merge(['items' => $items]);
         }
     }
+
 
     public function rules(): array
     {
