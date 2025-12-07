@@ -78,7 +78,8 @@ class ReportController extends Controller
 
             case 'orders':
                 $q = $this->svc->buildOrdersQuery($from, $to, $bid, $req->input('status'));
-                $columns = ['branch', 'created_at', 'number', 'invoice_no', 'customer', 'status', 'grand_total', 'paid_amount', 'payment_status'];
+                // urutan kolom sinkron dengan alias SELECT
+                $columns = ['branch', 'created_at', 'number', 'invoice_no', 'customer', 'status', 'services', 'qty', 'grand_total', 'paid_amount', 'payment_status'];
                 return [$q, $columns];
 
             case 'receivables':
@@ -89,6 +90,11 @@ class ReportController extends Controller
             case 'expenses':
                 $q = $this->svc->buildExpensesQuery($from, $to, $bid);
                 $columns = ['branch', 'created_at', 'category', 'amount', 'note'];
+                return [$q, $columns];
+
+            case 'services':
+                $q = $this->svc->buildServiceItemsQuery($from, $to, $bid);
+                $columns = ['branch', 'service', 'unit', 'qty', 'amount'];
                 return [$q, $columns];
         }
 

@@ -8,6 +8,24 @@ use Illuminate\Support\Facades\DB;
 
 class ReportService
 {
+    public function buildServiceItemsQuery(Carbon $from, Carbon $to, ?string $branchId)
+    {
+        return DB::table('order_items as oi')
+            ->join('orders as o', 'o.id', '=', 'oi.order_id')
+            ->join('services as s', 's.id', '=', 'oi.service_id')
+            ->leftJoin('branches as b', 'b.id', '=', 'o.branch_id')
+            ->when($branchId, fn($qq) => $qq->where('o.branch_id', $branchId))
+            ->whereBetween('o.created_at', [$from, $to])
+            ->selectRaw("
+                b.name AS branch,
+                s.name AS service,
+                s.unit AS unit,
+                to_char(SUM(oi.qty), 'FM999999999.##') AS qty,
+                SUM(oi.qty * oi.price) AS amount
+            ")
+            ->groupBy('b.name', 's.name', 's.unit')
+            ->orderByDesc(DB::raw('SUM(oi.qty)'));
+    }
     /** SALES (basis kas) – window: payments.paid_at */
     public function buildSalesQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $method = null)
     {
@@ -39,6 +57,8 @@ class ReportService
         $q = DB::table('orders')
             ->leftJoin('branches', 'branches.id', '=', 'orders.branch_id')
             ->leftJoin('customers', 'customers.id', '=', 'orders.customer_id')
+            ->leftJoin('order_items as oi', 'oi.order_id', '=', 'orders.id')
+            ->leftJoin('services as s', 's.id', '=', 'oi.service_id')
             ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
             ->whereBetween('orders.created_at', [$from, $to])
             ->selectRaw("
@@ -48,10 +68,23 @@ class ReportService
                 orders.invoice_no,
                 customers.name AS customer,
                 orders.status,
+                string_agg((s.name || ' x' || to_char(oi.qty, 'FM999999999.##')), '; ' ORDER BY s.name) AS services,
+                to_char(SUM(oi.qty), 'FM999999999.##') AS qty,
                 orders.grand_total,
                 orders.paid_amount,
-                orders.payment_status
-            ")
+               orders.payment_status
+           ")
+            ->groupBy(
+                'branches.name',
+                'orders.created_at',
+                'orders.number',
+                'orders.invoice_no',
+                'customers.name',
+                'orders.status',
+                'orders.grand_total',
+                'orders.paid_amount',
+                'orders.payment_status'
+            )
             ->orderBy('orders.created_at', 'asc');
 
         if ($status) {

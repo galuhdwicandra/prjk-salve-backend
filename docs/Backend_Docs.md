@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-08 02:07:23_  
+_Dihasilkan otomatis: 2025-12-08 02:35:38_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -1907,7 +1907,7 @@ class ReceivableController extends Controller
 
 ### app/Http/Controllers/Api/ReportController.php
 
-- SHA: `5ed7a88f5417`  
+- SHA: `53432391d1e2`  
 - Ukuran: 4 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -2011,6 +2011,11 @@ class ReportController extends Controller
             case 'expenses':
                 $q = $this->svc->buildExpensesQuery($from, $to, $bid);
                 $columns = ['branch', 'created_at', 'category', 'amount', 'note'];
+                return [$q, $columns];
+
+            case 'services':
+                $q = $this->svc->buildServiceItemsQuery($from, $to, $bid);
+                $columns = ['branch', 'service', 'unit', 'qty', 'amount'];
                 return [$q, $columns];
         }
 
@@ -8552,13 +8557,14 @@ class ReceivableService
 
 ### app/Services/ReportService.php
 
-- SHA: `33399c277e93`  
-- Ukuran: 5 KB  
+- SHA: `f82a5e138459`  
+- Ukuran: 6 KB  
 - Namespace: `App\Services`
 
 **Class `ReportService`**
 
 Metode Publik:
+- **buildServiceItemsQuery**(Carbon $from, Carbon $to, ?string $branchId)
 - **buildSalesQuery**(Carbon $from, Carbon $to, ?string $branchId, ?string $method = null) — SALES (basis kas) – window: payments.paid_at
 - **buildOrdersQuery**(Carbon $from, Carbon $to, ?string $branchId, ?string $status = null) — SALES (basis kas) – window: payments.paid_at
 - **buildReceivablesQuery**(Carbon $from, Carbon $to, ?string $branchId, ?string $status = null) — SALES (basis kas) – window: payments.paid_at
@@ -8578,6 +8584,24 @@ use Illuminate\Support\Facades\DB;
 
 class ReportService
 {
+    public function buildServiceItemsQuery(Carbon $from, Carbon $to, ?string $branchId)
+    {
+        return DB::table('order_items as oi')
+            ->join('orders as o', 'o.id', '=', 'oi.order_id')
+            ->join('services as s', 's.id', '=', 'oi.service_id')
+            ->leftJoin('branches as b', 'b.id', '=', 'o.branch_id')
+            ->when($branchId, fn($qq) => $qq->where('o.branch_id', $branchId))
+            ->whereBetween('o.created_at', [$from, $to])
+            ->selectRaw("
+                b.name AS branch,
+                s.name AS service,
+                s.unit AS unit,
+                SUM(oi.qty)            AS qty,
+                SUM(oi.qty * oi.price) AS amount
+            ")
+            ->groupBy('b.name', 's.name', 's.unit')
+            ->orderByDesc(DB::raw('SUM(oi.qty)'));
+    }
     /** SALES (basis kas) – window: payments.paid_at */
     public function buildSalesQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $method = null)
     {
