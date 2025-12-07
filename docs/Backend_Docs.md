@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-05 22:30:59_  
+_Dihasilkan otomatis: 2025-12-07 22:42:41_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -25,6 +25,7 @@ _Dihasilkan otomatis: 2025-12-05 22:30:59_
   - [app/Http/Controllers/Api/ServicePriceController.php](#file-apphttpcontrollersapiservicepricecontrollerphp)
   - [app/Http/Controllers/Api/UserController.php](#file-apphttpcontrollersapiusercontrollerphp)
   - [app/Http/Controllers/Api/VoucherController.php](#file-apphttpcontrollersapivouchercontrollerphp)
+  - [app/Http/Controllers/Api/WashNoteController.php](#file-apphttpcontrollersapiwashnotecontrollerphp)
 
 - [Models (app/Models)](#models-appmodels)
   - [app/Models/Branch.php](#file-appmodelsbranchphp)
@@ -46,6 +47,8 @@ _Dihasilkan otomatis: 2025-12-05 22:30:59_
   - [app/Models/ServicePrice.php](#file-appmodelsservicepricephp)
   - [app/Models/User.php](#file-appmodelsuserphp)
   - [app/Models/Voucher.php](#file-appmodelsvoucherphp)
+  - [app/Models/WashNote.php](#file-appmodelswashnotephp)
+  - [app/Models/WashNoteItem.php](#file-appmodelswashnoteitemphp)
 
 - [Policies (app/Policies)](#policies-apppolicies)
   - [app/Policies/BranchPolicy.php](#file-apppoliciesbranchpolicyphp)
@@ -59,6 +62,7 @@ _Dihasilkan otomatis: 2025-12-05 22:30:59_
   - [app/Policies/ServicePolicy.php](#file-apppoliciesservicepolicyphp)
   - [app/Policies/UserPolicy.php](#file-apppoliciesuserpolicyphp)
   - [app/Policies/VoucherPolicy.php](#file-apppoliciesvoucherpolicyphp)
+  - [app/Policies/WashNotePolicy.php](#file-apppolicieswashnotepolicyphp)
 
 - [Form Requests (app/Http/Requests)](#form-requests-apphttprequests)
   - [app/Http/Requests/Auth/LoginRequest.php](#file-apphttprequestsauthloginrequestphp)
@@ -94,6 +98,8 @@ _Dihasilkan otomatis: 2025-12-05 22:30:59_
   - [app/Http/Requests/UserUpdateRequest.php](#file-apphttprequestsuserupdaterequestphp)
   - [app/Http/Requests/Vouchers/VoucherStoreRequest.php](#file-apphttprequestsvouchersvoucherstorerequestphp)
   - [app/Http/Requests/Vouchers/VoucherUpdateRequest.php](#file-apphttprequestsvouchersvoucherupdaterequestphp)
+  - [app/Http/Requests/WashNoteStoreRequest.php](#file-apphttprequestswashnotestorerequestphp)
+  - [app/Http/Requests/WashNoteUpdateRequest.php](#file-apphttprequestswashnoteupdaterequestphp)
 
 - [Services (app/Services)](#services-appservices)
   - [app/Services/AuthService.php](#file-appservicesauthservicephp)
@@ -2679,6 +2685,322 @@ class VoucherController extends Controller
 ```
 </details>
 
+### app/Http/Controllers/Api/WashNoteController.php
+
+- SHA: `572a86633ae1`  
+- Ukuran: 10 KB  
+- Namespace: `App\Http\Controllers\Api`
+
+**Class `WashNoteController` extends `Controller`**
+
+Metode Publik:
+- **index**(Request $request)
+- **show**(WashNote $wash_note)
+- **store**(WashNoteStoreRequest $request)
+- **update**(WashNoteUpdateRequest $request, WashNote $wash_note)
+- **destroy**(Request $request, WashNote $wash_note)
+- **candidates**(Request $request)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\WashNoteStoreRequest;
+use App\Http\Requests\WashNoteUpdateRequest;
+use App\Models\WashNote;
+use App\Models\WashNoteItem;
+use App\Models\Order;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+
+class WashNoteController extends Controller
+{
+    // GET /wash-notes
+    public function index(Request $request)
+    {
+        $this->authorize('viewAny', WashNote::class);
+
+        $me = $request->user();
+        $q = WashNote::query()
+            ->with(['user', 'branch'])
+            ->orderByDesc('note_date')
+            ->orderByDesc('created_at');
+
+        // Scope role
+        if ($me->hasRole('Petugas Cuci')) {
+            $q->where('user_id', $me->id);
+        } elseif ($me->hasRole('Admin Cabang') && $me->branch_id) {
+            $q->where('branch_id', $me->branch_id);
+        }
+
+        $from = $request->query('date_from');
+        $to   = $request->query('date_to');
+
+        if ($from && $to) {
+            $q->whereBetween('note_date', [$from, $to]);
+        } elseif ($from) {
+            $q->whereDate('note_date', '>=', $from);
+        } elseif ($to) {
+            $q->whereDate('note_date', '<=', $to);
+        }
+
+        $per  = (int) max(1, min(100, (int) $request->query('per_page', 20)));
+        $rows = $q->paginate($per);
+
+        $recap = [
+            'orders_count' => (int) $rows->sum('orders_count'),
+            'total_qty'    => (float) $rows->sum('total_qty'),
+        ];
+
+        return response()->json([
+            'data' => $rows->items(),
+            'meta' => [
+                'page'  => $rows->currentPage(),
+                'pages' => $rows->lastPage(),
+                'total' => $rows->total(),
+                'recap' => $recap,
+            ],
+            'message' => null,
+            'errors'  => null,
+        ]);
+    }
+
+    // GET /wash-notes/{id}
+    public function show(WashNote $wash_note)
+    {
+        $this->authorize('view', $wash_note);
+        $wash_note->load(['items.order.customer', 'user', 'branch']);
+
+        return response()->json([
+            'data' => $wash_note,
+            'meta' => null,
+            'message' => null,
+            'errors' => null,
+        ]);
+    }
+
+    // POST /wash-notes
+    public function store(WashNoteStoreRequest $request)
+    {
+        $me = $request->user();
+        $data = $request->validated();
+
+        $existing = WashNote::query()
+            ->where('user_id', $me->id)
+            ->whereDate('note_date', $data['note_date'])
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'data' => null,
+                'meta' => ['existing_id' => (string) $existing->id],
+                'message' => 'Catatan untuk tanggal tersebut sudah ada.',
+                'errors' => ['duplicate' => ['note_date already exists for this user']],
+            ], 422);
+        }
+
+        $note = DB::transaction(function () use ($me, $data) {
+            $note = WashNote::create([
+                'id' => Str::uuid()->toString(),
+                'user_id' => $me->id,
+                'branch_id' => $me->branch_id, // boleh null jika petugas di pusat
+                'note_date' => $data['note_date'],
+                'orders_count' => 0,
+                'total_qty' => 0,
+            ]);
+
+            $ordersCount = 0;
+            $totalQty = 0;
+
+            foreach ($data['items'] as $it) {
+                WashNoteItem::create([
+                    'id' => Str::uuid()->toString(),
+                    'wash_note_id' => $note->id,
+                    'order_id' => $it['order_id'],
+                    'qty' => number_format((float) ($it['qty'] ?? 0), 2, '.', ''),
+                    'process_status' => $it['process_status'] ?? null,
+                    'started_at' => $it['started_at'] ?? null,
+                    'finished_at' => $it['finished_at'] ?? null,
+                    'note' => $it['note'] ?? null,
+                ]);
+                $ordersCount++;
+                $totalQty += (float)($it['qty'] ?? 0);
+            }
+
+            $note->update([
+                'orders_count' => $ordersCount,
+                'total_qty' => number_format((float) $totalQty, 2, '.', ''),
+            ]);
+
+            return $note->fresh(['items.order.customer']);
+        });
+
+        return response()->json([
+            'data' => $note,
+            'meta' => null,
+            'message' => 'Catatan cuci dibuat.',
+            'errors' => null,
+        ], 201);
+    }
+
+    // PATCH /wash-notes/{wash_note}
+    public function update(WashNoteUpdateRequest $request, WashNote $wash_note)
+    {
+        $data = $request->validated();
+
+        $note = DB::transaction(function () use ($wash_note, $data) {
+            // Optional: update header tanggal (tetap pastikan unik per user+date)
+            if (isset($data['note_date']) && $data['note_date']) {
+                $dup = WashNote::where('user_id', $wash_note->user_id)
+                    ->whereDate('note_date', $data['note_date'])
+                    ->where('id', '!=', $wash_note->id)
+                    ->exists();
+                if ($dup) {
+                    abort(response()->json([
+                        'data' => null,
+                        'meta' => null,
+                        'message' => 'Tanggal sudah dipakai.',
+                        'errors' => ['duplicate' => ['note_date duplicate']],
+                    ], 422));
+                }
+                $wash_note->note_date = $data['note_date'];
+            }
+
+            if (isset($data['items'])) {
+                // sinkron sederhana: hapus semua lalu tulis ulang (aman & jelas)
+                $wash_note->items()->delete();
+
+                $ordersCount = 0;
+                $totalQty = 0;
+                foreach ($data['items'] as $it) {
+                    $wash_note->items()->create([
+                        'id' => Str::uuid()->toString(),
+                        'order_id' => $it['order_id'],
+                        'qty' => number_format((float) ($it['qty'] ?? 0), 2, '.', ''),
+                        'process_status' => $it['process_status'] ?? null,
+                        'started_at' => $it['started_at'] ?? null,
+                        'finished_at' => $it['finished_at'] ?? null,
+                        'note' => $it['note'] ?? null,
+                    ]);
+                    $ordersCount++;
+                    $totalQty += (float)($it['qty'] ?? 0);
+                }
+                $wash_note->orders_count = $ordersCount;
+                $wash_note->total_qty = number_format((float) $totalQty, 2, '.', '');
+            }
+
+            $wash_note->save();
+            return $wash_note->fresh(['items.order.customer']);
+        });
+
+        return response()->json([
+            'data' => $note,
+            'meta' => null,
+            'message' => 'Catatan cuci diperbarui.',
+            'errors' => null,
+        ]);
+    }
+
+    // DELETE /wash-notes/{wash_note}
+    public function destroy(Request $request, WashNote $wash_note)
+    {
+        $this->authorize('delete', $wash_note);
+        $wash_note->delete();
+
+        return response()->json([
+            'data' => null,
+            'meta' => null,
+            'message' => 'Catatan cuci dihapus.',
+            'errors' => null,
+        ]);
+    }
+
+    // GET /wash-notes/candidates?query=...&date=YYYY-MM-DD
+    // pencarian order untuk form tambah
+    public function candidates(Request $request)
+    {
+        $this->authorize('viewAny', WashNote::class);
+
+        $me     = $request->user();
+        $query  = trim((string) $request->query('query', ''));
+        $from   = $request->query('date_from');
+        $to     = $request->query('date_to');
+        // ⬅️ baru: tanggal catatan aktif dari klien (fallback ke ?date=)
+        $onDate = $request->query('on_date') ?: $request->query('date');
+
+        $q = Order::query()
+            ->with(['customer'])
+            ->withSum('items as default_qty', 'qty')
+            ->orderByDesc('created_at');
+
+        // Petugas Cuci boleh lintas cabang; selain itu batasi cabang
+        if (!$me->hasRole('Petugas Cuci') && $me->branch_id) {
+            $q->where('branch_id', $me->branch_id);
+        }
+
+        if ($query !== '') {
+            // Portabel: pgsql → ILIKE, selainnya pakai LOWER(...) LIKE untuk case-insensitive
+            if (DB::getDriverName() === 'pgsql') {
+                $q->where(function ($w) use ($query) {
+                    $w->where('number', 'ilike', "%{$query}%")
+                        ->orWhere('invoice_no', 'ilike', "%{$query}%")
+                        ->orWhereHas('customer', fn($c) => $c->where('name', 'ilike', "%{$query}%"));
+                });
+            } else {
+                $needle = '%' . mb_strtolower($query) . '%';
+                $q->where(function ($w) use ($needle) {
+                    $w->whereRaw('LOWER(number) LIKE ?', [$needle])
+                        ->orWhereRaw('LOWER(COALESCE(invoice_no, "")) LIKE ?', [$needle])
+                        ->orWhereHas('customer', fn($c) => $c->whereRaw('LOWER(name) LIKE ?', [$needle]));
+                });
+            }
+        }
+
+        if ($from && $to) {
+            $q->whereBetween('created_at', [$from . ' 00:00:00', $to . ' 23:59:59']);
+        } elseif ($from) {
+            $q->where('created_at', '>=', $from . ' 00:00:00');
+        } elseif ($to) {
+            $q->where('created_at', '<=', $to . ' 23:59:59');
+        }
+
+
+        if (empty($onDate)) {
+            $onDate = now()->toDateString();
+        }
+        $q->whereNotExists(function ($sub) use ($onDate, $me) {
+            $sub->from('wash_note_items as wni')
+                ->join('wash_notes as wn', 'wn.id', '=', 'wni.wash_note_id')
+                ->whereColumn('wni.order_id', 'orders.id')
+                ->whereDate('wn.note_date', $onDate);
+        });
+
+        $rows = $q->limit(20)->get();
+
+        $rows->transform(function ($o) {
+            $o->default_qty = (float) ($o->default_qty ?? 0);
+            return $o;
+        });
+
+        return response()->json([
+            'data'    => $rows,
+            'meta'    => [
+                'count'   => $rows->count(),
+                'on_date' => $onDate,
+            ],
+            'message' => null,
+            'errors'  => null,
+        ]);
+    }
+}
+
+```
+</details>
+
 
 
 ## Models (app/Models)
@@ -3730,6 +4052,124 @@ class Voucher extends Model
 ```
 </details>
 
+### app/Models/WashNote.php
+
+- SHA: `84ff66ac2ecb`  
+- Ukuran: 1010 B  
+- Namespace: `App\Models`
+
+**Class `WashNote` extends `Model`**
+
+Metode Publik:
+- **user**() : *BelongsTo*
+- **branch**() : *BelongsTo*
+- **items**() : *HasMany*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class WashNote extends Model
+{
+    protected $table = 'wash_notes';
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'id',
+        'user_id',
+        'branch_id',
+        'note_date',
+        'orders_count',
+        'total_qty',
+    ];
+
+    protected $casts = [
+        'note_date'  => 'date:Y-m-d',
+        'orders_count' => 'integer',
+        'total_qty' => 'decimal:2',
+        'created_at' => 'datetime:Y-m-d H:i:s',
+        'updated_at' => 'datetime:Y-m-d H:i:s',
+    ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+    public function items(): HasMany
+    {
+        return $this->hasMany(WashNoteItem::class);
+    }
+}
+
+```
+</details>
+
+### app/Models/WashNoteItem.php
+
+- SHA: `8ed7279d6289`  
+- Ukuran: 735 B  
+- Namespace: `App\Models`
+
+**Class `WashNoteItem` extends `Model`**
+
+Metode Publik:
+- **washNote**() : *BelongsTo*
+- **order**() : *BelongsTo*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class WashNoteItem extends Model
+{
+    protected $table = 'wash_note_items';
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'id',
+        'wash_note_id',
+        'order_id',
+        'qty',
+        'process_status',
+        'started_at',
+        'finished_at',
+        'note',
+    ];
+
+    protected $casts = [
+        'qty' => 'decimal:2',
+    ];
+
+    public function washNote(): BelongsTo
+    {
+        return $this->belongsTo(WashNote::class);
+    }
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
+    }
+}
+
+```
+</details>
+
 
 
 ## Policies (app/Policies)
@@ -4578,6 +5018,85 @@ class VoucherPolicy
     }
 }
 
+
+```
+</details>
+
+### app/Policies/WashNotePolicy.php
+
+- SHA: `8b2f48814901`  
+- Ukuran: 2 KB  
+- Namespace: `App\Policies`
+
+**Class `WashNotePolicy`**
+
+Metode Publik:
+- **before**(User $user, string $ability) : *bool|null*
+- **viewAny**(User $user) : *bool*
+- **view**(User $user, WashNote $note) : *bool*
+- **create**(User $user) : *bool*
+- **update**(User $user, WashNote $note) : *bool*
+- **delete**(User $user, WashNote $note) : *bool*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Policies;
+
+use App\Models\User;
+use App\Models\WashNote;
+
+class WashNotePolicy
+{
+    public function before(User $user, string $ability): bool|null
+    {
+        // Superadmin bebas semua
+        return $user->hasRole('Superadmin') ? true : null;
+    }
+
+    public function viewAny(User $user): bool
+    {
+        // Admin Cabang, Kasir, Petugas Cuci, Kurir minimal bisa lihat daftar (read-only)
+        return $user->hasAnyRole(['Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir']);
+    }
+
+    public function view(User $user, WashNote $note): bool
+    {
+        if ($user->hasRole('Petugas Cuci')) {
+            return (int)$user->id === (int)$note->user_id; // hanya miliknya
+        }
+        if ($user->hasRole('Admin Cabang') && $user->branch_id) {
+            return (string)$user->branch_id === (string)$note->branch_id;
+        }
+        return false;
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->hasRole('Petugas Cuci');
+    }
+
+    public function update(User $user, WashNote $note): bool
+    {
+        if ($user->hasRole('Petugas Cuci')) {
+            return (int)$user->id === (int)$note->user_id;
+        }
+        if ($user->hasRole('Admin Cabang') && $user->branch_id) {
+            return (string)$user->branch_id === (string)$note->branch_id;
+        }
+        return false;
+    }
+
+    public function delete(User $user, WashNote $note): bool
+    {
+        // Sesuai requirement: Petugas Cuci tidak bisa hapus; hanya Superadmin/Admin Cabang.
+        if ($user->hasRole('Admin Cabang') && $user->branch_id) {
+            return (string)$user->branch_id === (string)$note->branch_id;
+        }
+        return false;
+    }
+}
 
 ```
 </details>
@@ -6502,6 +7021,153 @@ class VoucherUpdateRequest extends FormRequest
             'usage_limit' => ['nullable', 'integer', 'min:1'],
             'active' => ['boolean'],
         ];
+    }
+}
+
+```
+</details>
+
+### app/Http/Requests/WashNoteStoreRequest.php
+
+- SHA: `bb09ababf341`  
+- Ukuran: 3 KB  
+- Namespace: `App\Http\Requests`
+
+**Class `WashNoteStoreRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **withValidator**($validator)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use App\Models\Order;
+
+class WashNoteStoreRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()?->can('create', \App\Models\WashNote::class) ?? false;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('note_date')) {
+            $this->merge(['note_date' => trim((string)$this->input('note_date'))]);
+        }
+        if ($this->has('items') && is_array($this->input('items'))) {
+            $items = array_map(function ($it) {
+                foreach (['started_at', 'finished_at', 'note'] as $k) {
+                    if (array_key_exists($k, $it) && $it[$k] === '') {
+                        $it[$k] = null;
+                    }
+                }
+                return $it;
+            }, $this->input('items', []));
+            $this->merge(['items' => $items]);
+        }
+    }
+
+    public function rules(): array
+    {
+        $me = $this->user();
+
+        return [
+            'note_date' => ['required', 'date'],
+            'items' => ['required', 'array', 'min:1'],
+
+            'items.*.order_id' => [
+                'required',
+                'uuid',
+                // Default: semua order harus dari cabang user (selaras constraint proyek).
+                // KECUALI Petugas Cuci: boleh lintas cabang (mengikuti kebutuhan operasional pusat).
+                Rule::exists('orders', 'id')->where(function ($q) use ($me) {
+                    // Superadmin & Petugas Cuci: tanpa filter cabang
+                    if ($me->hasRole('Superadmin') || $me->hasRole('Petugas Cuci')) {
+                        return $q;
+                    }
+                    // Selain itu: batasi ke cabang user bila ada
+                    if ($me->branch_id) {
+                        return $q->where('branch_id', $me->branch_id);
+                    }
+                    return $q;
+                }),
+            ],
+            'items.*.qty' => ['nullable', 'numeric', 'min:0'],
+            'items.*.process_status' => ['nullable', 'string', 'in:QUEUE,WASH,DRY,FINISHING,COMPLETED,PICKED_UP'], // refer SOP
+            'items.*.started_at' => ['nullable', 'date_format:H:i'],
+            'items.*.finished_at' => ['nullable', 'date_format:H:i'],
+            'items.*.note' => ['nullable', 'string', 'max:200'],
+        ];
+    }
+
+    public function withValidator($validator)
+    {
+        $validator->after(function ($v) {
+            $items = (array) $this->input('items', []);
+            foreach ($items as $idx => $it) {
+                $s = $it['started_at'] ?? null;
+                $f = $it['finished_at'] ?? null;
+                if ($s && $f && is_string($s) && is_string($f) && $f < $s) {
+                    $v->errors()->add("items.$idx.finished_at", "Jam selesai harus ≥ jam mulai.");
+                }
+            }
+        });
+    }
+}
+
+```
+</details>
+
+### app/Http/Requests/WashNoteUpdateRequest.php
+
+- SHA: `85a22f801f5d`  
+- Ukuran: 867 B  
+- Namespace: `App\Http\Requests`
+
+**Class `WashNoteUpdateRequest` extends `WashNoteStoreRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array* — PATCH: items tidak wajib dikirim. Aturan lain tetap mewarisi dari StoreRequest,
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests;
+
+class WashNoteUpdateRequest extends WashNoteStoreRequest
+{
+    public function authorize(): bool
+    {
+        $note = $this->route('wash_note'); // route-model binding
+        return $this->user()?->can('update', $note) ?? false;
+    }
+
+    /**
+     * PATCH: items tidak wajib dikirim. Aturan lain tetap mewarisi dari StoreRequest,
+     * termasuk pengecualian Superadmin/Petugas Cuci dan validasi jam mulai/selesai.
+     */
+    public function rules(): array
+    {
+        $rules = parent::rules();
+
+        // Jadikan items opsional saat update (tanpa min:1)
+        $rules['items'] = ['sometimes', 'array'];
+        // Nested fields hanya divalidasi jika items dikirim
+        $rules['items.*.order_id'][0] = 'required_with:items';
+        
+        $rules['note_date'] = ['sometimes', 'date'];
+
+        return $rules;
     }
 }
 
@@ -9170,7 +9836,7 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `b71556f69452`  
+- SHA: `95d2492a1b99`  
 - Ukuran: 7 KB
 
 **Ringkasan Routes (deteksi heuristik):**
@@ -9217,6 +9883,7 @@ class UserSeeder extends Seeder
 | POST | `/customers` | `CustomerController` | `store` |
 | PUT | `/customers/{customer}` | `CustomerController` | `update` |
 | DELETE | `/customers/{customer}` | `CustomerController` | `destroy` |
+| GET | `/wash-notes/candidates` | `WashNoteController` | `candidates` |
 | GET | `/reports/{kind}` | `ReportController` | `preview` |
 | GET | `/reports/{kind}/export` | `ReportController` | `export` |
 | GET | `/loyalty/{customer}` | `LoyaltyController` | `summary` |
@@ -9268,6 +9935,7 @@ use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\LoyaltyController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\WashNoteController;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
@@ -9329,6 +9997,10 @@ Route::prefix('v1')->group(function () {
         Route::put('/customers/{customer}', [CustomerController::class, 'update']);
         Route::delete('/customers/{customer}', [CustomerController::class, 'destroy']);
 
+        // Wash Notes
+        Route::get('/wash-notes/candidates', [WashNoteController::class, 'candidates']);
+        Route::apiResource('wash-notes', WashNoteController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
+
         // Reports
         Route::get('/reports/{kind}', [ReportController::class, 'preview']);
         Route::get('/reports/{kind}/export', [ReportController::class, 'export']);
@@ -9387,7 +10059,7 @@ Route::prefix('v1')->group(function () {
 
 ## AuthServiceProvider.php
 
-- SHA: `f488a92dd766`  
+- SHA: `4dd5fe74ab5e`  
 - Ukuran: 3 KB
 
 **$policies**
@@ -9401,6 +10073,7 @@ Route::prefix('v1')->group(function () {
 - `Voucher` => `VoucherPolicy`
 - `Receivable` => `ReceivablePolicy`
 - `Expense` => `ExpensePolicy`
+- `WashNote` => `WashNotePolicy`
 
 **Gate::define()**
 - `user.assignRole`
@@ -9440,6 +10113,8 @@ use App\Models\Receivable;
 use App\Policies\ReceivablePolicy;
 use App\Models\Expense;
 use App\Policies\ExpensePolicy;
+use App\Models\WashNote;
+use App\Policies\WashNotePolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -9455,6 +10130,7 @@ class AuthServiceProvider extends ServiceProvider
         Voucher::class => VoucherPolicy::class,
         Receivable::class => ReceivablePolicy::class,
         Expense::class => ExpensePolicy::class,
+        WashNote::class => WashNotePolicy::class,
     ];
 
     /**

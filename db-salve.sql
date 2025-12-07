@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict pOmrYsJgbgxt8dAM4y2FSRbTSxztvVzXqa0CZBKvNtdgPvE16S9ox1LPyfEHMkh
+\restrict OSKo5r7ukoIhONMWIPccPe16RTyGPT5ja8kQp5nP3KCU94FYhqapgsHGc0AgomZ
 
 -- Dumped from database version 18.1 (Ubuntu 18.1-1.pgdg24.04+2)
 -- Dumped by pg_dump version 18.1 (Ubuntu 18.1-1.pgdg24.04+2)
@@ -686,6 +686,40 @@ CREATE TABLE "public"."vouchers" (
 
 
 --
+-- Name: wash_note_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE "public"."wash_note_items" (
+    "id" "uuid" NOT NULL,
+    "wash_note_id" "uuid" NOT NULL,
+    "order_id" "uuid" NOT NULL,
+    "qty" numeric(10,2) DEFAULT '0'::numeric NOT NULL,
+    "process_status" character varying(20),
+    "started_at" time(0) without time zone,
+    "finished_at" time(0) without time zone,
+    "note" character varying(200),
+    "created_at" timestamp(0) without time zone,
+    "updated_at" timestamp(0) without time zone
+);
+
+
+--
+-- Name: wash_notes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE "public"."wash_notes" (
+    "id" "uuid" NOT NULL,
+    "user_id" bigint NOT NULL,
+    "branch_id" "uuid",
+    "note_date" "date" NOT NULL,
+    "orders_count" integer DEFAULT 0 NOT NULL,
+    "total_qty" numeric(12,2) DEFAULT '0'::numeric NOT NULL,
+    "created_at" timestamp(0) without time zone,
+    "updated_at" timestamp(0) without time zone
+);
+
+
+--
 -- Name: failed_jobs id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -740,6 +774,7 @@ ALTER TABLE ONLY "public"."users" ALTER COLUMN "id" SET DEFAULT "nextval"('"publ
 
 COPY "public"."branches" ("id", "code", "name", "address", "invoice_prefix", "reset_policy", "created_at", "updated_at") FROM stdin;
 71adee1b-91d7-43cc-a712-9eaac873c6a5	CBG-001	Cabang Utama	Alamat Cabang Utama	SLV	never	2025-11-25 14:29:33	2025-12-05 02:08:37
+cd7ab9e8-4091-4bc5-b78a-98607725300a	CBG-02	Ujung Berung	Jl Ah Nasution	SLV	never	2025-12-06 19:18:07	2025-12-06 19:18:07
 \.
 
 
@@ -748,7 +783,7 @@ COPY "public"."branches" ("id", "code", "name", "address", "invoice_prefix", "re
 --
 
 COPY "public"."cache" ("key", "value", "expiration") FROM stdin;
-salve-cache-spatie.permission.cache	a:3:{s:5:"alias";a:0:{}s:11:"permissions";a:0:{}s:5:"roles";a:0:{}}	1765034783
+salve-cache-spatie.permission.cache	a:3:{s:5:"alias";a:0:{}s:11:"permissions";a:0:{}s:5:"roles";a:0:{}}	1765191482
 \.
 
 
@@ -777,6 +812,7 @@ d699897e-14c0-417c-b745-5904d8e554ec	71adee1b-91d7-43cc-a712-9eaac873c6a5	Custom
 COPY "public"."deliveries" ("id", "order_id", "type", "zone_id", "fee", "assigned_to", "auto_assigned", "status", "handover_photo", "created_at", "updated_at") FROM stdin;
 019aba2d-b26d-705c-ae5b-62dc30e0ebde	019aba2d-6a28-72ef-b18c-8c7a1f7d318e	delivery	\N	0.00	5	t	ON_THE_WAY	\N	2025-11-25 15:42:28	2025-12-05 02:51:32
 019aba00-13be-72ac-9670-48efb8385682	019ab9ff-23cc-7064-978b-e932acbffe33	delivery	\N	0.00	5	t	ON_THE_WAY	\N	2025-11-25 14:52:38	2025-12-05 02:51:34
+019af394-f45b-70f8-8999-11f242d3dfb9	019af38f-9084-70b8-be86-664f056e9e6d	delivery	\N	0.00	5	t	ASSIGNED	\N	2025-12-06 19:13:36	2025-12-06 19:13:36
 \.
 
 
@@ -791,6 +827,8 @@ COPY "public"."delivery_events" ("id", "delivery_id", "status", "note", "created
 019aba2d-b282-7311-8289-85e728c2f934	019aba2d-b26d-705c-ae5b-62dc30e0ebde	ASSIGNED	Auto-assigned courier #5	2025-11-25 15:42:28	2025-11-25 15:42:28
 019aeaeb-7aaf-700e-9df2-f35cfefa2a7e	019aba2d-b26d-705c-ae5b-62dc30e0ebde	ON_THE_WAY	\N	2025-12-05 02:51:32	2025-12-05 02:51:32
 019aeaeb-833d-7189-8bb4-bf477bcbbeb7	019aba00-13be-72ac-9670-48efb8385682	ON_THE_WAY	\N	2025-12-05 02:51:34	2025-12-05 02:51:34
+019af394-f463-722c-b8c2-105c90dbb5b0	019af394-f45b-70f8-8999-11f242d3dfb9	CREATED	Delivery created	2025-12-06 19:13:36	2025-12-06 19:13:36
+019af394-f479-7060-9777-8a9daaa9ca8a	019af394-f45b-70f8-8999-11f242d3dfb9	ASSIGNED	Auto-assigned courier #5	2025-12-06 19:13:36	2025-12-06 19:13:36
 \.
 
 
@@ -799,6 +837,7 @@ COPY "public"."delivery_events" ("id", "delivery_id", "status", "note", "created
 --
 
 COPY "public"."expenses" ("id", "branch_id", "category", "amount", "note", "proof_path", "created_at", "updated_at") FROM stdin;
+019af39a-32fd-7142-96af-7a674cb5f70e	cd7ab9e8-4091-4bc5-b78a-98607725300a	Listrik	20000.00	\N	storage/uploads/expenses/W7xA8gA1orqkQBSIryRiEwV8broGzXeFLfvWPgCY.png	2025-12-06 19:19:20	2025-12-06 19:19:20
 \.
 
 
@@ -815,7 +854,8 @@ COPY "public"."failed_jobs" ("id", "uuid", "connection", "queue", "payload", "ex
 --
 
 COPY "public"."invoice_counters" ("id", "branch_id", "prefix", "seq", "reset_policy", "last_reset_month", "created_at", "updated_at") FROM stdin;
-019ab9f5-1df2-719c-ab37-1f6b4ef59514	71adee1b-91d7-43cc-a712-9eaac873c6a5	SLV	7535	never	\N	2025-11-25 14:40:40	2025-12-05 18:30:55
+019ab9f5-1df2-719c-ab37-1f6b4ef59514	71adee1b-91d7-43cc-a712-9eaac873c6a5	SLV	7536	never	\N	2025-11-25 14:40:40	2025-12-06 19:07:43
+019af399-d390-7398-a7c5-bb8a3e4c334e	cd7ab9e8-4091-4bc5-b78a-98607725300a	SLV	0	never	\N	2025-12-06 19:18:56	2025-12-06 19:18:56
 \.
 
 
@@ -841,7 +881,7 @@ COPY "public"."jobs" ("id", "queue", "payload", "attempts", "reserved_at", "avai
 
 COPY "public"."loyalty_accounts" ("id", "customer_id", "branch_id", "stamps", "lifetime", "created_at", "updated_at") FROM stdin;
 019aed50-ff95-703e-9f77-527f2b1d249f	1ec7273c-d85e-4d92-a10b-545820df93b8	71adee1b-91d7-43cc-a712-9eaac873c6a5	6	6	2025-12-05 14:01:39	2025-12-05 17:06:23
-019aed52-0df6-73a7-b9f1-933f8f3c3bbb	d699897e-14c0-417c-b745-5904d8e554ec	71adee1b-91d7-43cc-a712-9eaac873c6a5	3	3	2025-12-05 14:02:49	2025-12-05 18:30:55
+019aed52-0df6-73a7-b9f1-933f8f3c3bbb	d699897e-14c0-417c-b745-5904d8e554ec	71adee1b-91d7-43cc-a712-9eaac873c6a5	4	4	2025-12-05 14:02:49	2025-12-06 19:07:43
 \.
 
 
@@ -860,6 +900,7 @@ COPY "public"."loyalty_logs" ("id", "order_id", "customer_id", "branch_id", "act
 019aedfa-1f03-7342-bf12-c712580e86c6	019aedfa-1eed-7024-8eda-dbfe87958274	1ec7273c-d85e-4d92-a10b-545820df93b8	71adee1b-91d7-43cc-a712-9eaac873c6a5	EARN	5	6	2025-12-05 17:06:23	2025-12-05 17:06:23
 019aee30-5f16-7036-87a1-2e3fa5852daf	019aee30-5f04-7344-afd2-e67042f17e25	d699897e-14c0-417c-b745-5904d8e554ec	71adee1b-91d7-43cc-a712-9eaac873c6a5	EARN	1	2	2025-12-05 18:05:38	2025-12-05 18:05:38
 019aee47-84e7-729d-8ffe-201c16e01373	019aee47-84cc-711f-a089-15a5026b03c5	d699897e-14c0-417c-b745-5904d8e554ec	71adee1b-91d7-43cc-a712-9eaac873c6a5	EARN	2	3	2025-12-05 18:30:55	2025-12-05 18:30:55
+019af38f-90a1-736e-b864-f25d316c2ad6	019af38f-9084-70b8-be86-664f056e9e6d	d699897e-14c0-417c-b745-5904d8e554ec	71adee1b-91d7-43cc-a712-9eaac873c6a5	EARN	3	4	2025-12-06 19:07:43	2025-12-06 19:07:43
 \.
 
 
@@ -902,6 +943,7 @@ COPY "public"."migrations" ("id", "migration", "batch") FROM stdin;
 32	2025_12_05_134121_create_loyalty_accounts_table	5
 33	2025_12_05_134150_create_loyalty_logs_table	5
 34	2025_12_05_134214_alter_orders_add_loyalty_columns	5
+35	2025_12_07_160309_create_wash_notes_tables	6
 \.
 
 
@@ -969,8 +1011,11 @@ COPY "public"."order_items" ("id", "order_id", "service_id", "qty", "price", "to
 019aeddb-aa37-7378-b949-c98a77c0aa31	019aeddb-aa2d-714f-8242-4f97f324c8c5	fde10d28-7dc9-4ffc-8630-b71e75b85345	1.00	50000.00	50000.00	\N	2025-12-05 16:33:07	2025-12-05 16:33:07
 019aedfa-1ef4-71d9-a6ff-5c2bc3a70275	019aedfa-1eed-7024-8eda-dbfe87958274	2f310fc1-a7ca-4b4e-88ff-391392b35215	1.00	125000.00	125000.00	\N	2025-12-05 17:06:23	2025-12-05 17:06:23
 019aee30-5f0a-70b5-b37a-a1609626da2b	019aee30-5f04-7344-afd2-e67042f17e25	2f310fc1-a7ca-4b4e-88ff-391392b35215	1.00	125000.00	125000.00	\N	2025-12-05 18:05:38	2025-12-05 18:05:38
-019aee47-84d5-7307-81bd-e3a6c577401b	019aee47-84cc-711f-a089-15a5026b03c5	2f310fc1-a7ca-4b4e-88ff-391392b35215	1.00	125000.00	125000.00	\N	2025-12-05 18:30:55	2025-12-05 18:30:55
-019aee47-84da-71e7-9c12-182f2a5c50aa	019aee47-84cc-711f-a089-15a5026b03c5	fde10d28-7dc9-4ffc-8630-b71e75b85345	1.00	50000.00	50000.00	\N	2025-12-05 18:30:55	2025-12-05 18:30:55
+019af38f-908c-7179-957f-3e03d90e318f	019af38f-9084-70b8-be86-664f056e9e6d	2f310fc1-a7ca-4b4e-88ff-391392b35215	1.00	125000.00	125000.00	\N	2025-12-06 19:07:43	2025-12-06 19:07:43
+019af38f-9093-706f-a75f-1290d7b35180	019af38f-9084-70b8-be86-664f056e9e6d	fde10d28-7dc9-4ffc-8630-b71e75b85345	1.00	50000.00	50000.00	\N	2025-12-06 19:07:43	2025-12-06 19:07:43
+019af3a4-433d-71ef-adff-66596708b141	019aee47-84cc-711f-a089-15a5026b03c5	2f310fc1-a7ca-4b4e-88ff-391392b35215	1.00	125000.00	125000.00	\N	2025-12-06 19:30:19	2025-12-06 19:30:19
+019af3a4-4341-72eb-9cad-d12cbf46779d	019aee47-84cc-711f-a089-15a5026b03c5	fde10d28-7dc9-4ffc-8630-b71e75b85345	1.00	50000.00	50000.00	\N	2025-12-06 19:30:19	2025-12-06 19:30:19
+019af3a4-4344-7318-82cd-bc1092243905	019aee47-84cc-711f-a089-15a5026b03c5	86ef04eb-777b-4fd3-b559-181577178e32	1.00	500000.00	500000.00	\N	2025-12-06 19:30:19	2025-12-06 19:30:19
 \.
 
 
@@ -980,6 +1025,7 @@ COPY "public"."order_items" ("id", "order_id", "service_id", "qty", "price", "to
 
 COPY "public"."order_photos" ("id", "order_id", "kind", "path", "created_at", "updated_at") FROM stdin;
 019ae90c-b60e-737f-a385-0cf68a9d5234	019ae5b4-c8eb-71a1-9037-02655a4401f5	before	storage/uploads/orders/019ae5b4-c8eb-71a1-9037-02655a4401f5/before/HDe2EEfThPqOgb51jEXalTH7snHNoFZqitxDAGQh.png	2025-12-04 18:08:35	2025-12-04 18:08:35
+019af38f-9147-73c6-9888-ac676f369cf2	019af38f-9084-70b8-be86-664f056e9e6d	before	storage/uploads/orders/019af38f-9084-70b8-be86-664f056e9e6d/before/JtSeX3Ti4HgI36BesA75sJTOQwYXt6mMuN7687lN.png	2025-12-06 19:07:43	2025-12-06 19:07:43
 \.
 
 
@@ -1030,7 +1076,8 @@ COPY "public"."orders" ("id", "branch_id", "customer_id", "number", "status", "s
 019aeda7-3d1f-72c2-a267-17649f860a2d	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007531	QUEUE	125000.00	0.00	125000.00	0.00	125000.00	\N	2025-12-05 15:35:51	2025-12-05 15:35:51	PENDING	0.00	\N	INV-05-12-7531	3	2025-12-05 08:35:35	2025-12-09 05:03:00	NONE	0.00
 019aeddb-aa2d-714f-8242-4f97f324c8c5	71adee1b-91d7-43cc-a712-9eaac873c6a5	1ec7273c-d85e-4d92-a10b-545820df93b8	SLV-202512-007532	QUEUE	175000.00	43750.00	131250.00	0.00	131250.00	\N	2025-12-05 16:33:07	2025-12-05 16:33:07	PENDING	0.00	\N	INV-05-12-7532	3	2025-12-05 09:33:01	\N	DISC25	43750.00
 019aee30-5f04-7344-afd2-e67042f17e25	71adee1b-91d7-43cc-a712-9eaac873c6a5	d699897e-14c0-417c-b745-5904d8e554ec	SLV-202512-007534	QUEUE	125000.00	0.00	125000.00	0.00	125000.00	\N	2025-12-05 18:05:38	2025-12-05 18:05:38	PENDING	0.00	\N	INV-05-12-7534	3	2025-12-05 11:05:17	2025-12-09 06:30:00	NONE	0.00
-019aee47-84cc-711f-a089-15a5026b03c5	71adee1b-91d7-43cc-a712-9eaac873c6a5	d699897e-14c0-417c-b745-5904d8e554ec	SLV-202512-007535	QUEUE	175000.00	0.00	175000.00	0.00	175000.00	\N	2025-12-05 18:30:55	2025-12-05 18:30:55	PENDING	0.00	\N	INV-05-12-7535	3	2025-12-05 18:30:00	2025-12-09 12:23:00	NONE	0.00
+019af38f-9084-70b8-be86-664f056e9e6d	71adee1b-91d7-43cc-a712-9eaac873c6a5	d699897e-14c0-417c-b745-5904d8e554ec	SLV-202512-007536	CANCELED	175000.00	0.00	175000.00	175000.00	0.00	\N	2025-12-06 19:07:43	2025-12-06 19:27:44	PAID	0.00	2025-12-06 05:09:00	INV-06-12-7536	3	2025-12-06 19:07:00	2025-12-09 12:30:00	NONE	0.00
+019aee47-84cc-711f-a089-15a5026b03c5	71adee1b-91d7-43cc-a712-9eaac873c6a5	d699897e-14c0-417c-b745-5904d8e554ec	SLV-202512-007535	WASHING	675000.00	756250.00	0.00	0.00	0.00	\N	2025-12-05 18:30:55	2025-12-06 19:30:19	PENDING	0.00	\N	INV-05-12-7535	3	2025-12-04 21:30:00	2025-12-08 15:23:00	DISC25	168750.00
 \.
 
 
@@ -1071,6 +1118,7 @@ d73b7af7-f767-4862-83da-c51422a05650	019ae94b-75a8-724e-8bf5-1515a82d99d8	DP	250
 32367823-25ce-4d5d-846e-60f29e816acf	019aed52-0dec-72c7-b0fd-30eeb63efc55	CASH	100000.00	2025-12-05 00:03:00+07	\N	2025-12-05 14:03:07+07	2025-12-05 14:03:07+07
 6adc4985-2eb7-4659-b3d5-d64ad44d4071	019aed94-0c47-7188-acfd-7ddd7446abc1	QRIS	125000.00	2025-12-05 08:14:54+07	\N	2025-12-05 15:14:54+07	2025-12-05 15:14:54+07
 cc1eea44-0671-4251-9059-256befab43e3	019aedfa-1eed-7024-8eda-dbfe87958274	CASH	125000.00	2025-12-05 03:10:00+07	\N	2025-12-05 17:10:43+07	2025-12-05 17:10:43+07
+57ab12c7-61a5-45be-99b4-d591a4a2b0f3	019af38f-9084-70b8-be86-664f056e9e6d	QRIS	175000.00	2025-12-06 05:09:00+07	\N	2025-12-06 19:09:58+07	2025-12-06 19:09:58+07
 \.
 
 
@@ -1087,7 +1135,7 @@ COPY "public"."permissions" ("id", "name", "guard_name", "created_at", "updated_
 --
 
 COPY "public"."personal_access_tokens" ("id", "tokenable_type", "tokenable_id", "name", "token", "abilities", "last_used_at", "expires_at", "created_at", "updated_at") FROM stdin;
-35	App\\Models\\User	1	auth-token	481da6e17b625a5f05cf6ba1acfcd47e9adb3c843bd57535258fe2c2949528cf	["*"]	2025-12-05 22:26:23	\N	2025-12-05 21:04:01	2025-12-05 22:26:23
+44	App\\Models\\User	4	auth-token	e34b2cd93a33bb564f892ae14815a009faca88afdb22700db78b0100ed5e97e6	["*"]	2025-12-07 18:15:57	\N	2025-12-07 16:00:29	2025-12-07 18:15:57
 10	App\\Models\\User	3	auth-token	d51a1bc76154bc2b19d261f9baaa4d45f0e9a0fadc1e8b3616c3d68f409c7c6c	["*"]	2025-12-03 21:45:22	\N	2025-12-03 21:30:10	2025-12-03 21:45:22
 \.
 
@@ -1130,7 +1178,8 @@ a0e5af96-24f8-4f9c-bf96-392869ba6bc3	019aeda7-3d1f-72c2-a267-17649f860a2d	125000
 edb4d26d-797e-4145-9895-92b557b3a6e1	019aeddb-aa2d-714f-8242-4f97f324c8c5	131250.00	OPEN	\N	2025-12-05 16:33:07+07	2025-12-05 16:33:07+07
 978e460d-9ab5-48d8-9641-6a1b9b6f7197	019aedfa-1eed-7024-8eda-dbfe87958274	0.00	SETTLED	\N	2025-12-05 17:06:23+07	2025-12-05 17:10:43+07
 1e386766-f8c6-4933-bd27-c5529a5a6458	019aee30-5f04-7344-afd2-e67042f17e25	125000.00	OPEN	\N	2025-12-05 18:05:38+07	2025-12-05 18:05:38+07
-eb7b2d20-d383-4216-8909-a5e2c02c3694	019aee47-84cc-711f-a089-15a5026b03c5	175000.00	OPEN	\N	2025-12-05 18:30:55+07	2025-12-05 18:30:55+07
+23d7e89d-e246-4034-8f25-0cc83458c861	019af38f-9084-70b8-be86-664f056e9e6d	0.00	SETTLED	\N	2025-12-06 19:07:43+07	2025-12-06 19:09:58+07
+eb7b2d20-d383-4216-8909-a5e2c02c3694	019aee47-84cc-711f-a089-15a5026b03c5	0.00	SETTLED	\N	2025-12-05 18:30:55+07	2025-12-06 19:30:19+07
 \.
 
 
@@ -1163,6 +1212,7 @@ COPY "public"."service_categories" ("id", "name", "is_active", "created_at", "up
 7855dcb6-7112-4521-b188-0f71d67a7ca6	Sepatu	t	2025-11-25 14:33:09	2025-11-25 14:33:09
 1f495ece-0988-4f56-8340-5746acc3e0e1	Tas	t	2025-11-25 14:33:10	2025-11-25 14:33:10
 90c95dcb-4e07-4ded-9754-ea8dbac4a2c0	Dompet	t	2025-11-25 14:33:19	2025-11-25 14:33:19
+c5feb508-806a-4b0d-93d9-33b5c424c2f8	Koper	t	2025-12-06 19:16:56	2025-12-06 19:16:56
 \.
 
 
@@ -1181,6 +1231,7 @@ COPY "public"."service_prices" ("id", "service_id", "branch_id", "price", "creat
 COPY "public"."services" ("id", "category_id", "name", "unit", "price_default", "is_active", "created_at", "updated_at") FROM stdin;
 fde10d28-7dc9-4ffc-8630-b71e75b85345	7855dcb6-7112-4521-b188-0f71d67a7ca6	Deep Clean	ITEM	50000.00	t	2025-11-25 14:33:57	2025-11-25 14:33:57
 2f310fc1-a7ca-4b4e-88ff-391392b35215	1f495ece-0988-4f56-8340-5746acc3e0e1	Bag Clean	ITEM	125000.00	t	2025-11-25 14:35:22	2025-11-25 14:35:22
+86ef04eb-777b-4fd3-b559-181577178e32	c5feb508-806a-4b0d-93d9-33b5c424c2f8	Cuci Koper	ITEM	500000.00	t	2025-12-06 19:17:18	2025-12-06 19:17:18
 \.
 
 
@@ -1191,6 +1242,7 @@ fde10d28-7dc9-4ffc-8630-b71e75b85345	7855dcb6-7112-4521-b188-0f71d67a7ca6	Deep C
 COPY "public"."sessions" ("id", "user_id", "ip_address", "user_agent", "payload", "last_activity") FROM stdin;
 4WiiZwKifmc8jECDaLCc4XX8rmW8LQckubtfVZY1	\N	127.0.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0	YTozOntzOjY6Il90b2tlbiI7czo0MDoiNHNWV1pzRXdoa21JanFjdGk2anBFNFl2blVEZElRMm5aRXVQSm1ESSI7czo5OiJfcHJldmlvdXMiO2E6MTp7czozOiJ1cmwiO3M6MTYyOiJodHRwOi8vbG9jYWxob3N0OjgwMDAvci9yZWNlaXB0LzAxOWFlNWE0LTVjOWItNzA1Ni1hMzk1LTJiNzE1ZTNmMzg1ND9leHBpcmVzPTE3NjQ3OTY2OTcmc2lnbmF0dXJlPWNiM2U3ZTYzNDg3MmUzMDY1YzM5NmU3YjhlODZkZDU0MjcxMTllMDZiMjU4MDk0NzJhNDkwZjQ5MjIyYjczYzYiO31zOjY6Il9mbGFzaCI7YToyOntzOjM6Im9sZCI7YTowOnt9czozOiJuZXciO2E6MDp7fX19	1764790241
 9Pc1PdVmMOtpUzkDQPPOvh8rxReP0IVC45IKVFh6	\N	127.0.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0	YTozOntzOjY6Il90b2tlbiI7czo0MDoiYnpUeHA1ZUVqM3JKVW5zZ1FQRkN2alpkb25hUXBGYk43WGxoaERJVyI7czo5OiJfcHJldmlvdXMiO2E6MTp7czozOiJ1cmwiO3M6MTYyOiJodHRwOi8vbG9jYWxob3N0OjgwMDAvci9yZWNlaXB0LzAxOWFlNWE1LTNjYzktNzAwNC1iNmRiLTc5N2I0NjViODRmOD9leHBpcmVzPTE3NjQ4NTc1NDImc2lnbmF0dXJlPTBkZjNjNTExMjE1MGMwNmYyYTEzNDM0MDVlNTMyMjIwNzI3ZjJmMjk0Yzg5NDcxNzI1NDgwYWUwN2NlYzNjMDAiO31zOjY6Il9mbGFzaCI7YToyOntzOjM6Im9sZCI7YTowOnt9czozOiJuZXciO2E6MDp7fX19	1764850378
+ji1sqXf3G9rwV4I4jkwDB1iROkXT2s49Xy1wRwnh	\N	127.0.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:145.0) Gecko/20100101 Firefox/145.0	YTozOntzOjY6Il90b2tlbiI7czo0MDoiaERlek9TUEVDNDlyWlBxNXMyeVB0aEVWeGlnMkxuQmlFQ1k4aDRSWCI7czo5OiJfcHJldmlvdXMiO2E6MTp7czozOiJ1cmwiO3M6MTYyOiJodHRwOi8vbG9jYWxob3N0OjgwMDAvci9yZWNlaXB0LzAxOWFmMzhmLTkwODQtNzBiOC1iZTg2LTY2NGYwNTZlOWU2ZD9leHBpcmVzPTE3NjUwMzAwNjYmc2lnbmF0dXJlPWVjNmIyMGE3Yjc4MWRiNWZmZGNhMGI5MDIzOWMwYmMyYjczYjU1ZmY5NTA4MzA1ZGFjZGEzMGMxMGJiMjk1OTAiO31zOjY6Il9mbGFzaCI7YToyOntzOjM6Im9sZCI7YTowOnt9czozOiJuZXciO2E6MDp7fX19	1765024264
 \.
 
 
@@ -1218,6 +1270,24 @@ COPY "public"."vouchers" ("id", "branch_id", "code", "type", "value", "start_at"
 
 
 --
+-- Data for Name: wash_note_items; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY "public"."wash_note_items" ("id", "wash_note_id", "order_id", "qty", "process_status", "started_at", "finished_at", "note", "created_at", "updated_at") FROM stdin;
+00cbedc9-3fb7-409b-b896-2e82dc1eb365	13afc620-da1b-4f21-aa85-40f830b49f95	019aee47-84cc-711f-a089-15a5026b03c5	3.00	WASH	12:30:00	21:34:00	\N	2025-12-07 17:58:11	2025-12-07 17:58:11
+\.
+
+
+--
+-- Data for Name: wash_notes; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY "public"."wash_notes" ("id", "user_id", "branch_id", "note_date", "orders_count", "total_qty", "created_at", "updated_at") FROM stdin;
+13afc620-da1b-4f21-aa85-40f830b49f95	4	71adee1b-91d7-43cc-a712-9eaac873c6a5	2025-12-07	1	3.00	2025-12-07 17:58:11	2025-12-07 17:58:11
+\.
+
+
+--
 -- Name: failed_jobs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -1235,7 +1305,7 @@ SELECT pg_catalog.setval('"public"."jobs_id_seq"', 1, false);
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('"public"."migrations_id_seq"', 34, true);
+SELECT pg_catalog.setval('"public"."migrations_id_seq"', 35, true);
 
 
 --
@@ -1249,7 +1319,7 @@ SELECT pg_catalog.setval('"public"."permissions_id_seq"', 1, false);
 -- Name: personal_access_tokens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('"public"."personal_access_tokens_id_seq"', 35, true);
+SELECT pg_catalog.setval('"public"."personal_access_tokens_id_seq"', 45, true);
 
 
 --
@@ -1683,6 +1753,38 @@ ALTER TABLE ONLY "public"."vouchers"
 
 
 --
+-- Name: wash_note_items wash_note_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY "public"."wash_note_items"
+    ADD CONSTRAINT "wash_note_items_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: wash_note_items wash_note_items_wash_note_id_order_id_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY "public"."wash_note_items"
+    ADD CONSTRAINT "wash_note_items_wash_note_id_order_id_unique" UNIQUE ("wash_note_id", "order_id");
+
+
+--
+-- Name: wash_notes wash_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY "public"."wash_notes"
+    ADD CONSTRAINT "wash_notes_pkey" PRIMARY KEY ("id");
+
+
+--
+-- Name: wash_notes wash_notes_user_id_note_date_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY "public"."wash_notes"
+    ADD CONSTRAINT "wash_notes_user_id_note_date_unique" UNIQUE ("user_id", "note_date");
+
+
+--
 -- Name: customers_whatsapp_index; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1977,6 +2079,20 @@ CREATE INDEX "vouchers_branch_id_index" ON "public"."vouchers" USING "btree" ("b
 
 
 --
+-- Name: wash_note_items_order_id_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "wash_note_items_order_id_index" ON "public"."wash_note_items" USING "btree" ("order_id");
+
+
+--
+-- Name: wash_notes_note_date_index; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX "wash_notes_note_date_index" ON "public"."wash_notes" USING "btree" ("note_date");
+
+
+--
 -- Name: customers customers_branch_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2185,8 +2301,40 @@ ALTER TABLE ONLY "public"."vouchers"
 
 
 --
+-- Name: wash_note_items wash_note_items_order_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY "public"."wash_note_items"
+    ADD CONSTRAINT "wash_note_items_order_id_foreign" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON UPDATE CASCADE ON DELETE RESTRICT;
+
+
+--
+-- Name: wash_note_items wash_note_items_wash_note_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY "public"."wash_note_items"
+    ADD CONSTRAINT "wash_note_items_wash_note_id_foreign" FOREIGN KEY ("wash_note_id") REFERENCES "public"."wash_notes"("id") ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: wash_notes wash_notes_branch_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY "public"."wash_notes"
+    ADD CONSTRAINT "wash_notes_branch_id_foreign" FOREIGN KEY ("branch_id") REFERENCES "public"."branches"("id") ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: wash_notes wash_notes_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY "public"."wash_notes"
+    ADD CONSTRAINT "wash_notes_user_id_foreign" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict pOmrYsJgbgxt8dAM4y2FSRbTSxztvVzXqa0CZBKvNtdgPvE16S9ox1LPyfEHMkh
+\unrestrict OSKo5r7ukoIhONMWIPccPe16RTyGPT5ja8kQp5nP3KCU94FYhqapgsHGc0AgomZ
 
