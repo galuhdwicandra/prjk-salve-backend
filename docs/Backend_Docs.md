@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-08 02:35:38_  
+_Dihasilkan otomatis: 2025-12-09 14:46:51_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -1907,7 +1907,7 @@ class ReceivableController extends Controller
 
 ### app/Http/Controllers/Api/ReportController.php
 
-- SHA: `53432391d1e2`  
+- SHA: `0b14b81cbb73`  
 - Ukuran: 4 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -2000,7 +2000,8 @@ class ReportController extends Controller
 
             case 'orders':
                 $q = $this->svc->buildOrdersQuery($from, $to, $bid, $req->input('status'));
-                $columns = ['branch', 'created_at', 'number', 'invoice_no', 'customer', 'status', 'grand_total', 'paid_amount', 'payment_status'];
+                // urutan kolom sinkron dengan alias SELECT
+                $columns = ['branch', 'created_at', 'number', 'invoice_no', 'customer', 'status', 'services', 'qty', 'grand_total', 'paid_amount', 'payment_status'];
                 return [$q, $columns];
 
             case 'receivables':
@@ -8557,8 +8558,8 @@ class ReceivableService
 
 ### app/Services/ReportService.php
 
-- SHA: `f82a5e138459`  
-- Ukuran: 6 KB  
+- SHA: `7ae9bcbe9c06`  
+- Ukuran: 7 KB  
 - Namespace: `App\Services`
 
 **Class `ReportService`**
@@ -8596,7 +8597,7 @@ class ReportService
                 b.name AS branch,
                 s.name AS service,
                 s.unit AS unit,
-                SUM(oi.qty)            AS qty,
+                to_char(SUM(oi.qty), 'FM999999999.##') AS qty,
                 SUM(oi.qty * oi.price) AS amount
             ")
             ->groupBy('b.name', 's.name', 's.unit')
@@ -8633,6 +8634,8 @@ class ReportService
         $q = DB::table('orders')
             ->leftJoin('branches', 'branches.id', '=', 'orders.branch_id')
             ->leftJoin('customers', 'customers.id', '=', 'orders.customer_id')
+            ->leftJoin('order_items as oi', 'oi.order_id', '=', 'orders.id')
+            ->leftJoin('services as s', 's.id', '=', 'oi.service_id')
             ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
             ->whereBetween('orders.created_at', [$from, $to])
             ->selectRaw("
@@ -8642,10 +8645,23 @@ class ReportService
                 orders.invoice_no,
                 customers.name AS customer,
                 orders.status,
+                string_agg((s.name || ' x' || to_char(oi.qty, 'FM999999999.##')), '; ' ORDER BY s.name) AS services,
+                to_char(SUM(oi.qty), 'FM999999999.##') AS qty,
                 orders.grand_total,
                 orders.paid_amount,
-                orders.payment_status
-            ")
+               orders.payment_status
+           ")
+            ->groupBy(
+                'branches.name',
+                'orders.created_at',
+                'orders.number',
+                'orders.invoice_no',
+                'customers.name',
+                'orders.status',
+                'orders.grand_total',
+                'orders.paid_amount',
+                'orders.payment_status'
+            )
             ->orderBy('orders.created_at', 'asc');
 
         if ($status) {
