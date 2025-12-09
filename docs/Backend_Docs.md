@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2025-12-09 14:46:51_  
+_Dihasilkan otomatis: 2025-12-09 16:08:44_  
 **Root:** `/home/galuhdwicandra/projects/clone_salve/prjk-salve-backend`
 
 
@@ -2693,8 +2693,8 @@ class VoucherController extends Controller
 
 ### app/Http/Controllers/Api/WashNoteController.php
 
-- SHA: `572a86633ae1`  
-- Ukuran: 10 KB  
+- SHA: `ffd352ce26b0`  
+- Ukuran: 12 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `WashNoteController` extends `Controller`**
@@ -2809,6 +2809,23 @@ class WashNoteController extends Controller
             ], 422);
         }
 
+        $orderIds = collect($data['items'] ?? [])->pluck('order_id')->filter()->unique()->values();
+        if ($orderIds->isNotEmpty()) {
+            $usedIds = WashNoteItem::query()
+                ->whereIn('order_id', $orderIds)
+                ->pluck('order_id')
+                ->all();
+            if (!empty($usedIds)) {
+                return response()->json([
+                    'data' => null,
+                    'meta' => null,
+                    'message' => 'Beberapa order sudah pernah dicatat di catatan cuci sebelumnya.',
+                    'errors' => ['order_id' => $usedIds],
+                ], 422);
+            }
+        }
+
+
         $note = DB::transaction(function () use ($me, $data) {
             $note = WashNote::create([
                 'id' => Str::uuid()->toString(),
@@ -2857,6 +2874,24 @@ class WashNoteController extends Controller
     public function update(WashNoteUpdateRequest $request, WashNote $wash_note)
     {
         $data = $request->validated();
+
+        // Guard: tolak order yang sudah pernah tercatat pada wash note lain (kecuali dirinya)
+        $orderIds = collect($data['items'] ?? [])->pluck('order_id')->filter()->unique()->values();
+        if ($orderIds->isNotEmpty()) {
+            $usedIds = WashNoteItem::query()
+                ->whereIn('order_id', $orderIds)
+                ->where('wash_note_id', '!=', $wash_note->id)
+                ->pluck('order_id')
+                ->all();
+            if (!empty($usedIds)) {
+                return response()->json([
+                    'data' => null,
+                    'meta' => null,
+                    'message' => 'Beberapa order sudah pernah dicatat di catatan cuci sebelumnya.',
+                    'errors' => ['order_id' => $usedIds],
+                ], 422);
+            }
+        }
 
         $note = DB::transaction(function () use ($wash_note, $data) {
             // Optional: update header tanggal (tetap pastikan unik per user+date)
@@ -2937,6 +2972,7 @@ class WashNoteController extends Controller
         $to     = $request->query('date_to');
         // ⬅️ baru: tanggal catatan aktif dari klien (fallback ke ?date=)
         $onDate = $request->query('on_date') ?: $request->query('date');
+        $excludeNoteId = $request->query('exclude_note_id');
 
         $q = Order::query()
             ->with(['customer'])
@@ -2978,11 +3014,15 @@ class WashNoteController extends Controller
         if (empty($onDate)) {
             $onDate = now()->toDateString();
         }
-        $q->whereNotExists(function ($sub) use ($onDate, $me) {
-            $sub->from('wash_note_items as wni')
-                ->join('wash_notes as wn', 'wn.id', '=', 'wni.wash_note_id')
-                ->whereColumn('wni.order_id', 'orders.id')
-                ->whereDate('wn.note_date', $onDate);
+        // GLOBAL EXCLUDE: jangan tampilkan order yang sudah pernah tercatat di wash_note_items (lintas hari)
+        $q->whereNotExists(function ($sub) use ($excludeNoteId) {
+            $sub->select(DB::raw(1))
+                ->from('wash_note_items as wni')
+                ->whereColumn('wni.order_id', 'orders.id');
+            // Saat edit, agar item yang memang milik catatan ini sendiri tetap bisa dicari
+            if (!empty($excludeNoteId)) {
+                $sub->where('wni.wash_note_id', '!=', $excludeNoteId);
+            }
         });
 
         $rows = $q->limit(20)->get();
@@ -2996,7 +3036,7 @@ class WashNoteController extends Controller
             'data'    => $rows,
             'meta'    => [
                 'count'   => $rows->count(),
-                'on_date' => $onDate,
+                'exclude_note_id' => $excludeNoteId,
             ],
             'message' => null,
             'errors'  => null,
