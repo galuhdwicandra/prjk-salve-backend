@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-01-04 20:55:04_  
+_Dihasilkan otomatis: 2026-01-04 22:36:43_  
 **Root:** `/home/galuhdwicandra/workspace/clone_salve/prjk-salve-backend`
 
 
@@ -1398,8 +1398,8 @@ class LoyaltyController extends Controller
 
 ### app/Http/Controllers/Api/OrderController.php
 
-- SHA: `b21ecbafe3cb`  
-- Ukuran: 7 KB  
+- SHA: `21ddde3ff5b7`  
+- Ukuran: 8 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `OrderController` extends `Controller`**
@@ -1434,7 +1434,10 @@ use Illuminate\Support\Facades\URL;
 
 class OrderController extends Controller
 {
-    public function __construct(private OrderService $svc) {}
+    public function __construct(private OrderService $svc)
+    {
+        $this->middleware('auth:sanctum');
+    }
 
     // GET /orders
     public function index(Request $request)
@@ -1532,11 +1535,28 @@ class OrderController extends Controller
     {
         $this->authorize('create', Order::class);
         $payload = $request->validated();
-
-        // Admin Cabang/Kasir: fallback branch ke cabang aktor
-        if (empty($payload['branch_id'])) {
-            $payload['branch_id'] = $request->user()->branch_id;
+        $me = $request->user();
+        // Non-Superadmin SELALU dipaksa ke cabang user (abaikan branch_id dari FE)
+        if (! $me->hasRole('Superadmin')) {
+            if (! $me->branch_id) {
+                abort(422, 'Akun Anda belum terikat ke cabang.');
+            }
+            $payload['branch_id'] = (string) $me->branch_id;
         }
+
+        // (Opsional, tapi disarankan) Customer harus di cabang yang sama
+        if (! empty($payload['customer_id'])) {
+            $customerId = (string) ($payload['customer_id'] ?? '');
+            $branchId   = (string) $payload['branch_id'];
+            $custOk = \App\Models\Customer::query()
+                ->whereKey($customerId)
+                ->where('branch_id', $branchId)
+                ->exists();
+            if (! $custOk) {
+                abort(422, 'Customer tidak berada di cabang ini.');
+            }
+        }
+
 
         $order = $this->svc->createDraft($payload, $request->user())
             ->load(['customer', 'items.service']); // optional: konsisten dengan show()
@@ -1657,7 +1677,7 @@ class OrderController extends Controller
 
 ### app/Http/Controllers/Api/OrderPaymentsController.php
 
-- SHA: `3adf2247688f`  
+- SHA: `aadef500d7ff`  
 - Ukuran: 1 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -1688,7 +1708,7 @@ class OrderPaymentsController extends Controller
 
     public function store(PaymentRequest $request, Order $order): JsonResponse
     {
-        $this->authorize('update', $order);
+        $this->authorize('settlePayment', $order);
 
         $payload = $request->validated();
         $res = $this->svc->apply(
