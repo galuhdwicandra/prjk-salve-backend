@@ -17,7 +17,7 @@ class OrderPaymentsController extends Controller
 
     public function store(PaymentRequest $request, Order $order): JsonResponse
     {
-        $this->authorize('update', $order);
+        $this->authorize('settlePayment', $order);
 
         $payload = $request->validated();
         $res = $this->svc->apply(
