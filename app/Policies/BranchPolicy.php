@@ -22,7 +22,7 @@ class BranchPolicy
 
     public function view(User $user, Branch $branch): bool
     {
-        if ($user->hasRole('Admin Cabang')) {
+        if ($user->hasRole(['Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir'])) {
             return (string) $user->branch_id === (string) $branch->id;
         }
         return false;
@@ -30,7 +30,7 @@ class BranchPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole('superadmin');
+        return $user->hasRole('Superadmin');
     }
 
     public function update(User $user, Branch $branch): bool
@@ -43,6 +43,6 @@ class BranchPolicy
 
     public function delete(User $user, Branch $branch): bool
     {
-        return $user->hasRole('superadmin');
+        return $user->hasRole('Superadmin');
     }
 }

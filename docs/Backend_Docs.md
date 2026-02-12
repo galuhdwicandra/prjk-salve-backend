@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-02-11 19:18:28_  
+_Dihasilkan otomatis: 2026-02-12 19:27:54_  
 **Root:** `/home/galuhdwicandra/workspace/clone_salve/prjk-salve-backend`
 
 
@@ -4242,7 +4242,7 @@ class WashNoteItem extends Model
 
 ### app/Policies/BranchPolicy.php
 
-- SHA: `c1dfe7a3aff2`  
+- SHA: `54554316c03c`  
 - Ukuran: 1 KB  
 - Namespace: `App\Policies`
 
@@ -4282,7 +4282,7 @@ class BranchPolicy
 
     public function view(User $user, Branch $branch): bool
     {
-        if ($user->hasRole('Admin Cabang')) {
+        if ($user->hasRole(['Admin Cabang', 'Kasir'])) {
             return (string) $user->branch_id === (string) $branch->id;
         }
         return false;
@@ -4290,7 +4290,7 @@ class BranchPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole('superadmin');
+        return $user->hasRole('Superadmin');
     }
 
     public function update(User $user, Branch $branch): bool
@@ -4303,7 +4303,7 @@ class BranchPolicy
 
     public function delete(User $user, Branch $branch): bool
     {
-        return $user->hasRole('superadmin');
+        return $user->hasRole('Superadmin');
     }
 }
 
@@ -4459,7 +4459,7 @@ class CustomerPolicy
 
 ### app/Policies/DeliveryPolicy.php
 
-- SHA: `b5d183b67b82`  
+- SHA: `030bbd94a164`  
 - Ukuran: 1 KB  
 - Namespace: `App\Policies`
 
@@ -4498,7 +4498,7 @@ class DeliveryPolicy
 
     public function assignCourier(User $user, Delivery $delivery): bool
     {
-        if ($user->hasRole('Admin Cabang')) {
+        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
             return (string) $delivery->order?->branch_id === (string) $user->branch_id;
         }
         return false;
@@ -4509,7 +4509,7 @@ class DeliveryPolicy
         if ($user->hasRole('Kurir')) {
             return (int) $delivery->assigned_to === (int) $user->id;
         }
-        if ($user->hasRole('Admin Cabang')) {
+        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
             return (string) $delivery->order?->branch_id === (string) $user->branch_id;
         }
         return false;
@@ -7278,7 +7278,7 @@ class WashNoteUpdateRequest extends WashNoteStoreRequest
 
 ### app/Services/AuthService.php
 
-- SHA: `102127084776`  
+- SHA: `6915c8873a9e`  
 - Ukuran: 2 KB  
 - Namespace: `App\Services`
 
@@ -7325,7 +7325,7 @@ class AuthService
         return [
             'ok' => true,
             'status' => 200,
-            'user' => $user->loadMissing('roles'),
+            'user' => $this->presentUser($user),
             'token' => $token,
         ];
     }
@@ -7337,11 +7337,17 @@ class AuthService
 
     private function presentUser(User $user): array
     {
+        $user->loadMissing(['branch', 'roles']);
+
         return [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'branch_id' => $user->branch_id,
+            'branch' => $user->branch ? [
+                'id' => $user->branch->id,
+                'code' => $user->branch->code ?? null,
+                'name' => $user->branch->name ?? null,
+            ] : null,
             'is_active' => (bool) $user->is_active,
             'roles' => $user->getRoleNames()->values(),
         ];

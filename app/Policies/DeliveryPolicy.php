@@ -21,7 +21,7 @@ class DeliveryPolicy
 
     public function assignCourier(User $user, Delivery $delivery): bool
     {
-        if ($user->hasRole('Admin Cabang')) {
+        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
             return (string) $delivery->order?->branch_id === (string) $user->branch_id;
         }
         return false;
@@ -32,7 +32,7 @@ class DeliveryPolicy
         if ($user->hasRole('Kurir')) {
             return (int) $delivery->assigned_to === (int) $user->id;
         }
-        if ($user->hasRole('Admin Cabang')) {
+        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
             return (string) $delivery->order?->branch_id === (string) $user->branch_id;
         }
         return false;

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 0NaWrTSz1Um1TjacgcSEQxmddzPegerFlCai6aqqfWL6nT4Jmc1MlhcaIXMqmNH
+\restrict RR0bwcPd4aZJtm3d9iLKS1g8sCZQFxq4LxFpa5FuAPCQAn9O6PV6nHGPsKE0s2V
 
 -- Dumped from database version 16.11 (Ubuntu 16.11-0ubuntu0.24.04.1)
 -- Dumped by pg_dump version 16.11 (Ubuntu 16.11-0ubuntu0.24.04.1)
@@ -779,7 +779,8 @@ ALTER TABLE ONLY "public"."users" ALTER COLUMN "id" SET DEFAULT "nextval"('"publ
 --
 
 COPY "public"."branches" ("id", "code", "name", "address", "invoice_prefix", "reset_policy", "created_at", "updated_at") FROM stdin;
-739948f1-5f86-41d6-862f-24dc94b12e1f	CBG-001	Cabang Utama	Alamat Cabang Utama	SLV	monthly	2025-12-17 17:16:24	2025-12-17 17:16:24
+61435590-df0a-4857-8432-b5eb94fe40a7	CBG-002	Cabang Kedua	Ujung Berung	SLV	never	2026-02-12 19:37:54	2026-02-12 19:37:54
+739948f1-5f86-41d6-862f-24dc94b12e1f	CBG-001	Cabang Utama	Alamat Cabang Utama	SLV	never	2025-12-17 17:16:24	2026-02-12 19:37:59
 \.
 
 
@@ -788,7 +789,7 @@ COPY "public"."branches" ("id", "code", "name", "address", "invoice_prefix", "re
 --
 
 COPY "public"."cache" ("key", "value", "expiration") FROM stdin;
-salve-cache-spatie.permission.cache	a:3:{s:5:"alias";a:0:{}s:11:"permissions";a:0:{}s:5:"roles";a:0:{}}	1770891246
+salve-cache-spatie.permission.cache	a:3:{s:5:"alias";a:0:{}s:11:"permissions";a:0:{}s:5:"roles";a:0:{}}	1770987105
 \.
 
 
@@ -806,6 +807,7 @@ COPY "public"."cache_locks" ("key", "owner", "expiration") FROM stdin;
 
 COPY "public"."customers" ("id", "branch_id", "name", "whatsapp", "address", "notes", "created_at", "updated_at") FROM stdin;
 1a360d41-5058-4c94-8f6c-f911b02d2103	739948f1-5f86-41d6-862f-24dc94b12e1f	galuh	081214695222	Permata Biru Blok AR.06	\N	2026-01-04 20:58:19+07	2026-01-04 20:58:19+07
+5290def6-017c-4430-9452-4603b1682ddf	739948f1-5f86-41d6-862f-24dc94b12e1f	orang 1	089758542511	komplek permata biru blok yz	\N	2026-02-11 17:49:20+07	2026-02-11 17:49:20+07
 \.
 
 
@@ -814,6 +816,7 @@ COPY "public"."customers" ("id", "branch_id", "name", "whatsapp", "address", "no
 --
 
 COPY "public"."deliveries" ("id", "order_id", "type", "zone_id", "fee", "assigned_to", "auto_assigned", "status", "handover_photo", "created_at", "updated_at") FROM stdin;
+019c5142-8537-7385-afcf-8879b57b43a6	019c4ccf-4c2b-70a2-ad23-1f02ca8a8980	delivery	\N	5000.00	5	t	PICKED	\N	2026-02-12 16:50:39	2026-02-12 16:58:16
 \.
 
 
@@ -822,6 +825,10 @@ COPY "public"."deliveries" ("id", "order_id", "type", "zone_id", "fee", "assigne
 --
 
 COPY "public"."delivery_events" ("id", "delivery_id", "status", "note", "created_at", "updated_at") FROM stdin;
+019c5142-854c-73e7-bde4-809780c74333	019c5142-8537-7385-afcf-8879b57b43a6	CREATED	Delivery created	2026-02-12 16:50:39	2026-02-12 16:50:39
+019c5142-8566-7062-825b-0a3cfc34683d	019c5142-8537-7385-afcf-8879b57b43a6	ASSIGNED	Auto-assigned courier #5	2026-02-12 16:50:39	2026-02-12 16:50:39
+019c5149-5d6d-7233-98f7-338c3e438bbe	019c5142-8537-7385-afcf-8879b57b43a6	ON_THE_WAY	\N	2026-02-12 16:58:08	2026-02-12 16:58:08
+019c5149-7d75-71eb-b342-06d870e2698c	019c5142-8537-7385-afcf-8879b57b43a6	PICKED	\N	2026-02-12 16:58:16	2026-02-12 16:58:16
 \.
 
 
@@ -846,7 +853,8 @@ COPY "public"."failed_jobs" ("id", "uuid", "connection", "queue", "payload", "ex
 --
 
 COPY "public"."invoice_counters" ("id", "branch_id", "prefix", "seq", "reset_policy", "last_reset_month", "created_at", "updated_at") FROM stdin;
-019b894d-a983-70ec-87b1-5707ec6ad3c0	739948f1-5f86-41d6-862f-24dc94b12e1f	SLV	6	monthly	202601	2026-01-04 20:58:46	2026-01-04 22:34:40
+019b894d-a983-70ec-87b1-5707ec6ad3c0	739948f1-5f86-41d6-862f-24dc94b12e1f	SLV	1	monthly	202602	2026-01-04 20:58:46	2026-02-11 20:06:19
+019c51db-e02f-7185-b89e-050223693767	61435590-df0a-4857-8432-b5eb94fe40a7	SLV	0	never	\N	2026-02-12 19:38:10	2026-02-12 19:38:18
 \.
 
 
@@ -871,7 +879,8 @@ COPY "public"."jobs" ("id", "queue", "payload", "attempts", "reserved_at", "avai
 --
 
 COPY "public"."loyalty_accounts" ("id", "customer_id", "branch_id", "stamps", "lifetime", "created_at", "updated_at") FROM stdin;
-019b894d-69db-72b8-a6a8-2da8792903bf	1a360d41-5058-4c94-8f6c-f911b02d2103	739948f1-5f86-41d6-862f-24dc94b12e1f	6	6	2026-01-04 20:58:30	2026-01-04 22:34:40
+019c4c51-e2b4-732b-8ec3-056a6f575d55	5290def6-017c-4430-9452-4603b1682ddf	739948f1-5f86-41d6-862f-24dc94b12e1f	0	0	2026-02-11 17:49:20	2026-02-11 17:49:20
+019b894d-69db-72b8-a6a8-2da8792903bf	1a360d41-5058-4c94-8f6c-f911b02d2103	739948f1-5f86-41d6-862f-24dc94b12e1f	7	7	2026-01-04 20:58:30	2026-02-11 20:06:19
 \.
 
 
@@ -887,6 +896,7 @@ COPY "public"."loyalty_logs" ("id", "order_id", "customer_id", "branch_id", "act
 019b899e-912b-73dd-9f3d-86546cc8a1f1	\N	1a360d41-5058-4c94-8f6c-f911b02d2103	739948f1-5f86-41d6-862f-24dc94b12e1f	REWARD25	4	4	2026-01-04 22:27:09	2026-01-04 22:27:09
 019b899e-912d-7126-a717-afe10779e0f5	019b899e-9119-70c7-a992-695eb8e0a6f9	1a360d41-5058-4c94-8f6c-f911b02d2103	739948f1-5f86-41d6-862f-24dc94b12e1f	EARN	4	5	2026-01-04 22:27:09	2026-01-04 22:27:09
 019b89a5-7401-71b3-a4fa-c803246b9f9f	019b89a5-73ee-71fb-a58f-e1fb4809c8ba	1a360d41-5058-4c94-8f6c-f911b02d2103	739948f1-5f86-41d6-862f-24dc94b12e1f	EARN	5	6	2026-01-04 22:34:40	2026-01-04 22:34:40
+019c4ccf-4c4e-7111-b7e7-37ddca9cd761	019c4ccf-4c2b-70a2-ad23-1f02ca8a8980	1a360d41-5058-4c94-8f6c-f911b02d2103	739948f1-5f86-41d6-862f-24dc94b12e1f	EARN	6	7	2026-02-11 20:06:19	2026-02-11 20:06:19
 \.
 
 
@@ -948,10 +958,13 @@ COPY "public"."model_has_permissions" ("permission_id", "model_type", "model_id"
 
 COPY "public"."model_has_roles" ("role_id", "model_type", "model_id") FROM stdin;
 2	App\\Models\\User	2
-3	App\\Models\\User	3
 5	App\\Models\\User	5
 4	App\\Models\\User	4
 1	App\\Models\\User	1
+3	App\\Models\\User	6
+3	App\\Models\\User	3
+2	App\\Models\\User	7
+3	App\\Models\\User	8
 \.
 
 
@@ -972,6 +985,7 @@ COPY "public"."order_items" ("id", "order_id", "service_id", "qty", "price", "to
 019b899e-9124-724e-88d5-7e7f9c9ab837	019b899e-9119-70c7-a992-695eb8e0a6f9	f0ca95aa-1aa7-4681-ab36-556c70e5f582	2.00	125000.00	250000.00	\N	2026-01-04 22:27:09	2026-01-04 22:27:09
 019b89a5-73f7-70df-af5e-7265c34d038c	019b89a5-73ee-71fb-a58f-e1fb4809c8ba	f0ca95aa-1aa7-4681-ab36-556c70e5f582	1.00	125000.00	125000.00	\N	2026-01-04 22:34:40	2026-01-04 22:34:40
 019b89a5-73f9-7190-b313-898286ae47e0	019b89a5-73ee-71fb-a58f-e1fb4809c8ba	ca5a6897-aa04-4c40-8f3a-28c9947ffb61	1.00	50000.00	50000.00	\N	2026-01-04 22:34:40	2026-01-04 22:34:40
+019c4cfd-a0e8-7236-a22f-1e140063e67a	019c4ccf-4c2b-70a2-ad23-1f02ca8a8980	f0ca95aa-1aa7-4681-ab36-556c70e5f582	2.00	125000.00	250000.00	\N	2026-02-11 20:56:56	2026-02-11 20:56:56
 \.
 
 
@@ -980,6 +994,9 @@ COPY "public"."order_items" ("id", "order_id", "service_id", "qty", "price", "to
 --
 
 COPY "public"."order_photos" ("id", "order_id", "kind", "path", "created_at", "updated_at") FROM stdin;
+019c4d40-1393-7214-b7b9-5fab11e6fc42	019c4ccf-4c2b-70a2-ad23-1f02ca8a8980	before	storage/uploads/orders/019c4ccf-4c2b-70a2-ad23-1f02ca8a8980/before/Jk7ubbpNqy1kE8TDhxrccVKdlDz0nnHWdzE86tz9.png	2026-02-11 22:09:30	2026-02-11 22:09:30
+019c4d40-3601-7321-9e6a-97bba23cac67	019c4ccf-4c2b-70a2-ad23-1f02ca8a8980	after	storage/uploads/orders/019c4ccf-4c2b-70a2-ad23-1f02ca8a8980/after/yw2Pcbd8D37WSxByWVnA4ohOz9Mw9lp4K4MqP6UD.jpg	2026-02-11 22:09:39	2026-02-11 22:09:39
+019c4d47-a887-735f-990e-ef317830f8d6	019c4ccf-4c2b-70a2-ad23-1f02ca8a8980	before	storage/uploads/orders/019c4ccf-4c2b-70a2-ad23-1f02ca8a8980/before/u9VFGUCd42YzWysj0HBfHqwyCbRPVzgcYetpkFED.jpg	2026-02-11 22:17:47	2026-02-11 22:17:47
 \.
 
 
@@ -1000,8 +1017,9 @@ COPY "public"."orders" ("id", "branch_id", "customer_id", "number", "status", "s
 019b894e-4231-705e-b336-0ff1f12599de	739948f1-5f86-41d6-862f-24dc94b12e1f	1a360d41-5058-4c94-8f6c-f911b02d2103	SLV-202601-000002	QUEUE	175000.00	0.00	175000.00	0.00	175000.00	\N	2026-01-04 20:59:26	2026-01-04 20:59:26	PENDING	0.00	\N	INV-04-01-0002	3	2026-01-04 20:58:00	2026-01-07 12:30:00	NONE	0.00
 019b8953-d41c-7055-8b55-8248b1b97bf9	739948f1-5f86-41d6-862f-24dc94b12e1f	1a360d41-5058-4c94-8f6c-f911b02d2103	SLV-202601-000003	QUEUE	175000.00	0.00	175000.00	0.00	175000.00	\N	2026-01-04 21:05:31	2026-01-04 21:05:31	PENDING	0.00	\N	INV-04-01-0003	3	2026-01-04 20:58:00	2026-01-07 12:30:00	NONE	0.00
 019b8990-6184-73eb-92a9-380026865da4	739948f1-5f86-41d6-862f-24dc94b12e1f	1a360d41-5058-4c94-8f6c-f911b02d2103	SLV-202601-000004	QUEUE	275000.00	0.00	275000.00	0.00	275000.00	\N	2026-01-04 22:11:39	2026-01-04 22:11:39	PENDING	0.00	\N	INV-04-01-0004	3	2026-01-04 22:11:00	2026-01-07 16:00:00	NONE	0.00
-019b899e-9119-70c7-a992-695eb8e0a6f9	739948f1-5f86-41d6-862f-24dc94b12e1f	1a360d41-5058-4c94-8f6c-f911b02d2103	SLV-202601-000005	QUEUE	350000.00	87500.00	262500.00	80000.00	182500.00	\N	2026-01-04 22:27:09	2026-01-04 22:27:09	DP	80000.00	\N	INV-04-01-0005	3	2026-01-04 22:26:00	2026-01-08 17:00:00	DISC25	87500.00
-019b89a5-73ee-71fb-a58f-e1fb4809c8ba	739948f1-5f86-41d6-862f-24dc94b12e1f	1a360d41-5058-4c94-8f6c-f911b02d2103	SLV-202601-000006	QUEUE	175000.00	0.00	175000.00	175000.00	0.00	\N	2026-01-04 22:34:40	2026-01-04 22:47:24	PAID	0.00	2026-01-04 08:47:00	INV-04-01-0006	3	2026-01-04 22:34:00	2026-01-07 19:00:00	NONE	0.00
+019b899e-9119-70c7-a992-695eb8e0a6f9	739948f1-5f86-41d6-862f-24dc94b12e1f	1a360d41-5058-4c94-8f6c-f911b02d2103	SLV-202601-000005	QUEUE	350000.00	87500.00	262500.00	262500.00	0.00	\N	2026-01-04 22:27:09	2026-02-11 19:02:54	PAID	80000.00	2026-02-11 05:02:00	INV-04-01-0005	3	2026-01-04 22:26:00	2026-01-08 17:00:00	DISC25	87500.00
+019c4ccf-4c2b-70a2-ad23-1f02ca8a8980	739948f1-5f86-41d6-862f-24dc94b12e1f	1a360d41-5058-4c94-8f6c-f911b02d2103	SLV-202602-000001	DRYING	250000.00	0.00	250000.00	50000.00	200000.00	\N	2026-02-11 20:06:19	2026-02-11 22:03:21	DP	50000.00	\N	INV-11-02-0001	3	2026-02-11 06:05:00	2026-02-15 07:05:00	NONE	0.00
+019b89a5-73ee-71fb-a58f-e1fb4809c8ba	739948f1-5f86-41d6-862f-24dc94b12e1f	1a360d41-5058-4c94-8f6c-f911b02d2103	SLV-202601-000006	WASHING	175000.00	0.00	175000.00	175000.00	0.00	\N	2026-01-04 22:34:40	2026-02-11 22:16:24	PAID	0.00	2026-01-04 08:47:00	INV-04-01-0006	3	2026-01-04 22:34:00	2026-01-07 19:00:00	NONE	0.00
 \.
 
 
@@ -1020,6 +1038,8 @@ COPY "public"."password_reset_tokens" ("email", "token", "created_at") FROM stdi
 COPY "public"."payments" ("id", "order_id", "method", "amount", "paid_at", "note", "created_at", "updated_at") FROM stdin;
 e1e52005-5e1a-4738-8d03-aecf9b4337e4	019b899e-9119-70c7-a992-695eb8e0a6f9	DP	80000.00	2026-01-04 22:27:00+07	\N	2026-01-04 22:27:09+07	2026-01-04 22:27:09+07
 ac4e68b7-1a0b-4518-9a7a-fd3bf754bdc6	019b89a5-73ee-71fb-a58f-e1fb4809c8ba	QRIS	175000.00	2026-01-04 08:47:00+07	\N	2026-01-04 22:47:24+07	2026-01-04 22:47:24+07
+a7a5d1a1-f818-4477-831a-b27a9c0b9995	019b899e-9119-70c7-a992-695eb8e0a6f9	QRIS	182500.00	2026-02-11 05:02:00+07	\N	2026-02-11 19:02:54+07	2026-02-11 19:02:54+07
+e3e0ff59-f7fa-4d5b-86cb-978eabe84032	019c4ccf-4c2b-70a2-ad23-1f02ca8a8980	DP	50000.00	2026-02-11 20:06:00+07	\N	2026-02-11 20:06:20+07	2026-02-11 20:06:20+07
 \.
 
 
@@ -1036,7 +1056,7 @@ COPY "public"."permissions" ("id", "name", "guard_name", "created_at", "updated_
 --
 
 COPY "public"."personal_access_tokens" ("id", "tokenable_type", "tokenable_id", "name", "token", "abilities", "last_used_at", "expires_at", "created_at", "updated_at") FROM stdin;
-11	App\\Models\\User	3	auth-token	4955ad2f9d7505c1cd5327cf71772849f22db434cb557998226ce7fb7d8169b9	["*"]	2026-02-11 17:15:30	\N	2026-02-11 17:14:38	2026-02-11 17:15:30
+55	App\\Models\\User	8	auth-token	f77e45634f692a48a72b764737916b91963e6f29341d6c8f4542e8cc549a22c4	["*"]	2026-02-12 20:56:46	\N	2026-02-12 20:54:05	2026-02-12 20:56:46
 \.
 
 
@@ -1049,8 +1069,9 @@ f3d51ac9-2769-4d60-91bf-ea6cdc6dd524	019b894d-a986-70ec-98cc-d53cace37cdc	175000
 35ca0487-4b45-44ef-bfe6-c7485da0f5b4	019b894e-4231-705e-b336-0ff1f12599de	175000.00	OPEN	\N	2026-01-04 20:59:26+07	2026-01-04 20:59:26+07
 cda6727e-64d2-4e33-9257-5f284976329a	019b8953-d41c-7055-8b55-8248b1b97bf9	175000.00	OPEN	\N	2026-01-04 21:05:31+07	2026-01-04 21:05:31+07
 e49b2972-f331-407b-a31d-e9b4aa8579ba	019b8990-6184-73eb-92a9-380026865da4	275000.00	OPEN	\N	2026-01-04 22:11:39+07	2026-01-04 22:11:39+07
-1a426bc5-8c8d-4d36-84a9-4aab6bb95ec3	019b899e-9119-70c7-a992-695eb8e0a6f9	182500.00	PARTIAL	\N	2026-01-04 22:27:09+07	2026-01-04 22:27:09+07
 490ba3cb-e7a3-497f-a90b-c5b9ea7f0921	019b89a5-73ee-71fb-a58f-e1fb4809c8ba	0.00	SETTLED	\N	2026-01-04 22:34:40+07	2026-01-04 22:47:24+07
+1a426bc5-8c8d-4d36-84a9-4aab6bb95ec3	019b899e-9119-70c7-a992-695eb8e0a6f9	0.00	SETTLED	\N	2026-01-04 22:27:09+07	2026-02-11 19:02:54+07
+5f24e75a-8a5d-4829-9f82-539046b0d4cd	019c4ccf-4c2b-70a2-ad23-1f02ca8a8980	200000.00	PARTIAL	\N	2026-02-11 20:06:19+07	2026-02-11 20:56:56+07
 \.
 
 
@@ -1090,6 +1111,8 @@ efb22269-37d6-487b-ae22-9257bbccd850	Sepatu	t	2026-01-04 20:56:43	2026-01-04 20:
 --
 
 COPY "public"."service_prices" ("id", "service_id", "branch_id", "price", "created_at", "updated_at") FROM stdin;
+019c51dc-9af6-72a6-886e-8dbc131acc39	f0ca95aa-1aa7-4681-ab36-556c70e5f582	61435590-df0a-4857-8432-b5eb94fe40a7	50000.00	2026-02-12 19:38:58	2026-02-12 19:38:58
+019c51dc-e470-71e5-b504-5bcebe0d953d	ca5a6897-aa04-4c40-8f3a-28c9947ffb61	61435590-df0a-4857-8432-b5eb94fe40a7	60000.00	2026-02-12 19:39:16	2026-02-12 19:39:16
 \.
 
 
@@ -1108,6 +1131,7 @@ f0ca95aa-1aa7-4681-ab36-556c70e5f582	2de4267e-19e8-4cb6-a528-95f4190d96e4	Bag Cl
 --
 
 COPY "public"."sessions" ("id", "user_id", "ip_address", "user_agent", "payload", "last_activity") FROM stdin;
+EjChwegkkpyMSkBFUFnfGqIDpVYJgOFgYTwC5iKF	\N	127.0.0.1	Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0	YTo0OntzOjY6Il90b2tlbiI7czo0MDoiMVQyejNjSmV1M3BkOFpvbkk2OEc4RVNWTG9QM01UdUZVd2lMbkVrNSI7czozOiJ1cmwiO2E6MTp7czo4OiJpbnRlbmRlZCI7czoxNjI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9yL3JlY2VpcHQvMDE5Yjg5OTAtNjE4NC03M2ViLTkyYTktMzgwMDI2ODY1ZGE0P2V4cGlyZXM9MTc3MDgxODYwMyZzaWduYXR1cmU9NGZlOWY0NTFiZGE0MThhNWNhYWYxMmE0ZmZhYWY4MjEyYmRmNzJjNDg5ZGEyNDZlYzMzNjY4ZTE3NDYwYWFiOSI7fXM6OToiX3ByZXZpb3VzIjthOjE6e3M6MzoidXJsIjtzOjE2MjoiaHR0cDovL2xvY2FsaG9zdDo4MDAwL3IvcmVjZWlwdC8wMTliODk5MC02MTg0LTczZWItOTJhOS0zODAwMjY4NjVkYTQ/ZXhwaXJlcz0xNzcwODE5ODQ4JnNpZ25hdHVyZT1kMWU1NWI3YmQxYmM2M2Y1NGQzMjExOGEyNTZjNGMxYjJmZGVkNjY1NjQ4M2FhMGYwOWIxNzc0YjBkMjE1MWYzIjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==	1770812659
 \.
 
 
@@ -1119,8 +1143,11 @@ COPY "public"."users" ("id", "name", "email", "email_verified_at", "password", "
 2	Admin Cabang	admincabang@gmail.com	\N	$2y$12$1JalhOZ92tCyPaGNMemYheuhMiErOc36X4zEMg3iL6XwobeGOd0ai	\N	2025-12-17 17:16:24	2025-12-17 17:18:04	t	739948f1-5f86-41d6-862f-24dc94b12e1f	admincabang
 3	Kasir	kasir@gmail.com	\N	$2y$12$ePJRrjjUGrLi4fbYwaFuR.y/TI4BepZDzl0IhiWfl3NLJqWDmrQ/S	\N	2025-12-17 17:16:24	2025-12-17 17:18:11	t	739948f1-5f86-41d6-862f-24dc94b12e1f	kasir
 5	Kurir	kurir@gmail.com	\N	$2y$12$nZ.c4nyx.ISA0zXdJS.0eesFhmfhwqDsVF3OEbMgQkxDiqymC1ypu	\N	2025-12-17 17:16:25	2025-12-17 17:18:17	t	739948f1-5f86-41d6-862f-24dc94b12e1f	kurir
-4	Petugas Cuci	petugascuci@gmail.com	\N	$2y$12$0jAArtoaVZOB/Cfu3/RSYOWwNm.Sxw/zN9x8QHFeM5bEsjtUl2Hge	\N	2025-12-17 17:16:24	2025-12-17 17:18:27	t	739948f1-5f86-41d6-862f-24dc94b12e1f	petugascuci
 1	Superadmin	superadmin@gmail.com	\N	$2y$12$.tbZFB382Y4m3Fegr5Ffju5lw88X8M397Op2stxeqb0GDZGUHfkW2	\N	2025-12-17 17:16:24	2025-12-17 17:18:34	t	\N	superadmin
+4	Petugas Cuci	petugascuci@gmail.com	\N	$2y$12$0jAArtoaVZOB/Cfu3/RSYOWwNm.Sxw/zN9x8QHFeM5bEsjtUl2Hge	\N	2025-12-17 17:16:24	2026-02-11 23:47:08	t	739948f1-5f86-41d6-862f-24dc94b12e1f	petugascuci
+6	karyawan2	karyawan2@gmail.com	\N	$2y$12$nOIJkPHClVt8mhGzv/SI5eCsZF7n6ahLSH4cQ6q8Cj3xNcfb7P1yu	\N	2026-02-12 00:01:56	2026-02-12 00:01:56	t	739948f1-5f86-41d6-862f-24dc94b12e1f	karyawan2
+7	admin cabang 2	admincabang2@gmail.com	\N	$2y$12$EPiu0idqJVYq6Pm4BxDZfeSpmFgCRdg6pALmXrvFDMozReXhDM7uW	\N	2026-02-12 19:40:01	2026-02-12 19:40:01	t	61435590-df0a-4857-8432-b5eb94fe40a7	admincabang2
+8	kasir2	kasir2@gmail.com	\N	$2y$12$uzYge4GaVNiP8rFOjTUWu.nd5wcd7oRClpTn7GCiAJEZ0l4HdQ8iG	\N	2026-02-12 19:41:16	2026-02-12 19:41:16	t	61435590-df0a-4857-8432-b5eb94fe40a7	kasir2
 \.
 
 
@@ -1180,7 +1207,7 @@ SELECT pg_catalog.setval('"public"."permissions_id_seq"', 1, false);
 -- Name: personal_access_tokens_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('"public"."personal_access_tokens_id_seq"', 11, true);
+SELECT pg_catalog.setval('"public"."personal_access_tokens_id_seq"', 55, true);
 
 
 --
@@ -1194,7 +1221,7 @@ SELECT pg_catalog.setval('"public"."roles_id_seq"', 5, true);
 -- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('"public"."users_id_seq"', 5, true);
+SELECT pg_catalog.setval('"public"."users_id_seq"', 8, true);
 
 
 --
@@ -2205,5 +2232,5 @@ ALTER TABLE ONLY "public"."wash_notes"
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 0NaWrTSz1Um1TjacgcSEQxmddzPegerFlCai6aqqfWL6nT4Jmc1MlhcaIXMqmNH
+\unrestrict RR0bwcPd4aZJtm3d9iLKS1g8sCZQFxq4LxFpa5FuAPCQAn9O6PV6nHGPsKE0s2V
 

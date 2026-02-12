@@ -32,7 +32,7 @@ class AuthService
         return [
             'ok' => true,
             'status' => 200,
-            'user' => $user->loadMissing('roles'),
+            'user' => $this->presentUser($user),
             'token' => $token,
         ];
     }
@@ -44,11 +44,17 @@ class AuthService
 
     private function presentUser(User $user): array
     {
+        $user->loadMissing(['branch', 'roles']);
+
         return [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'branch_id' => $user->branch_id,
+            'branch' => $user->branch ? [
+                'id' => $user->branch->id,
+                'code' => $user->branch->code ?? null,
+                'name' => $user->branch->name ?? null,
+            ] : null,
             'is_active' => (bool) $user->is_active,
             'roles' => $user->getRoleNames()->values(),
         ];
