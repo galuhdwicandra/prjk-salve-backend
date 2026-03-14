@@ -1,130 +1,130 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-02-12 19:27:54_  
-**Root:** `/home/galuhdwicandra/workspace/clone_salve/prjk-salve-backend`
+_Dihasilkan otomatis: 2026-03-15 00:02:24_  
+**Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
 ## Daftar Isi
 
 - [Controllers (app/Http/Controllers/Api)](#controllers-apphttpcontrollersapi)
-  - [app/Http/Controllers/Api/AuthController.php](#file-apphttpcontrollersapiauthcontrollerphp)
-  - [app/Http/Controllers/Api/BranchController.php](#file-apphttpcontrollersapibranchcontrollerphp)
-  - [app/Http/Controllers/Api/CategoryController.php](#file-apphttpcontrollersapicategorycontrollerphp)
-  - [app/Http/Controllers/Api/CustomerController.php](#file-apphttpcontrollersapicustomercontrollerphp)
-  - [app/Http/Controllers/Api/DashboardController.php](#file-apphttpcontrollersapidashboardcontrollerphp)
-  - [app/Http/Controllers/Api/DeliveryController.php](#file-apphttpcontrollersapideliverycontrollerphp)
-  - [app/Http/Controllers/Api/ExpenseController.php](#file-apphttpcontrollersapiexpensecontrollerphp)
-  - [app/Http/Controllers/Api/InvoiceCounterController.php](#file-apphttpcontrollersapiinvoicecountercontrollerphp)
-  - [app/Http/Controllers/Api/LoyaltyController.php](#file-apphttpcontrollersapiloyaltycontrollerphp)
-  - [app/Http/Controllers/Api/OrderController.php](#file-apphttpcontrollersapiordercontrollerphp)
-  - [app/Http/Controllers/Api/OrderPaymentsController.php](#file-apphttpcontrollersapiorderpaymentscontrollerphp)
-  - [app/Http/Controllers/Api/OrderPhotosController.php](#file-apphttpcontrollersapiorderphotoscontrollerphp)
-  - [app/Http/Controllers/Api/ReceivableController.php](#file-apphttpcontrollersapireceivablecontrollerphp)
-  - [app/Http/Controllers/Api/ReportController.php](#file-apphttpcontrollersapireportcontrollerphp)
-  - [app/Http/Controllers/Api/ServiceController.php](#file-apphttpcontrollersapiservicecontrollerphp)
-  - [app/Http/Controllers/Api/ServicePriceController.php](#file-apphttpcontrollersapiservicepricecontrollerphp)
-  - [app/Http/Controllers/Api/UserController.php](#file-apphttpcontrollersapiusercontrollerphp)
-  - [app/Http/Controllers/Api/VoucherController.php](#file-apphttpcontrollersapivouchercontrollerphp)
-  - [app/Http/Controllers/Api/WashNoteController.php](#file-apphttpcontrollersapiwashnotecontrollerphp)
+  - [app\Http\Controllers\Api\AuthController.php](#file-apphttpcontrollersapiauthcontrollerphp)
+  - [app\Http\Controllers\Api\BranchController.php](#file-apphttpcontrollersapibranchcontrollerphp)
+  - [app\Http\Controllers\Api\CategoryController.php](#file-apphttpcontrollersapicategorycontrollerphp)
+  - [app\Http\Controllers\Api\CustomerController.php](#file-apphttpcontrollersapicustomercontrollerphp)
+  - [app\Http\Controllers\Api\DashboardController.php](#file-apphttpcontrollersapidashboardcontrollerphp)
+  - [app\Http\Controllers\Api\DeliveryController.php](#file-apphttpcontrollersapideliverycontrollerphp)
+  - [app\Http\Controllers\Api\ExpenseController.php](#file-apphttpcontrollersapiexpensecontrollerphp)
+  - [app\Http\Controllers\Api\InvoiceCounterController.php](#file-apphttpcontrollersapiinvoicecountercontrollerphp)
+  - [app\Http\Controllers\Api\LoyaltyController.php](#file-apphttpcontrollersapiloyaltycontrollerphp)
+  - [app\Http\Controllers\Api\OrderController.php](#file-apphttpcontrollersapiordercontrollerphp)
+  - [app\Http\Controllers\Api\OrderPaymentsController.php](#file-apphttpcontrollersapiorderpaymentscontrollerphp)
+  - [app\Http\Controllers\Api\OrderPhotosController.php](#file-apphttpcontrollersapiorderphotoscontrollerphp)
+  - [app\Http\Controllers\Api\ReceivableController.php](#file-apphttpcontrollersapireceivablecontrollerphp)
+  - [app\Http\Controllers\Api\ReportController.php](#file-apphttpcontrollersapireportcontrollerphp)
+  - [app\Http\Controllers\Api\ServiceController.php](#file-apphttpcontrollersapiservicecontrollerphp)
+  - [app\Http\Controllers\Api\ServicePriceController.php](#file-apphttpcontrollersapiservicepricecontrollerphp)
+  - [app\Http\Controllers\Api\UserController.php](#file-apphttpcontrollersapiusercontrollerphp)
+  - [app\Http\Controllers\Api\VoucherController.php](#file-apphttpcontrollersapivouchercontrollerphp)
+  - [app\Http\Controllers\Api\WashNoteController.php](#file-apphttpcontrollersapiwashnotecontrollerphp)
 
 - [Models (app/Models)](#models-appmodels)
-  - [app/Models/Branch.php](#file-appmodelsbranchphp)
-  - [app/Models/Customer.php](#file-appmodelscustomerphp)
-  - [app/Models/Delivery.php](#file-appmodelsdeliveryphp)
-  - [app/Models/DeliveryEvent.php](#file-appmodelsdeliveryeventphp)
-  - [app/Models/Expense.php](#file-appmodelsexpensephp)
-  - [app/Models/InvoiceCounter.php](#file-appmodelsinvoicecounterphp)
-  - [app/Models/LoyaltyAccount.php](#file-appmodelsloyaltyaccountphp)
-  - [app/Models/LoyaltyLog.php](#file-appmodelsloyaltylogphp)
-  - [app/Models/Order.php](#file-appmodelsorderphp)
-  - [app/Models/OrderItem.php](#file-appmodelsorderitemphp)
-  - [app/Models/OrderPhoto.php](#file-appmodelsorderphotophp)
-  - [app/Models/OrderVoucher.php](#file-appmodelsordervoucherphp)
-  - [app/Models/Payment.php](#file-appmodelspaymentphp)
-  - [app/Models/Receivable.php](#file-appmodelsreceivablephp)
-  - [app/Models/Service.php](#file-appmodelsservicephp)
-  - [app/Models/ServiceCategory.php](#file-appmodelsservicecategoryphp)
-  - [app/Models/ServicePrice.php](#file-appmodelsservicepricephp)
-  - [app/Models/User.php](#file-appmodelsuserphp)
-  - [app/Models/Voucher.php](#file-appmodelsvoucherphp)
-  - [app/Models/WashNote.php](#file-appmodelswashnotephp)
-  - [app/Models/WashNoteItem.php](#file-appmodelswashnoteitemphp)
+  - [app\Models\Branch.php](#file-appmodelsbranchphp)
+  - [app\Models\Customer.php](#file-appmodelscustomerphp)
+  - [app\Models\Delivery.php](#file-appmodelsdeliveryphp)
+  - [app\Models\DeliveryEvent.php](#file-appmodelsdeliveryeventphp)
+  - [app\Models\Expense.php](#file-appmodelsexpensephp)
+  - [app\Models\InvoiceCounter.php](#file-appmodelsinvoicecounterphp)
+  - [app\Models\LoyaltyAccount.php](#file-appmodelsloyaltyaccountphp)
+  - [app\Models\LoyaltyLog.php](#file-appmodelsloyaltylogphp)
+  - [app\Models\Order.php](#file-appmodelsorderphp)
+  - [app\Models\OrderItem.php](#file-appmodelsorderitemphp)
+  - [app\Models\OrderPhoto.php](#file-appmodelsorderphotophp)
+  - [app\Models\OrderVoucher.php](#file-appmodelsordervoucherphp)
+  - [app\Models\Payment.php](#file-appmodelspaymentphp)
+  - [app\Models\Receivable.php](#file-appmodelsreceivablephp)
+  - [app\Models\Service.php](#file-appmodelsservicephp)
+  - [app\Models\ServiceCategory.php](#file-appmodelsservicecategoryphp)
+  - [app\Models\ServicePrice.php](#file-appmodelsservicepricephp)
+  - [app\Models\User.php](#file-appmodelsuserphp)
+  - [app\Models\Voucher.php](#file-appmodelsvoucherphp)
+  - [app\Models\WashNote.php](#file-appmodelswashnotephp)
+  - [app\Models\WashNoteItem.php](#file-appmodelswashnoteitemphp)
 
 - [Policies (app/Policies)](#policies-apppolicies)
-  - [app/Policies/BranchPolicy.php](#file-apppoliciesbranchpolicyphp)
-  - [app/Policies/CategoryPolicy.php](#file-apppoliciescategorypolicyphp)
-  - [app/Policies/CustomerPolicy.php](#file-apppoliciescustomerpolicyphp)
-  - [app/Policies/DeliveryPolicy.php](#file-apppoliciesdeliverypolicyphp)
-  - [app/Policies/ExpensePolicy.php](#file-apppoliciesexpensepolicyphp)
-  - [app/Policies/LoyaltyPolicy.php](#file-apppoliciesloyaltypolicyphp)
-  - [app/Policies/OrderPolicy.php](#file-apppoliciesorderpolicyphp)
-  - [app/Policies/ReceivablePolicy.php](#file-apppoliciesreceivablepolicyphp)
-  - [app/Policies/ServicePolicy.php](#file-apppoliciesservicepolicyphp)
-  - [app/Policies/UserPolicy.php](#file-apppoliciesuserpolicyphp)
-  - [app/Policies/VoucherPolicy.php](#file-apppoliciesvoucherpolicyphp)
-  - [app/Policies/WashNotePolicy.php](#file-apppolicieswashnotepolicyphp)
+  - [app\Policies\BranchPolicy.php](#file-apppoliciesbranchpolicyphp)
+  - [app\Policies\CategoryPolicy.php](#file-apppoliciescategorypolicyphp)
+  - [app\Policies\CustomerPolicy.php](#file-apppoliciescustomerpolicyphp)
+  - [app\Policies\DeliveryPolicy.php](#file-apppoliciesdeliverypolicyphp)
+  - [app\Policies\ExpensePolicy.php](#file-apppoliciesexpensepolicyphp)
+  - [app\Policies\LoyaltyPolicy.php](#file-apppoliciesloyaltypolicyphp)
+  - [app\Policies\OrderPolicy.php](#file-apppoliciesorderpolicyphp)
+  - [app\Policies\ReceivablePolicy.php](#file-apppoliciesreceivablepolicyphp)
+  - [app\Policies\ServicePolicy.php](#file-apppoliciesservicepolicyphp)
+  - [app\Policies\UserPolicy.php](#file-apppoliciesuserpolicyphp)
+  - [app\Policies\VoucherPolicy.php](#file-apppoliciesvoucherpolicyphp)
+  - [app\Policies\WashNotePolicy.php](#file-apppolicieswashnotepolicyphp)
 
 - [Form Requests (app/Http/Requests)](#form-requests-apphttprequests)
-  - [app/Http/Requests/Auth/LoginRequest.php](#file-apphttprequestsauthloginrequestphp)
-  - [app/Http/Requests/BranchStoreRequest.php](#file-apphttprequestsbranchstorerequestphp)
-  - [app/Http/Requests/BranchUpdateRequest.php](#file-apphttprequestsbranchupdaterequestphp)
-  - [app/Http/Requests/CategoryStoreRequest.php](#file-apphttprequestscategorystorerequestphp)
-  - [app/Http/Requests/CategoryUpdateRequest.php](#file-apphttprequestscategoryupdaterequestphp)
-  - [app/Http/Requests/CustomerSearchWARequest.php](#file-apphttprequestscustomersearchwarequestphp)
-  - [app/Http/Requests/CustomerStoreRequest.php](#file-apphttprequestscustomerstorerequestphp)
-  - [app/Http/Requests/CustomerUpdateRequest.php](#file-apphttprequestscustomerupdaterequestphp)
-  - [app/Http/Requests/Dashboard/DashboardSummaryRequest.php](#file-apphttprequestsdashboarddashboardsummaryrequestphp)
-  - [app/Http/Requests/Deliveries/DeliveryAssignRequest.php](#file-apphttprequestsdeliveriesdeliveryassignrequestphp)
-  - [app/Http/Requests/Deliveries/DeliveryStatusRequest.php](#file-apphttprequestsdeliveriesdeliverystatusrequestphp)
-  - [app/Http/Requests/Deliveries/DeliveryStoreRequest.php](#file-apphttprequestsdeliveriesdeliverystorerequestphp)
-  - [app/Http/Requests/Expenses/ExpenseStoreRequest.php](#file-apphttprequestsexpensesexpensestorerequestphp)
-  - [app/Http/Requests/Expenses/ExpenseUpdateRequest.php](#file-apphttprequestsexpensesexpenseupdaterequestphp)
-  - [app/Http/Requests/InvoiceCounterStoreRequest.php](#file-apphttprequestsinvoicecounterstorerequestphp)
-  - [app/Http/Requests/InvoiceCounterUpdateRequest.php](#file-apphttprequestsinvoicecounterupdaterequestphp)
-  - [app/Http/Requests/OrderStatusRequest.php](#file-apphttprequestsorderstatusrequestphp)
-  - [app/Http/Requests/OrderStoreRequest.php](#file-apphttprequestsorderstorerequestphp)
-  - [app/Http/Requests/OrderUpdateRequest.php](#file-apphttprequestsorderupdaterequestphp)
-  - [app/Http/Requests/Orders/OrderApplyVoucherRequest.php](#file-apphttprequestsordersorderapplyvoucherrequestphp)
-  - [app/Http/Requests/Orders/OrderPhotosRequest.php](#file-apphttprequestsordersorderphotosrequestphp)
-  - [app/Http/Requests/Payments/PaymentRequest.php](#file-apphttprequestspaymentspaymentrequestphp)
-  - [app/Http/Requests/Receivables/ReceivableCreateRequest.php](#file-apphttprequestsreceivablesreceivablecreaterequestphp)
-  - [app/Http/Requests/Receivables/ReceivableSettleRequest.php](#file-apphttprequestsreceivablesreceivablesettlerequestphp)
-  - [app/Http/Requests/Reports/ReportFilterRequest.php](#file-apphttprequestsreportsreportfilterrequestphp)
-  - [app/Http/Requests/ResetPasswordRequest.php](#file-apphttprequestsresetpasswordrequestphp)
-  - [app/Http/Requests/ServicePriceSetRequest.php](#file-apphttprequestsservicepricesetrequestphp)
-  - [app/Http/Requests/ServiceStoreRequest.php](#file-apphttprequestsservicestorerequestphp)
-  - [app/Http/Requests/ServiceUpdateRequest.php](#file-apphttprequestsserviceupdaterequestphp)
-  - [app/Http/Requests/UserStoreRequest.php](#file-apphttprequestsuserstorerequestphp)
-  - [app/Http/Requests/UserUpdateRequest.php](#file-apphttprequestsuserupdaterequestphp)
-  - [app/Http/Requests/Vouchers/VoucherStoreRequest.php](#file-apphttprequestsvouchersvoucherstorerequestphp)
-  - [app/Http/Requests/Vouchers/VoucherUpdateRequest.php](#file-apphttprequestsvouchersvoucherupdaterequestphp)
-  - [app/Http/Requests/WashNoteStoreRequest.php](#file-apphttprequestswashnotestorerequestphp)
-  - [app/Http/Requests/WashNoteUpdateRequest.php](#file-apphttprequestswashnoteupdaterequestphp)
+  - [app\Http\Requests\Auth\LoginRequest.php](#file-apphttprequestsauthloginrequestphp)
+  - [app\Http\Requests\BranchStoreRequest.php](#file-apphttprequestsbranchstorerequestphp)
+  - [app\Http\Requests\BranchUpdateRequest.php](#file-apphttprequestsbranchupdaterequestphp)
+  - [app\Http\Requests\CategoryStoreRequest.php](#file-apphttprequestscategorystorerequestphp)
+  - [app\Http\Requests\CategoryUpdateRequest.php](#file-apphttprequestscategoryupdaterequestphp)
+  - [app\Http\Requests\CustomerSearchWARequest.php](#file-apphttprequestscustomersearchwarequestphp)
+  - [app\Http\Requests\CustomerStoreRequest.php](#file-apphttprequestscustomerstorerequestphp)
+  - [app\Http\Requests\CustomerUpdateRequest.php](#file-apphttprequestscustomerupdaterequestphp)
+  - [app\Http\Requests\Dashboard\DashboardSummaryRequest.php](#file-apphttprequestsdashboarddashboardsummaryrequestphp)
+  - [app\Http\Requests\Deliveries\DeliveryAssignRequest.php](#file-apphttprequestsdeliveriesdeliveryassignrequestphp)
+  - [app\Http\Requests\Deliveries\DeliveryStatusRequest.php](#file-apphttprequestsdeliveriesdeliverystatusrequestphp)
+  - [app\Http\Requests\Deliveries\DeliveryStoreRequest.php](#file-apphttprequestsdeliveriesdeliverystorerequestphp)
+  - [app\Http\Requests\Expenses\ExpenseStoreRequest.php](#file-apphttprequestsexpensesexpensestorerequestphp)
+  - [app\Http\Requests\Expenses\ExpenseUpdateRequest.php](#file-apphttprequestsexpensesexpenseupdaterequestphp)
+  - [app\Http\Requests\InvoiceCounterStoreRequest.php](#file-apphttprequestsinvoicecounterstorerequestphp)
+  - [app\Http\Requests\InvoiceCounterUpdateRequest.php](#file-apphttprequestsinvoicecounterupdaterequestphp)
+  - [app\Http\Requests\Orders\OrderApplyVoucherRequest.php](#file-apphttprequestsordersorderapplyvoucherrequestphp)
+  - [app\Http\Requests\Orders\OrderPhotosRequest.php](#file-apphttprequestsordersorderphotosrequestphp)
+  - [app\Http\Requests\OrderStatusRequest.php](#file-apphttprequestsorderstatusrequestphp)
+  - [app\Http\Requests\OrderStoreRequest.php](#file-apphttprequestsorderstorerequestphp)
+  - [app\Http\Requests\OrderUpdateRequest.php](#file-apphttprequestsorderupdaterequestphp)
+  - [app\Http\Requests\Payments\PaymentRequest.php](#file-apphttprequestspaymentspaymentrequestphp)
+  - [app\Http\Requests\Receivables\ReceivableCreateRequest.php](#file-apphttprequestsreceivablesreceivablecreaterequestphp)
+  - [app\Http\Requests\Receivables\ReceivableSettleRequest.php](#file-apphttprequestsreceivablesreceivablesettlerequestphp)
+  - [app\Http\Requests\Reports\ReportFilterRequest.php](#file-apphttprequestsreportsreportfilterrequestphp)
+  - [app\Http\Requests\ResetPasswordRequest.php](#file-apphttprequestsresetpasswordrequestphp)
+  - [app\Http\Requests\ServicePriceSetRequest.php](#file-apphttprequestsservicepricesetrequestphp)
+  - [app\Http\Requests\ServiceStoreRequest.php](#file-apphttprequestsservicestorerequestphp)
+  - [app\Http\Requests\ServiceUpdateRequest.php](#file-apphttprequestsserviceupdaterequestphp)
+  - [app\Http\Requests\UserStoreRequest.php](#file-apphttprequestsuserstorerequestphp)
+  - [app\Http\Requests\UserUpdateRequest.php](#file-apphttprequestsuserupdaterequestphp)
+  - [app\Http\Requests\Vouchers\VoucherStoreRequest.php](#file-apphttprequestsvouchersvoucherstorerequestphp)
+  - [app\Http\Requests\Vouchers\VoucherUpdateRequest.php](#file-apphttprequestsvouchersvoucherupdaterequestphp)
+  - [app\Http\Requests\WashNoteStoreRequest.php](#file-apphttprequestswashnotestorerequestphp)
+  - [app\Http\Requests\WashNoteUpdateRequest.php](#file-apphttprequestswashnoteupdaterequestphp)
 
 - [Services (app/Services)](#services-appservices)
-  - [app/Services/AuthService.php](#file-appservicesauthservicephp)
-  - [app/Services/DashboardService.php](#file-appservicesdashboardservicephp)
-  - [app/Services/DeliveryService.php](#file-appservicesdeliveryservicephp)
-  - [app/Services/InvoiceNumberService.php](#file-appservicesinvoicenumberservicephp)
-  - [app/Services/InvoiceService.php](#file-appservicesinvoiceservicephp)
-  - [app/Services/LoyaltyService.php](#file-appservicesloyaltyservicephp)
-  - [app/Services/OrderNumberService.php](#file-appservicesordernumberservicephp)
-  - [app/Services/OrderService.php](#file-appservicesorderservicephp)
-  - [app/Services/PaymentService.php](#file-appservicespaymentservicephp)
-  - [app/Services/PricingService.php](#file-appservicespricingservicephp)
-  - [app/Services/ReceivableService.php](#file-appservicesreceivableservicephp)
-  - [app/Services/ReportService.php](#file-appservicesreportservicephp)
-  - [app/Services/UserService.php](#file-appservicesuserservicephp)
-  - [app/Services/VoucherService.php](#file-appservicesvoucherservicephp)
+  - [app\Services\AuthService.php](#file-appservicesauthservicephp)
+  - [app\Services\DashboardService.php](#file-appservicesdashboardservicephp)
+  - [app\Services\DeliveryService.php](#file-appservicesdeliveryservicephp)
+  - [app\Services\InvoiceNumberService.php](#file-appservicesinvoicenumberservicephp)
+  - [app\Services\InvoiceService.php](#file-appservicesinvoiceservicephp)
+  - [app\Services\LoyaltyService.php](#file-appservicesloyaltyservicephp)
+  - [app\Services\OrderNumberService.php](#file-appservicesordernumberservicephp)
+  - [app\Services\OrderService.php](#file-appservicesorderservicephp)
+  - [app\Services\PaymentService.php](#file-appservicespaymentservicephp)
+  - [app\Services\PricingService.php](#file-appservicespricingservicephp)
+  - [app\Services\ReceivableService.php](#file-appservicesreceivableservicephp)
+  - [app\Services\ReportService.php](#file-appservicesreportservicephp)
+  - [app\Services\UserService.php](#file-appservicesuserservicephp)
+  - [app\Services\VoucherService.php](#file-appservicesvoucherservicephp)
 
 - [Database (seeders)](#database-seeders)
-  - [database/seeders/BranchSeeder.php](#file-databaseseedersbranchseederphp)
-  - [database/seeders/DatabaseSeeder.php](#file-databaseseedersdatabaseseederphp)
-  - [database/seeders/RolesTableSeeder.php](#file-databaseseedersrolestableseederphp)
-  - [database/seeders/UserSeeder.php](#file-databaseseedersuserseederphp)
+  - [database\seeders\BranchSeeder.php](#file-databaseseedersbranchseederphp)
+  - [database\seeders\DatabaseSeeder.php](#file-databaseseedersdatabaseseederphp)
+  - [database\seeders\RolesTableSeeder.php](#file-databaseseedersrolestableseederphp)
+  - [database\seeders\UserSeeder.php](#file-databaseseedersuserseederphp)
 
 - [resources (resources)](#resources-resources)
-  - [resources/views/orders/receipt.blade.php](#file-resourcesviewsordersreceiptbladephp)
+  - [resources\views\orders\receipt.blade.php](#file-resourcesviewsordersreceiptbladephp)
 
 - [routes/api.php](#routesapiphp)
 
@@ -134,7 +134,7 @@ _Dihasilkan otomatis: 2026-02-12 19:27:54_
 
 ## Controllers (app/Http/Controllers/Api)
 
-### app/Http/Controllers/Api/AuthController.php
+### app\Http\Controllers\Api\AuthController.php
 
 - SHA: `9226ec9d4fbb`  
 - Ukuran: 2 KB  
@@ -216,7 +216,7 @@ class AuthController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/BranchController.php
+### app\Http\Controllers\Api\BranchController.php
 
 - SHA: `6e032450ac63`  
 - Ukuran: 2 KB  
@@ -338,7 +338,7 @@ class BranchController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/CategoryController.php
+### app\Http\Controllers\Api\CategoryController.php
 
 - SHA: `69f1f77ad824`  
 - Ukuran: 3 KB  
@@ -461,7 +461,7 @@ class CategoryController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/CustomerController.php
+### app\Http\Controllers\Api\CustomerController.php
 
 - SHA: `3182cb22cc7f`  
 - Ukuran: 5 KB  
@@ -653,7 +653,7 @@ class CustomerController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/DashboardController.php
+### app\Http\Controllers\Api\DashboardController.php
 
 - SHA: `ed75c6016132`  
 - Ukuran: 925 B  
@@ -703,7 +703,7 @@ class DashboardController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/DeliveryController.php
+### app\Http\Controllers\Api\DeliveryController.php
 
 - SHA: `57ff79d75d6d`  
 - Ukuran: 5 KB  
@@ -892,7 +892,7 @@ class DeliveryController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/ExpenseController.php
+### app\Http\Controllers\Api\ExpenseController.php
 
 - SHA: `3f7933189b3b`  
 - Ukuran: 4 KB  
@@ -1069,7 +1069,7 @@ class ExpenseController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/InvoiceCounterController.php
+### app\Http\Controllers\Api\InvoiceCounterController.php
 
 - SHA: `5aff7a2f1617`  
 - Ukuran: 7 KB  
@@ -1325,7 +1325,7 @@ class InvoiceCounterController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/LoyaltyController.php
+### app\Http\Controllers\Api\LoyaltyController.php
 
 - SHA: `5d35fd551cef`  
 - Ukuran: 2 KB  
@@ -1396,10 +1396,10 @@ class LoyaltyController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/OrderController.php
+### app\Http\Controllers\Api\OrderController.php
 
-- SHA: `21ddde3ff5b7`  
-- Ukuran: 8 KB  
+- SHA: `ca9e68481d91`  
+- Ukuran: 9 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `OrderController` extends `Controller`**
@@ -1447,12 +1447,22 @@ class OrderController extends Controller
         $me = $request->user();
         $q = Order::query()
             ->with(['customer', 'items.service', 'receivable'])
-            ->withCount('payments');
+            ->withCount('payments')
+            ->addSelect([
+                'latest_payment_method' => \App\Models\Payment::query()
+                    ->select('method')
+                    ->whereColumn('payments.order_id', 'orders.id')
+                    ->orderByDesc('created_at')
+                    ->limit(1),
+            ]);
 
         // ===== (1) Sorting yang fleksibel =====
-        $sortBy  = in_array($request->query('sort_by'), ['created_at', 'received_at', 'ready_at'])
-            ? $request->query('sort_by') : 'created_at';
+        $sortBy = in_array($request->query('sort_by'), ['created_at', 'received_at', 'ready_at'])
+            ? $request->query('sort_by')
+            : 'created_at';
+
         $sortDir = strtolower((string) $request->query('sort_dir')) === 'asc' ? 'asc' : 'desc';
+
         $q->orderBy($sortBy, $sortDir);
 
         // ===== (2) Scope cabang =====
@@ -1460,22 +1470,41 @@ class OrderController extends Controller
             if ($branchId = (string) $request->query('branch_id')) {
                 $q->where('branch_id', $branchId);
             }
-        } else if ($me->branch_id) {
+        } elseif ($me->branch_id) {
             $q->where('branch_id', $me->branch_id);
         }
 
-        // ===== (3) Pencarian cepat =====
-        if ($s = $request->query('q')) {
+        // ===== (3) Pencarian cepat diperluas =====
+        if ($s = trim((string) $request->query('q'))) {
             $q->where(function ($w) use ($s) {
                 $w->where('number', 'like', "%{$s}%")
-                    ->orWhere('notes', 'like', "%{$s}%");
+                    ->orWhere('invoice_no', 'like', "%{$s}%")
+                    ->orWhere('notes', 'like', "%{$s}%")
+                    ->orWhereHas('customer', function ($cq) use ($s) {
+                        $cq->where('name', 'like', "%{$s}%")
+                            ->orWhere('whatsapp', 'like', "%{$s}%");
+                    });
             });
         }
+
+        // ===== (4) Filter status order =====
         if ($st = $request->query('status')) {
             $q->where('status', $st);
         }
 
-        // ===== (4) Filter tanggal existing (created_at) — tetap dipertahankan =====
+        // ===== (5) Filter status pembayaran =====
+        if ($paymentStatus = $request->query('payment_status')) {
+            $q->where('payment_status', $paymentStatus);
+        }
+
+        // ===== (6) Filter metode pembayaran =====
+        if ($paymentMethod = $request->query('payment_method')) {
+            $q->whereHas('payments', function ($pq) use ($paymentMethod) {
+                $pq->where('method', $paymentMethod);
+            });
+        }
+
+        // ===== (7) Filter tanggal order dibuat =====
         if ($from = $request->query('from')) {
             $q->whereDate('created_at', '>=', $from);
         }
@@ -1483,7 +1512,7 @@ class OrderController extends Controller
             $q->whereDate('created_at', '<=', $to);
         }
 
-        // ===== (5) Filter tanggal baru: received_at =====
+        // ===== (8) Filter tanggal diterima =====
         if ($rf = $request->query('received_from')) {
             $q->whereDate('received_at', '>=', $rf);
         }
@@ -1491,7 +1520,7 @@ class OrderController extends Controller
             $q->whereDate('received_at', '<=', $rt);
         }
 
-        // ===== (6) Filter tanggal baru: ready_at =====
+        // ===== (9) Filter tanggal jadi =====
         if ($yf = $request->query('ready_from')) {
             $q->whereDate('ready_at', '>=', $yf);
         }
@@ -1499,7 +1528,7 @@ class OrderController extends Controller
             $q->whereDate('ready_at', '<=', $yt);
         }
 
-        $per  = (int) max(1, min(100, (int) $request->query('per_page', 10)));
+        $per = (int) max(1, min(100, (int) $request->query('per_page', 10)));
         $page = $q->paginate($per);
 
         return response()->json([
@@ -1516,8 +1545,6 @@ class OrderController extends Controller
             'errors'  => null,
         ]);
     }
-
-
     public function show(Order $order)
     {
         $this->authorize('view', $order);
@@ -1593,6 +1620,7 @@ class OrderController extends Controller
         $order->load([
             'items.service:id,name',
             'branch:id,name,address',
+            'payments' => fn($q) => $q->orderBy('paid_at')->orderBy('created_at'),
         ]);
 
         $loy = null;
@@ -1675,7 +1703,7 @@ class OrderController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/OrderPaymentsController.php
+### app\Http\Controllers\Api\OrderPaymentsController.php
 
 - SHA: `aadef500d7ff`  
 - Ukuran: 1 KB  
@@ -1734,7 +1762,7 @@ class OrderPaymentsController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/OrderPhotosController.php
+### app\Http\Controllers\Api\OrderPhotosController.php
 
 - SHA: `6f0a722896b0`  
 - Ukuran: 2 KB  
@@ -1808,7 +1836,7 @@ class OrderPhotosController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/ReceivableController.php
+### app\Http\Controllers\Api\ReceivableController.php
 
 - SHA: `faf1c359d191`  
 - Ukuran: 3 KB  
@@ -1925,7 +1953,7 @@ class ReceivableController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/ReportController.php
+### app\Http\Controllers\Api\ReportController.php
 
 - SHA: `0b14b81cbb73`  
 - Ukuran: 4 KB  
@@ -2047,7 +2075,7 @@ class ReportController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/ServiceController.php
+### app\Http\Controllers\Api\ServiceController.php
 
 - SHA: `def3779fd6a0`  
 - Ukuran: 3 KB  
@@ -2178,7 +2206,7 @@ class ServiceController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/ServicePriceController.php
+### app\Http\Controllers\Api\ServicePriceController.php
 
 - SHA: `317726c91494`  
 - Ukuran: 3 KB  
@@ -2302,7 +2330,7 @@ class ServicePriceController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/UserController.php
+### app\Http\Controllers\Api\UserController.php
 
 - SHA: `89c4aa70fdf4`  
 - Ukuran: 6 KB  
@@ -2535,7 +2563,7 @@ class UserController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/VoucherController.php
+### app\Http\Controllers\Api\VoucherController.php
 
 - SHA: `d1f7ed4e4508`  
 - Ukuran: 5 KB  
@@ -2711,7 +2739,7 @@ class VoucherController extends Controller
 ```
 </details>
 
-### app/Http/Controllers/Api/WashNoteController.php
+### app\Http\Controllers\Api\WashNoteController.php
 
 - SHA: `ffd352ce26b0`  
 - Ukuran: 12 KB  
@@ -3071,7 +3099,7 @@ class WashNoteController extends Controller
 
 ## Models (app/Models)
 
-### app/Models/Branch.php
+### app\Models\Branch.php
 
 - SHA: `2872c07ec6c6`  
 - Ukuran: 706 B  
@@ -3123,7 +3151,7 @@ class Branch extends Model
 ```
 </details>
 
-### app/Models/Customer.php
+### app\Models\Customer.php
 
 - SHA: `2b1004dedcaa`  
 - Ukuran: 585 B  
@@ -3169,7 +3197,7 @@ class Customer extends Model
 ```
 </details>
 
-### app/Models/Delivery.php
+### app\Models\Delivery.php
 
 - SHA: `33d3ae90aad7`  
 - Ukuran: 979 B  
@@ -3235,7 +3263,7 @@ class Delivery extends Model
 ```
 </details>
 
-### app/Models/DeliveryEvent.php
+### app\Models\DeliveryEvent.php
 
 - SHA: `4618be90f2e4`  
 - Ukuran: 535 B  
@@ -3275,7 +3303,7 @@ class DeliveryEvent extends Model
 ```
 </details>
 
-### app/Models/Expense.php
+### app\Models\Expense.php
 
 - SHA: `3fb0d1d88867`  
 - Ukuran: 644 B  
@@ -3328,7 +3356,7 @@ class Expense extends Model
 ```
 </details>
 
-### app/Models/InvoiceCounter.php
+### app\Models\InvoiceCounter.php
 
 - SHA: `214e0c65ae0c`  
 - Ukuran: 672 B  
@@ -3378,7 +3406,7 @@ class InvoiceCounter extends Model
 ```
 </details>
 
-### app/Models/LoyaltyAccount.php
+### app\Models\LoyaltyAccount.php
 
 - SHA: `7a064f5dd330`  
 - Ukuran: 323 B  
@@ -3405,7 +3433,7 @@ class LoyaltyAccount extends Model
 ```
 </details>
 
-### app/Models/LoyaltyLog.php
+### app\Models\LoyaltyLog.php
 
 - SHA: `7da979e5c9a6`  
 - Ukuran: 342 B  
@@ -3433,7 +3461,7 @@ class LoyaltyLog extends Model
 ```
 </details>
 
-### app/Models/Order.php
+### app\Models\Order.php
 
 - SHA: `16ad84e636d2`  
 - Ukuran: 3 KB  
@@ -3560,7 +3588,7 @@ class Order extends Model
 ```
 </details>
 
-### app/Models/OrderItem.php
+### app\Models\OrderItem.php
 
 - SHA: `08408e431b38`  
 - Ukuran: 1 KB  
@@ -3625,7 +3653,7 @@ class OrderItem extends Model
 ```
 </details>
 
-### app/Models/OrderPhoto.php
+### app\Models\OrderPhoto.php
 
 - SHA: `eadef3af774e`  
 - Ukuran: 515 B  
@@ -3665,7 +3693,7 @@ class OrderPhoto extends Model
 ```
 </details>
 
-### app/Models/OrderVoucher.php
+### app\Models\OrderVoucher.php
 
 - SHA: `8cfb6e11a09e`  
 - Ukuran: 785 B  
@@ -3716,7 +3744,7 @@ class OrderVoucher extends Model
 ```
 </details>
 
-### app/Models/Payment.php
+### app\Models\Payment.php
 
 - SHA: `a54c2fa1b283`  
 - Ukuran: 677 B  
@@ -3767,7 +3795,7 @@ class Payment extends Model
 ```
 </details>
 
-### app/Models/Receivable.php
+### app\Models\Receivable.php
 
 - SHA: `a0289f2797ee`  
 - Ukuran: 685 B  
@@ -3817,7 +3845,7 @@ class Receivable extends Model
 ```
 </details>
 
-### app/Models/Service.php
+### app\Models\Service.php
 
 - SHA: `664f3e096369`  
 - Ukuran: 825 B  
@@ -3874,7 +3902,7 @@ class Service extends Model
 ```
 </details>
 
-### app/Models/ServiceCategory.php
+### app\Models\ServiceCategory.php
 
 - SHA: `39f2f2865673`  
 - Ukuran: 592 B  
@@ -3918,7 +3946,7 @@ class ServiceCategory extends Model
 ```
 </details>
 
-### app/Models/ServicePrice.php
+### app\Models\ServicePrice.php
 
 - SHA: `8f94665098ac`  
 - Ukuran: 707 B  
@@ -3968,7 +3996,7 @@ class ServicePrice extends Model
 ```
 </details>
 
-### app/Models/User.php
+### app\Models\User.php
 
 - SHA: `9bab0ed384b9`  
 - Ukuran: 2 KB  
@@ -4058,7 +4086,7 @@ class User extends Authenticatable
 ```
 </details>
 
-### app/Models/Voucher.php
+### app\Models\Voucher.php
 
 - SHA: `abdd11b39c51`  
 - Ukuran: 995 B  
@@ -4118,7 +4146,7 @@ class Voucher extends Model
 ```
 </details>
 
-### app/Models/WashNote.php
+### app\Models\WashNote.php
 
 - SHA: `84ff66ac2ecb`  
 - Ukuran: 1010 B  
@@ -4181,7 +4209,7 @@ class WashNote extends Model
 ```
 </details>
 
-### app/Models/WashNoteItem.php
+### app\Models\WashNoteItem.php
 
 - SHA: `8ed7279d6289`  
 - Ukuran: 735 B  
@@ -4240,9 +4268,9 @@ class WashNoteItem extends Model
 
 ## Policies (app/Policies)
 
-### app/Policies/BranchPolicy.php
+### app\Policies\BranchPolicy.php
 
-- SHA: `54554316c03c`  
+- SHA: `228311b9829b`  
 - Ukuran: 1 KB  
 - Namespace: `App\Policies`
 
@@ -4282,7 +4310,7 @@ class BranchPolicy
 
     public function view(User $user, Branch $branch): bool
     {
-        if ($user->hasRole(['Admin Cabang', 'Kasir'])) {
+        if ($user->hasRole(['Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir'])) {
             return (string) $user->branch_id === (string) $branch->id;
         }
         return false;
@@ -4310,7 +4338,7 @@ class BranchPolicy
 ```
 </details>
 
-### app/Policies/CategoryPolicy.php
+### app\Policies\CategoryPolicy.php
 
 - SHA: `83d6b855eca7`  
 - Ukuran: 960 B  
@@ -4373,7 +4401,7 @@ class CategoryPolicy
 ```
 </details>
 
-### app/Policies/CustomerPolicy.php
+### app\Policies\CustomerPolicy.php
 
 - SHA: `246ec52cc10f`  
 - Ukuran: 2 KB  
@@ -4457,7 +4485,7 @@ class CustomerPolicy
 ```
 </details>
 
-### app/Policies/DeliveryPolicy.php
+### app\Policies\DeliveryPolicy.php
 
 - SHA: `030bbd94a164`  
 - Ukuran: 1 KB  
@@ -4533,7 +4561,7 @@ class DeliveryPolicy
 ```
 </details>
 
-### app/Policies/ExpensePolicy.php
+### app\Policies\ExpensePolicy.php
 
 - SHA: `57cfc797292f`  
 - Ukuran: 1 KB  
@@ -4606,7 +4634,7 @@ class ExpensePolicy
 ```
 </details>
 
-### app/Policies/LoyaltyPolicy.php
+### app\Policies\LoyaltyPolicy.php
 
 - SHA: `1792a12c3762`  
 - Ukuran: 382 B  
@@ -4643,7 +4671,7 @@ class LoyaltyPolicy
 ```
 </details>
 
-### app/Policies/OrderPolicy.php
+### app\Policies\OrderPolicy.php
 
 - SHA: `5d88ccb506d5`  
 - Ukuran: 2 KB  
@@ -4746,7 +4774,7 @@ class OrderPolicy
 ```
 </details>
 
-### app/Policies/ReceivablePolicy.php
+### app\Policies\ReceivablePolicy.php
 
 - SHA: `839b5ee441f9`  
 - Ukuran: 955 B  
@@ -4802,7 +4830,7 @@ class ReceivablePolicy
 ```
 </details>
 
-### app/Policies/ServicePolicy.php
+### app\Policies\ServicePolicy.php
 
 - SHA: `c2bbfe6c8d4e`  
 - Ukuran: 940 B  
@@ -4865,7 +4893,7 @@ class ServicePolicy
 ```
 </details>
 
-### app/Policies/UserPolicy.php
+### app\Policies\UserPolicy.php
 
 - SHA: `5a811da043ce`  
 - Ukuran: 3 KB  
@@ -5015,7 +5043,7 @@ class UserPolicy
 ```
 </details>
 
-### app/Policies/VoucherPolicy.php
+### app\Policies\VoucherPolicy.php
 
 - SHA: `063e1272ad19`  
 - Ukuran: 1 KB  
@@ -5088,7 +5116,7 @@ class VoucherPolicy
 ```
 </details>
 
-### app/Policies/WashNotePolicy.php
+### app\Policies\WashNotePolicy.php
 
 - SHA: `8b2f48814901`  
 - Ukuran: 2 KB  
@@ -5171,7 +5199,7 @@ class WashNotePolicy
 
 ## Form Requests (app/Http/Requests)
 
-### app/Http/Requests/Auth/LoginRequest.php
+### app\Http\Requests\Auth\LoginRequest.php
 
 - SHA: `8dd59b857462`  
 - Ukuran: 2 KB  
@@ -5277,7 +5305,7 @@ class LoginRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/BranchStoreRequest.php
+### app\Http\Requests\BranchStoreRequest.php
 
 - SHA: `bc0cc0149344`  
 - Ukuran: 680 B  
@@ -5319,7 +5347,7 @@ class BranchStoreRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/BranchUpdateRequest.php
+### app\Http\Requests\BranchUpdateRequest.php
 
 - SHA: `e016b3d04ff4`  
 - Ukuran: 762 B  
@@ -5363,7 +5391,7 @@ class BranchUpdateRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/CategoryStoreRequest.php
+### app\Http\Requests\CategoryStoreRequest.php
 
 - SHA: `0d7a9632ab19`  
 - Ukuran: 479 B  
@@ -5403,7 +5431,7 @@ class CategoryStoreRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/CategoryUpdateRequest.php
+### app\Http\Requests\CategoryUpdateRequest.php
 
 - SHA: `f7580edead1e`  
 - Ukuran: 513 B  
@@ -5444,7 +5472,7 @@ class CategoryUpdateRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/CustomerSearchWARequest.php
+### app\Http\Requests\CustomerSearchWARequest.php
 
 - SHA: `359f2e485ed7`  
 - Ukuran: 401 B  
@@ -5482,7 +5510,7 @@ class CustomerSearchWARequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/CustomerStoreRequest.php
+### app\Http\Requests\CustomerStoreRequest.php
 
 - SHA: `38679783f912`  
 - Ukuran: 1 KB  
@@ -5539,7 +5567,7 @@ class CustomerStoreRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/CustomerUpdateRequest.php
+### app\Http\Requests\CustomerUpdateRequest.php
 
 - SHA: `5285851be61d`  
 - Ukuran: 1 KB  
@@ -5603,7 +5631,7 @@ class CustomerUpdateRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/Dashboard/DashboardSummaryRequest.php
+### app\Http\Requests\Dashboard\DashboardSummaryRequest.php
 
 - SHA: `a4b594f5872d`  
 - Ukuran: 1 KB  
@@ -5672,7 +5700,7 @@ class DashboardSummaryRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/Deliveries/DeliveryAssignRequest.php
+### app\Http\Requests\Deliveries\DeliveryAssignRequest.php
 
 - SHA: `990c3eea3cce`  
 - Ukuran: 424 B  
@@ -5711,7 +5739,7 @@ class DeliveryAssignRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/Deliveries/DeliveryStatusRequest.php
+### app\Http\Requests\Deliveries\DeliveryStatusRequest.php
 
 - SHA: `43bdfd523d1b`  
 - Ukuran: 1007 B  
@@ -5773,7 +5801,7 @@ class DeliveryStatusRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/Deliveries/DeliveryStoreRequest.php
+### app\Http\Requests\Deliveries\DeliveryStoreRequest.php
 
 - SHA: `659b9476cda8`  
 - Ukuran: 1 KB  
@@ -5830,7 +5858,7 @@ class DeliveryStoreRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/Expenses/ExpenseStoreRequest.php
+### app\Http\Requests\Expenses\ExpenseStoreRequest.php
 
 - SHA: `5c7bf55f4b7b`  
 - Ukuran: 610 B  
@@ -5872,7 +5900,7 @@ class ExpenseStoreRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/Expenses/ExpenseUpdateRequest.php
+### app\Http\Requests\Expenses\ExpenseUpdateRequest.php
 
 - SHA: `1c565a8f575d`  
 - Ukuran: 699 B  
@@ -5917,7 +5945,7 @@ class ExpenseUpdateRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/InvoiceCounterStoreRequest.php
+### app\Http\Requests\InvoiceCounterStoreRequest.php
 
 - SHA: `a8ce0038a22b`  
 - Ukuran: 860 B  
@@ -5968,7 +5996,7 @@ class InvoiceCounterStoreRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/InvoiceCounterUpdateRequest.php
+### app\Http\Requests\InvoiceCounterUpdateRequest.php
 
 - SHA: `abbd2d61549c`  
 - Ukuran: 538 B  
@@ -6008,7 +6036,95 @@ class InvoiceCounterUpdateRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/OrderStatusRequest.php
+### app\Http\Requests\Orders\OrderApplyVoucherRequest.php
+
+- SHA: `f712b239f60b`  
+- Ukuran: 423 B  
+- Namespace: `App\Http\Requests\Orders`
+
+**Class `OrderApplyVoucherRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Orders;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class OrderApplyVoucherRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        // Otorisasi pada controller via $this->authorize('update', $order)
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'code' => ['required', 'string', 'max:40'],
+        ];
+    }
+}
+
+```
+</details>
+
+### app\Http\Requests\Orders\OrderPhotosRequest.php
+
+- SHA: `8f5485516bd5`  
+- Ukuran: 723 B  
+- Namespace: `App\Http\Requests\Orders`
+
+**Class `OrderPhotosRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **messages**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Orders;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class OrderPhotosRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        // Otorisasi akan dicek di Controller (authorize('update', $order))
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'photos.before.*' => ['image', 'max:4096'], // ~4 MB per file
+            'photos.after.*'  => ['image', 'max:4096'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'photos.before.*.image' => 'File "before" harus berupa gambar.',
+            'photos.after.*.image'  => 'File "after" harus berupa gambar.',
+        ];
+    }
+}
+
+```
+</details>
+
+### app\Http\Requests\OrderStatusRequest.php
 
 - SHA: `fb9d1581c5c5`  
 - Ukuran: 487 B  
@@ -6047,7 +6163,7 @@ class OrderStatusRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/OrderStoreRequest.php
+### app\Http\Requests\OrderStoreRequest.php
 
 - SHA: `cc1faa755d53`  
 - Ukuran: 3 KB  
@@ -6151,7 +6267,7 @@ class OrderStoreRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/OrderUpdateRequest.php
+### app\Http\Requests\OrderUpdateRequest.php
 
 - SHA: `848783099280`  
 - Ukuran: 3 KB  
@@ -6248,95 +6364,7 @@ class OrderUpdateRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/Orders/OrderApplyVoucherRequest.php
-
-- SHA: `f712b239f60b`  
-- Ukuran: 423 B  
-- Namespace: `App\Http\Requests\Orders`
-
-**Class `OrderApplyVoucherRequest` extends `FormRequest`**
-
-Metode Publik:
-- **authorize**() : *bool*
-- **rules**() : *array*
-<details><summary><strong>Lihat Kode Lengkap</strong></summary>
-
-```php
-<?php
-
-namespace App\Http\Requests\Orders;
-
-use Illuminate\Foundation\Http\FormRequest;
-
-class OrderApplyVoucherRequest extends FormRequest
-{
-    public function authorize(): bool
-    {
-        // Otorisasi pada controller via $this->authorize('update', $order)
-        return true;
-    }
-
-    public function rules(): array
-    {
-        return [
-            'code' => ['required', 'string', 'max:40'],
-        ];
-    }
-}
-
-```
-</details>
-
-### app/Http/Requests/Orders/OrderPhotosRequest.php
-
-- SHA: `8f5485516bd5`  
-- Ukuran: 723 B  
-- Namespace: `App\Http\Requests\Orders`
-
-**Class `OrderPhotosRequest` extends `FormRequest`**
-
-Metode Publik:
-- **authorize**() : *bool*
-- **rules**() : *array*
-- **messages**() : *array*
-<details><summary><strong>Lihat Kode Lengkap</strong></summary>
-
-```php
-<?php
-
-namespace App\Http\Requests\Orders;
-
-use Illuminate\Foundation\Http\FormRequest;
-
-class OrderPhotosRequest extends FormRequest
-{
-    public function authorize(): bool
-    {
-        // Otorisasi akan dicek di Controller (authorize('update', $order))
-        return true;
-    }
-
-    public function rules(): array
-    {
-        return [
-            'photos.before.*' => ['image', 'max:4096'], // ~4 MB per file
-            'photos.after.*'  => ['image', 'max:4096'],
-        ];
-    }
-
-    public function messages(): array
-    {
-        return [
-            'photos.before.*.image' => 'File "before" harus berupa gambar.',
-            'photos.after.*.image'  => 'File "after" harus berupa gambar.',
-        ];
-    }
-}
-
-```
-</details>
-
-### app/Http/Requests/Payments/PaymentRequest.php
+### app\Http\Requests\Payments\PaymentRequest.php
 
 - SHA: `cc8052cfe780`  
 - Ukuran: 1 KB  
@@ -6390,7 +6418,7 @@ class PaymentRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/Receivables/ReceivableCreateRequest.php
+### app\Http\Requests\Receivables\ReceivableCreateRequest.php
 
 - SHA: `680365444219`  
 - Ukuran: 343 B  
@@ -6428,7 +6456,7 @@ class ReceivableCreateRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/Receivables/ReceivableSettleRequest.php
+### app\Http\Requests\Receivables\ReceivableSettleRequest.php
 
 - SHA: `c7af4148cc72`  
 - Ukuran: 1 KB  
@@ -6488,7 +6516,7 @@ class ReceivableSettleRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/Reports/ReportFilterRequest.php
+### app\Http\Requests\Reports\ReportFilterRequest.php
 
 - SHA: `6ee01e303594`  
 - Ukuran: 2 KB  
@@ -6562,7 +6590,7 @@ class ReportFilterRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/ResetPasswordRequest.php
+### app\Http\Requests\ResetPasswordRequest.php
 
 - SHA: `7973077d9c62`  
 - Ukuran: 428 B  
@@ -6601,7 +6629,7 @@ class ResetPasswordRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/ServicePriceSetRequest.php
+### app\Http\Requests\ServicePriceSetRequest.php
 
 - SHA: `e5e29ccac2f7`  
 - Ukuran: 837 B  
@@ -6652,7 +6680,7 @@ class ServicePriceSetRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/ServiceStoreRequest.php
+### app\Http\Requests\ServiceStoreRequest.php
 
 - SHA: `77a97b9513f4`  
 - Ukuran: 666 B  
@@ -6695,7 +6723,7 @@ class ServiceStoreRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/ServiceUpdateRequest.php
+### app\Http\Requests\ServiceUpdateRequest.php
 
 - SHA: `21cee56c7eb0`  
 - Ukuran: 705 B  
@@ -6739,7 +6767,7 @@ class ServiceUpdateRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/UserStoreRequest.php
+### app\Http\Requests\UserStoreRequest.php
 
 - SHA: `f2f73594304a`  
 - Ukuran: 3 KB  
@@ -6847,7 +6875,7 @@ class UserStoreRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/UserUpdateRequest.php
+### app\Http\Requests\UserUpdateRequest.php
 
 - SHA: `0ae2325164cc`  
 - Ukuran: 3 KB  
@@ -6959,7 +6987,7 @@ class UserUpdateRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/Vouchers/VoucherStoreRequest.php
+### app\Http\Requests\Vouchers\VoucherStoreRequest.php
 
 - SHA: `92fc24dc4b14`  
 - Ukuran: 2 KB  
@@ -7033,7 +7061,7 @@ class VoucherStoreRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/Vouchers/VoucherUpdateRequest.php
+### app\Http\Requests\Vouchers\VoucherUpdateRequest.php
 
 - SHA: `3220aef98066`  
 - Ukuran: 1 KB  
@@ -7093,7 +7121,7 @@ class VoucherUpdateRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/WashNoteStoreRequest.php
+### app\Http\Requests\WashNoteStoreRequest.php
 
 - SHA: `e5cd8c6c346f`  
 - Ukuran: 4 KB  
@@ -7224,7 +7252,7 @@ class WashNoteStoreRequest extends FormRequest
 ```
 </details>
 
-### app/Http/Requests/WashNoteUpdateRequest.php
+### app\Http\Requests\WashNoteUpdateRequest.php
 
 - SHA: `85a22f801f5d`  
 - Ukuran: 867 B  
@@ -7276,7 +7304,7 @@ class WashNoteUpdateRequest extends WashNoteStoreRequest
 
 ## Services (app/Services)
 
-### app/Services/AuthService.php
+### app\Services\AuthService.php
 
 - SHA: `6915c8873a9e`  
 - Ukuran: 2 KB  
@@ -7366,10 +7394,10 @@ class AuthService
 ```
 </details>
 
-### app/Services/DashboardService.php
+### app\Services\DashboardService.php
 
-- SHA: `56f00aba7078`  
-- Ukuran: 6 KB  
+- SHA: `071b868788c2`  
+- Ukuran: 7 KB  
 - Namespace: `App\Services`
 
 **Class `DashboardService`**
@@ -7474,24 +7502,32 @@ class DashboardService
         $daily = DB::table('payments')
             ->join('orders', 'orders.id', '=', 'payments.order_id')
             ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereNotNull('payments.paid_at')
             ->whereBetween('payments.paid_at', [$from, $to])
-            ->selectRaw("date_trunc('day', payments.paid_at)::date AS d, SUM(payments.amount) AS sum")
-            ->groupBy('d')
-            ->orderBy('d')
+            ->selectRaw('DATE(payments.paid_at) AS d, SUM(payments.amount) AS sum')
+            ->groupByRaw('DATE(payments.paid_at)')
+            ->orderBy('d', 'asc')
             ->get()
-            ->map(fn($r) => ['date' => (string) $r->d, 'amount' => (float) $r->sum])
+            ->map(fn($r) => [
+                'date' => (string) $r->d,
+                'amount' => (float) $r->sum,
+            ])
             ->all();
 
         // === OMZET BULANAN (time-series untuk grafik) ===
         $monthly = DB::table('payments')
             ->join('orders', 'orders.id', '=', 'payments.order_id')
             ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereNotNull('payments.paid_at')
             ->whereBetween('payments.paid_at', [$from, $to])
-            ->selectRaw("to_char(date_trunc('month', payments.paid_at), 'YYYY-MM') AS m, SUM(payments.amount) AS sum")
-            ->groupBy('m')
-            ->orderBy('m')
+            ->selectRaw("DATE_FORMAT(payments.paid_at, '%Y-%m') AS m, SUM(payments.amount) AS sum")
+            ->groupByRaw("DATE_FORMAT(payments.paid_at, '%Y-%m')")
+            ->orderBy('m', 'asc')
             ->get()
-            ->map(fn($r) => ['month' => (string) $r->m, 'amount' => (float) $r->sum])
+            ->map(fn($r) => [
+                'month' => (string) $r->m,
+                'amount' => (float) $r->sum,
+            ])
             ->all();
 
         // === Payload yang DIHARAPKAN Frontend (flatten + time-series) ===
@@ -7522,7 +7558,7 @@ class DashboardService
 ```
 </details>
 
-### app/Services/DeliveryService.php
+### app\Services\DeliveryService.php
 
 - SHA: `94af194c9457`  
 - Ukuran: 5 KB  
@@ -7672,7 +7708,7 @@ class DeliveryService
 ```
 </details>
 
-### app/Services/InvoiceNumberService.php
+### app\Services\InvoiceNumberService.php
 
 - SHA: `da39a3ee5e6b`  
 - Ukuran: 0 B  
@@ -7684,7 +7720,7 @@ class DeliveryService
 ```
 </details>
 
-### app/Services/InvoiceService.php
+### app\Services\InvoiceService.php
 
 - SHA: `74136cd3556a`  
 - Ukuran: 4 KB  
@@ -7824,7 +7860,7 @@ class InvoiceService
 ```
 </details>
 
-### app/Services/LoyaltyService.php
+### app\Services\LoyaltyService.php
 
 - SHA: `73dcead351ef`  
 - Ukuran: 5 KB  
@@ -7969,7 +8005,7 @@ final class LoyaltyService
 ```
 </details>
 
-### app/Services/OrderNumberService.php
+### app\Services\OrderNumberService.php
 
 - SHA: `f822f2ab3c8b`  
 - Ukuran: 2 KB  
@@ -8036,7 +8072,7 @@ class OrderNumberService
 ```
 </details>
 
-### app/Services/OrderService.php
+### app\Services\OrderService.php
 
 - SHA: `4152ab7d4bc5`  
 - Ukuran: 12 KB  
@@ -8390,7 +8426,7 @@ class OrderService
 ```
 </details>
 
-### app/Services/PaymentService.php
+### app\Services\PaymentService.php
 
 - SHA: `4c5ee7cba903`  
 - Ukuran: 4 KB  
@@ -8512,7 +8548,7 @@ class PaymentService
 ```
 </details>
 
-### app/Services/PricingService.php
+### app\Services\PricingService.php
 
 - SHA: `99964ed09888`  
 - Ukuran: 804 B  
@@ -8558,7 +8594,7 @@ class PricingService
 ```
 </details>
 
-### app/Services/ReceivableService.php
+### app\Services\ReceivableService.php
 
 - SHA: `082890134330`  
 - Ukuran: 2 KB  
@@ -8622,7 +8658,7 @@ class ReceivableService
 ```
 </details>
 
-### app/Services/ReportService.php
+### app\Services\ReportService.php
 
 - SHA: `7ae9bcbe9c06`  
 - Ukuran: 7 KB  
@@ -8820,7 +8856,7 @@ class ReportService
 ```
 </details>
 
-### app/Services/UserService.php
+### app\Services\UserService.php
 
 - SHA: `cc2814ba0167`  
 - Ukuran: 6 KB  
@@ -9025,7 +9061,7 @@ class UserService
 ```
 </details>
 
-### app/Services/VoucherService.php
+### app\Services\VoucherService.php
 
 - SHA: `9c61b4aaaa85`  
 - Ukuran: 4 KB  
@@ -9146,7 +9182,7 @@ class VoucherService
 
 ## Database (seeders)
 
-### database/seeders/BranchSeeder.php
+### database\seeders\BranchSeeder.php
 
 - SHA: `ec126954600d`  
 - Ukuran: 781 B  
@@ -9195,7 +9231,7 @@ class BranchSeeder extends Seeder
 ```
 </details>
 
-### database/seeders/DatabaseSeeder.php
+### database\seeders\DatabaseSeeder.php
 
 - SHA: `98af7f354a9a`  
 - Ukuran: 452 B  
@@ -9236,7 +9272,7 @@ class DatabaseSeeder extends Seeder
 ```
 </details>
 
-### database/seeders/RolesTableSeeder.php
+### database\seeders\RolesTableSeeder.php
 
 - SHA: `ce7284d0c443`  
 - Ukuran: 542 B  
@@ -9280,9 +9316,9 @@ class RolesTableSeeder extends Seeder
 ```
 </details>
 
-### database/seeders/UserSeeder.php
+### database\seeders\UserSeeder.php
 
-- SHA: `8fe599307505`  
+- SHA: `1ea3bb0eafeb`  
 - Ukuran: 5 KB  
 - Namespace: `Database\Seeders`
 
@@ -9338,6 +9374,7 @@ class UserSeeder extends Seeder
         $users = [
             [
                 'name'       => 'Superadmin',
+                'username'   => 'superadmin',
                 'email'      => 'superadmin@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Superadmin',
@@ -9346,6 +9383,7 @@ class UserSeeder extends Seeder
             ],
             [
                 'name'       => 'Admin Cabang',
+                'username'   => 'admincabang',
                 'email'      => 'admincabang@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Admin Cabang',
@@ -9354,6 +9392,7 @@ class UserSeeder extends Seeder
             ],
             [
                 'name'       => 'Kasir',
+                'username'   => 'kasir',
                 'email'      => 'kasir@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Kasir',
@@ -9362,6 +9401,7 @@ class UserSeeder extends Seeder
             ],
             [
                 'name'       => 'Petugas Cuci',
+                'username'   => 'petugascuci',
                 'email'      => 'petugascuci@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Petugas Cuci',
@@ -9370,6 +9410,7 @@ class UserSeeder extends Seeder
             ],
             [
                 'name'       => 'Kurir',
+                'username'   => 'kurir',
                 'email'      => 'kurir@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Kurir',
@@ -9431,10 +9472,10 @@ class UserSeeder extends Seeder
 
 ## resources (resources)
 
-### resources/views/orders/receipt.blade.php
+### resources\views\orders\receipt.blade.php
 
-- SHA: `620374e4da34`  
-- Ukuran: 14 KB  
+- SHA: `025fe0910d5b`  
+- Ukuran: 21 KB  
 - Namespace: ``
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -9444,529 +9485,616 @@ class UserSeeder extends Seeder
 <html lang="id" data-theme="light">
 
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  @php
-  // Logika asli dipertahankan
-  $sisa = max((float) $order->grand_total - (float) $order->paid_amount, 0);
-  $isLunas = $sisa <= 0 && $order->payment_status === 'PAID';
-    $docTitle = $isLunas ? 'KUITANSI PEMBAYARAN' : 'TAGIHAN / INVOICE';
+    @php
+        // Logika asli dipertahankan
+        $sisa = max((float) $order->grand_total - (float) $order->paid_amount, 0);
+        $isLunas = $sisa <= 0 && $order->payment_status === 'PAID';
+        $docTitle = $isLunas ? 'KUITANSI PEMBAYARAN' : 'TAGIHAN / INVOICE';
+
+        $payments = collect($order->payments ?? [])
+            ->sortBy([
+                ['paid_at', 'asc'],
+                ['created_at', 'asc'],
+            ])
+            ->values();
+
+        $lastPayment = $payments->last();
+
+        $methodLabels = [
+            'PENDING' => 'Pending',
+            'DP' => 'DP',
+            'CASH' => 'Cash',
+            'QRIS' => 'QRIS',
+            'TRANSFER' => 'Transfer',
+        ];
+
+        $lastPaymentMethod = $lastPayment?->method
+            ? ($methodLabels[$lastPayment->method] ?? $lastPayment->method)
+            : '—';
+
+        $lastPaymentAt = $lastPayment?->paid_at
+            ? \Illuminate\Support\Carbon::parse($lastPayment->paid_at)->format('d/m/Y H:i')
+            : '—';
+
+        $hasPaymentHistory = $payments->count() > 0;
+        $showPaymentHistory = $payments->count() > 1 || $payments->contains(fn($p) => $p->method === 'DP');
     @endphp
 
     <title>{{ $docTitle }} {{ $order->invoice_no ?? $order->number }}</title>
 
     <style>
-      /* ========= Design tokens SALVE (screen view) ========= */
-      :root {
-        --brand: #0000FF;
-        --on-brand: #FFFFFF;
-        --text: #0B1220;
-        --surface: #F5F7FB;
-        --border: #E6EAF2;
-        --success: #11A362;
-        --warning: #EF9300;
-        --danger: #D92D20;
-        --info: #2E7CF6;
-        --radius-sm: 8px;
-        --radius-md: 12px;
-        --radius-lg: 16px;
-        --shadow-1: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .10);
-        --shadow-2: 0 8px 16px rgba(16, 24, 40, .10), 0 2px 6px rgba(16, 24, 40, .08);
-        --focus: 0 0 0 3px rgba(0, 0, 255, .25);
-      }
-
-      [data-theme="dark"] {
-        --text: #F5F7FB;
-        --surface: #0F172A;
-        --border: #1E293B;
-      }
-
-      @media (prefers-color-scheme:dark) {
-        html:not([data-theme="light"]) {
-          --text: #F5F7FB;
-          --surface: #0F172A;
-          --border: #1E293B;
+        /* ========= Design tokens SALVE (screen view) ========= */
+        :root {
+            --brand: #0000FF;
+            --on-brand: #FFFFFF;
+            --text: #0B1220;
+            --surface: #F5F7FB;
+            --border: #E6EAF2;
+            --success: #11A362;
+            --warning: #EF9300;
+            --danger: #D92D20;
+            --info: #2E7CF6;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow-1: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .10);
+            --shadow-2: 0 8px 16px rgba(16, 24, 40, .10), 0 2px 6px rgba(16, 24, 40, .08);
+            --focus: 0 0 0 3px rgba(0, 0, 255, .25);
         }
-      }
 
-      /* ========= Base ========= */
-      * {
-        box-sizing: border-box;
-      }
+        [data-theme="dark"] {
+            --text: #F5F7FB;
+            --surface: #0F172A;
+            --border: #1E293B;
+        }
 
-      html,
-      body {
-        height: 100%;
-      }
+        @media (prefers-color-scheme:dark) {
+            html:not([data-theme="light"]) {
+                --text: #F5F7FB;
+                --surface: #0F172A;
+                --border: #1E293B;
+            }
+        }
 
-      body {
-        margin: 0;
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
-        color: var(--text);
-        background: var(--surface);
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
+        /* ========= Base ========= */
+        * {
+            box-sizing: border-box;
+        }
 
-      a {
-        color: var(--brand);
-        text-decoration: none;
-      }
+        html,
+        body {
+            height: 100%;
+        }
 
-      a:hover {
-        text-decoration: underline;
-      }
+        body {
+            margin: 0;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+            color: var(--text);
+            background: var(--surface);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
 
-      :focus-visible {
-        outline: 0;
-        box-shadow: var(--focus);
-        border-radius: 6px;
-      }
+        a {
+            color: var(--brand);
+            text-decoration: none;
+        }
 
-      /* ========= Layout ========= */
-      .container {
-        max-width: 720px;
-        margin-inline: auto;
-        padding: 24px;
-        display: grid;
-        gap: 16px;
-      }
+        a:hover {
+            text-decoration: underline;
+        }
 
-      .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 12px;
-      }
+        :focus-visible {
+            outline: 0;
+            box-shadow: var(--focus);
+            border-radius: 6px;
+        }
 
-      .brand {
-        font-weight: 700;
-        font-size: 18px;
-        line-height: 1.2;
-      }
+        /* ========= Layout ========= */
+        .container {
+            max-width: 720px;
+            margin-inline: auto;
+            padding: 24px;
+            display: grid;
+            gap: 16px;
+        }
 
-      .doctype {
-        font-weight: 700;
-        font-size: 12px;
-        color: #1A4BFF;
-        background: #E6EDFF;
-        padding: 6px 10px;
-        border-radius: 999px;
-      }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
 
-      .card {
-        background: #fff;
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-1);
-      }
+        .brand {
+            font-weight: 700;
+            font-size: 18px;
+            line-height: 1.2;
+        }
 
-      .section {
-        padding: 16px;
-      }
+        .doctype {
+            font-weight: 700;
+            font-size: 12px;
+            color: #1A4BFF;
+            background: #E6EDFF;
+            padding: 6px 10px;
+            border-radius: 999px;
+        }
 
-      .section+.section {
-        border-top: 1px solid var(--border);
-      }
+        .card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-1);
+        }
 
-      /* ========= Meta grid ========= */
-      .meta {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        font-size: 14px;
-      }
+        .section {
+            padding: 16px;
+        }
 
-      .meta dt {
-        color: #475569;
-        font-weight: 500;
-      }
+        .section+.section {
+            border-top: 1px solid var(--border);
+        }
 
-      .meta dd {
-        margin: 0;
-      }
+        /* ========= Meta grid ========= */
+        .meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            font-size: 14px;
+        }
 
-      /* ========= Badge status ========= */
-      .badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 600;
-      }
+        .meta dt {
+            color: #475569;
+            font-weight: 500;
+        }
 
-      .badge--paid {
-        color: #065F46;
-        background: rgba(17, 163, 98, .12);
-      }
+        .meta dd {
+            margin: 0;
+        }
 
-      .badge--unpaid {
-        color: #7C2D12;
-        background: rgba(217, 45, 32, .12);
-      }
+        /* ========= Badge status ========= */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+        }
 
-      /* ========= Table items ========= */
-      .table-wrap {
-        overflow: auto;
-        border: 1px solid var(--border);
-        border-radius: var(--radius-md);
-      }
+        .badge--paid {
+            color: #065F46;
+            background: rgba(17, 163, 98, .12);
+        }
 
-      table {
-        border-collapse: collapse;
-        width: 100%;
-        font-size: 14px;
-        background: #fff;
-      }
+        .badge--unpaid {
+            color: #7C2D12;
+            background: rgba(217, 45, 32, .12);
+        }
 
-      thead th {
-        text-align: left;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: .04em;
-        color: #334155;
-        background: #E6EDFF;
-        padding: 10px 12px;
-        position: sticky;
-        top: 0;
-        z-index: 1;
-      }
+        /* ========= Table items ========= */
+        .table-wrap {
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+        }
 
-      tbody td {
-        padding: 12px;
-        border-top: 1px solid var(--border);
-        vertical-align: top;
-      }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 14px;
+            background: #fff;
+        }
 
-      tbody tr:hover {
-        background: rgba(0, 0, 0, .04);
-      }
+        thead th {
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #334155;
+            background: #E6EDFF;
+            padding: 10px 12px;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
 
-      .right {
-        text-align: right;
-      }
+        tbody td {
+            padding: 12px;
+            border-top: 1px solid var(--border);
+            vertical-align: top;
+        }
 
-      .muted {
-        color: #475569;
-      }
+        tbody tr:hover {
+            background: rgba(0, 0, 0, .04);
+        }
 
-      .bold {
-        font-weight: 700;
-      }
+        .right {
+            text-align: right;
+        }
 
-      /* ========= Totals ========= */
-      .totals {
-        display: grid;
-        gap: 8px;
-      }
+        .muted {
+            color: #475569;
+        }
 
-      .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-      }
+        .bold {
+            font-weight: 700;
+        }
 
-      .row--strong .label {
-        font-weight: 700;
-      }
+        /* ========= Totals ========= */
+        .totals {
+            display: grid;
+            gap: 8px;
+        }
 
-      .row--strong .value {
-        font-weight: 800;
-        font-size: 18px;
-      }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
 
-      /* ========= QRIS ========= */
-      .qris-box {
-        display: grid;
-        justify-items: center;
-        gap: 8px;
-        text-align: center;
-      }
+        .row--strong .label {
+            font-weight: 700;
+        }
 
-      .qris {
-        width: 100%;
-        max-width: 220px;
-        height: auto;
-        image-rendering: -webkit-optimize-contrast;
-        border-radius: var(--radius-sm);
-        box-shadow: var(--shadow-1);
-      }
+        .row--strong .value {
+            font-weight: 800;
+            font-size: 18px;
+        }
 
-      .qris-caption {
-        font-size: 12px;
-        color: #334155;
-      }
+        /* ========= QRIS ========= */
+        .qris-box {
+            display: grid;
+            justify-items: center;
+            gap: 8px;
+            text-align: center;
+        }
 
-      /* ========= Footer ========= */
-      .footer {
-        font-size: 12px;
-        color: #64748B;
-      }
+        .qris {
+            width: 100%;
+            max-width: 220px;
+            height: auto;
+            image-rendering: -webkit-optimize-contrast;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-1);
+        }
 
-      /* ========= Stamp Loyalty ========= */
-      .stamps {
-        display: grid;
-        grid-template-columns: repeat(10, 1fr);
-        gap: 6px;
-        margin-top: 8px;
-      }
+        .qris-caption {
+            font-size: 12px;
+            color: #334155;
+        }
 
-      .stamp {
-        height: 22px;
-        border: 1px dashed var(--border);
-        border-radius: var(--radius-sm);
-        background: #fff;
-        box-shadow: var(--shadow-1);
-      }
+        /* ========= Footer ========= */
+        .footer {
+            font-size: 12px;
+            color: #64748B;
+        }
 
-      .stamp--filled {
-        border-style: solid;
-        border-color: #1A4BFF;
-        background: #E6EDFF;
-      }
+        /* ========= Stamp Loyalty ========= */
+        .stamps {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 6px;
+            margin-top: 8px;
+        }
 
-      .stamp--milestone {
-        position: relative;
-      }
+        .stamp {
+            height: 22px;
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-sm);
+            background: #fff;
+            box-shadow: var(--shadow-1);
+        }
 
-      .stamp--milestone::after {
-        content: attr(data-m);
-        position: absolute;
-        inset: 0;
-        display: grid;
-        place-items: center;
-        font-size: 10px;
-        font-weight: 700;
-        color: #1A4BFF;
-      }
+        .stamp--filled {
+            border-style: solid;
+            border-color: #1A4BFF;
+            background: #E6EDFF;
+        }
 
-      /* Card helpers */
-      .stack {
-        display: grid;
-        gap: 12px;
-      }
+        .stamp--milestone {
+            position: relative;
+        }
 
-      .split {
-        display: grid;
-        gap: 16px;
-        grid-template-columns: 1fr;
-      }
+        .stamp--milestone::after {
+            content: attr(data-m);
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #1A4BFF;
+        }
 
-      @media (min-width:720px) {
+        /* Card helpers */
+        .stack {
+            display: grid;
+            gap: 12px;
+        }
+
         .split {
-          grid-template-columns: 1.2fr .8fr;
+            display: grid;
+            gap: 16px;
+            grid-template-columns: 1fr;
         }
-      }
+
+        @media (min-width:720px) {
+            .split {
+                grid-template-columns: 1.2fr .8fr;
+            }
+        }
     </style>
 </head>
 
 <body>
-  <main class="container" role="main">
-    <!-- Header -->
-    <div class="header">
-      <div class="stack">
-        <div class="brand">{{ $branch?->name ?? 'Salve Laundry' }}</div>
-        <div class="doctype">{{ $docTitle }}</div>
-      </div>
-      <div>
-        <span class="badge {{ $isLunas ? 'badge--paid' : 'badge--unpaid' }}">
-          {{ $isLunas ? 'Lunas' : 'Belum Lunas' }}
-        </span>
-      </div>
-    </div>
-
-    <!-- Identitas & Status -->
-    <section class="card">
-      <div class="section">
-        <dl class="meta">
-          <div>
-            <dt>No. Dokumen</dt>
-            <dd>{{ $order->invoice_no ?? $order->number }}</dd>
-          </div>
-          <div>
-            <dt>Tgl Dibuat</dt>
-            <dd>{{ \Illuminate\Support\Carbon::parse($order->created_at)->format('d/m/Y H:i') }}</dd>
-          </div>
-          <div>
-            <dt>Status Bayar</dt>
-            <dd>{{ $order->payment_status }}</dd>
-          </div>
-          <div>
-            <dt>Pelanggan</dt>
-            <dd>{{ $order->customer->name ?? '—' }}</dd>
-          </div>
-          <div>
-            <dt>Tgl Masuk</dt>
-            <dd>
-              {{ $order->received_at ? \Illuminate\Support\Carbon::parse($order->received_at)->format('d/m/Y H:i') : '—' }}
-            </dd>
-          </div>
-          <div>
-            <dt>Tgl Selesai</dt>
-            <dd>
-              {{ $order->ready_at ? \Illuminate\Support\Carbon::parse($order->ready_at)->format('d/m/Y H:i') : '—' }}
-            </dd>
-          </div>
-        </dl>
-      </div>
-    </section>
-
-    <!-- Items + Ringkasan -->
-    <section class="split">
-      <!-- Items -->
-      <div class="card">
-        <div class="section">
-          <div class="muted" style="font-size:12px; margin-bottom:8px;">Rincian Layanan</div>
-          <div class="table-wrap">
-            <table aria-label="Tabel item layanan">
-              <thead>
-                <tr>
-                  <th>Layanan</th>
-                  <th class="right">Qty</th>
-                  <th class="right">Subtotal</th>
-                </tr>
-              </thead>
-              <tbody>
-                @foreach($order->items as $it)
-                <tr>
-                  <td>
-                    <div class="bold">{{ $it->service->name ?? 'Layanan' }}</div>
-                  </td>
-                  <td class="right">{{ (float) $it->qty }}</td>
-                  <td class="right">{{ number_format((float) $it->total, 0, ',', '.') }}</td>
-                </tr>
-                @endforeach
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Ringkasan Pembayaran -->
-      <div class="card">
-        <div class="section stack">
-          <div class="muted" style="font-size:12px;">Ringkasan Pembayaran</div>
-          <div class="totals">
-            <div class="row">
-              <div class="label">Subtotal</div>
-              <div class="value">{{ number_format((float) $order->subtotal, 0, ',', '.') }}</div>
+    <main class="container" role="main">
+        <!-- Header -->
+        <div class="header">
+            <div class="stack">
+                <div class="brand">{{ $branch?->name ?? 'Salve Laundry' }}</div>
+                <div class="doctype">{{ $docTitle }}</div>
             </div>
-            <div class="row">
-              <div class="label">Diskon</div>
-              <div class="value">{{ number_format((float) $order->discount, 0, ',', '.') }}</div>
+            <div>
+                <span class="badge {{ $isLunas ? 'badge--paid' : 'badge--unpaid' }}">
+                    {{ $isLunas ? 'Lunas' : 'Belum Lunas' }}
+                </span>
             </div>
-            <div class="row row--strong">
-              <div class="label">Grand Total</div>
-              <div class="value">{{ number_format((float) $order->grand_total, 0, ',', '.') }}</div>
+        </div>
+
+        <!-- Identitas & Status -->
+        <section class="card">
+            <div class="section">
+                <dl class="meta">
+                    <div>
+                        <dt>No. Dokumen</dt>
+                        <dd>{{ $order->invoice_no ?? $order->number }}</dd>
+                    </div>
+                    <div>
+                        <dt>Tgl Dibuat</dt>
+                        <dd>{{ \Illuminate\Support\Carbon::parse($order->created_at)->format('d/m/Y H:i') }}</dd>
+                    </div>
+                    <div>
+                        <dt>Status Bayar</dt>
+                        <dd>{{ $order->payment_status }}</dd>
+                    </div>
+                    <div>
+                        <dt>Metode Bayar Terakhir</dt>
+                        <dd>{{ $lastPaymentMethod }}</dd>
+                    </div>
+                    <div>
+                        <dt>Tgl Bayar Terakhir</dt>
+                        <dd>{{ $lastPaymentAt }}</dd>
+                    </div>
+                    <div>
+                        <dt>Pelanggan</dt>
+                        <dd>{{ $order->customer->name ?? '—' }}</dd>
+                    </div>
+                    <div>
+                        <dt>Tgl Masuk</dt>
+                        <dd>
+                            {{ $order->received_at ? \Illuminate\Support\Carbon::parse($order->received_at)->format('d/m/Y H:i') : '—' }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Tgl Selesai</dt>
+                        <dd>
+                            {{ $order->ready_at ? \Illuminate\Support\Carbon::parse($order->ready_at)->format('d/m/Y H:i') : '—' }}
+                        </dd>
+                    </div>
+                </dl>
             </div>
-            <div class="row">
-              <div class="label">Dibayar</div>
-              <div class="value">{{ number_format((float) $order->paid_amount, 0, ',', '.') }}</div>
+        </section>
+
+        <!-- Items + Ringkasan -->
+        <section class="split">
+            <!-- Items -->
+            <div class="card">
+                <div class="section">
+                    <div class="muted" style="font-size:12px; margin-bottom:8px;">Rincian Layanan</div>
+                    <div class="table-wrap">
+                        <table aria-label="Tabel item layanan">
+                            <thead>
+                                <tr>
+                                    <th>Layanan</th>
+                                    <th class="right">Qty</th>
+                                    <th class="right">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($order->items as $it)
+                                    <tr>
+                                        <td>
+                                            <div class="bold">{{ $it->service->name ?? 'Layanan' }}</div>
+                                        </td>
+                                        <td class="right">{{ (float) $it->qty }}</td>
+                                        <td class="right">{{ number_format((float) $it->total, 0, ',', '.') }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="row">
-              <div class="label">{{ $isLunas ? 'Sisa' : 'Sisa Tagihan' }}</div>
-              <div class="value">{{ number_format($sisa, 0, ',', '.') }}</div>
+
+            <!-- Ringkasan Pembayaran -->
+            <div class="card">
+                <div class="section stack">
+                    <div class="muted" style="font-size:12px;">Ringkasan Pembayaran</div>
+
+                    <div class="totals">
+                        <div class="row">
+                            <div class="label">Subtotal</div>
+                            <div class="value">{{ number_format((float) $order->subtotal, 0, ',', '.') }}</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="label">Diskon</div>
+                            <div class="value">{{ number_format((float) $order->discount, 0, ',', '.') }}</div>
+                        </div>
+
+                        <div class="row row--strong">
+                            <div class="label">Grand Total</div>
+                            <div class="value">{{ number_format((float) $order->grand_total, 0, ',', '.') }}</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="label">Dibayar</div>
+                            <div class="value">{{ number_format((float) $order->paid_amount, 0, ',', '.') }}</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="label">{{ $isLunas ? 'Sisa' : 'Sisa Tagihan' }}</div>
+                            <div class="value">{{ number_format($sisa, 0, ',', '.') }}</div>
+                        </div>
+
+                        @if($hasPaymentHistory)
+                            <div class="row">
+                                <div class="label">Metode Bayar Terakhir</div>
+                                <div class="value">{{ $lastPaymentMethod }}</div>
+                            </div>
+
+                            @if($lastPayment?->method !== 'DP')
+                                <div class="row">
+                                    <div class="label">{{ $isLunas ? 'Pelunasan via' : 'Pembayaran via' }}</div>
+                                    <div class="value">{{ $lastPaymentMethod }}</div>
+                                </div>
+                            @endif
+                        @endif
+                    </div>
+                </div>
+
+                @if($showPaymentHistory)
+                    <div class="section">
+                        <div class="muted" style="font-size:12px; margin-bottom:8px;">Riwayat Pembayaran</div>
+
+                        <div class="table-wrap">
+                            <table aria-label="Tabel riwayat pembayaran">
+                                <thead>
+                                    <tr>
+                                        <th>Metode</th>
+                                        <th>Tanggal</th>
+                                        <th class="right">Nominal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($payments as $pay)
+                                        <tr>
+                                            <td>{{ $methodLabels[$pay->method] ?? $pay->method }}</td>
+                                            <td>{{ $pay->paid_at ? \Illuminate\Support\Carbon::parse($pay->paid_at)->format('d/m/Y H:i') : '—' }}
+                                            </td>
+                                            <td class="right">{{ number_format((float) $pay->amount, 0, ',', '.') }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
+                {{-- === Stamp Loyalty (tampil hanya jika data tersedia dari controller) === --}}
+                @if(isset($loy) && $loy)
+                    <div class="section">
+                        <div class="muted" style="font-size:12px; margin-bottom:8px;">Stamp Loyalty</div>
+
+                        <div class="row">
+                            <div class="label">Progress</div>
+                            <div class="value">{{ $loy['stamps'] }} / {{ $loy['cycle'] }}</div>
+                        </div>
+
+                        @php
+                            $cycle = (int) ($loy['cycle'] ?? 10);
+                            $stamps = (int) ($loy['stamps'] ?? 0);
+                            $filled = $cycle > 0 ? ($stamps % $cycle) : 0;
+                            // Jika tepat jatuh reward pada transaksi ini (mod 0), tampilkan penuh:
+                            if ($filled === 0 && !empty($order->loyalty_reward)) {
+                                $filled = $cycle;
+                            }
+                          @endphp
+                        <div class="stamps" role="list" aria-label="Progres stamp loyalty">
+                            @for ($i = 1; $i <= $cycle; $i++)
+                                @php
+                                    $isFilled = $i <= $filled;
+                                    $milestone = ($i === 5 || $i === 10) ? $i : null; // penanda 5 & 10
+                                  @endphp
+                                <div role="listitem"
+                                    class="stamp {{ $isFilled ? 'stamp--filled' : '' }} {{ $milestone ? 'stamp--milestone' : '' }}"
+                                    @if($milestone) data-m="{{ $milestone }}" @endif>
+                                </div>
+                            @endfor
+                        </div>
+
+                        @if(!empty($order->loyalty_reward))
+                            <div style="font-size:12px; margin:6px 0 8px 0;">
+                                Reward diterapkan pada transaksi ini:
+                                @if($order->loyalty_reward === 'DISC25') <strong>Diskon 25%</strong>.
+                                @elseif($order->loyalty_reward === 'FREE100') <strong>Gratis 100%</strong>.
+                                @else <strong>{{ $order->loyalty_reward }}</strong>.
+                                @endif
+                            </div>
+                        @endif
+
+                        <div class="row">
+                            <div class="label">Sisa ke Diskon 25%</div>
+                            <div class="value">{{ $loy['sisa25'] }}</div>
+                        </div>
+                        <div class="row">
+                            <div class="label">Sisa ke Gratis 100%</div>
+                            <div class="value">{{ $loy['sisa100'] }}</div>
+                        </div>
+                    </div>
+                @endif
+
+                @php
+                    $qrisPath = 'qris.png';
+                    $hasQris = \Illuminate\Support\Facades\Storage::disk('public')->exists($qrisPath);
+                  @endphp
+
+                @if(!$isLunas && $hasQris)
+                    <div class="section qris-box">
+                        <div class="qris-caption">Scan untuk bayar (QRIS)</div>
+                        <img class="qris" src="{{ asset('storage/' . $qrisPath) }}" alt="QRIS">
+                    </div>
+                @endif
             </div>
-          </div>
-        </div>
+        </section>
 
-        {{-- === Stamp Loyalty (tampil hanya jika data tersedia dari controller) === --}}
-        @if(isset($loy) && $loy)
-        <div class="section">
-          <div class="muted" style="font-size:12px; margin-bottom:8px;">Stamp Loyalty</div>
+        <!-- PERHATIAN / Ketentuan Layanan -->
+        <section class="card">
+            <div class="section">
+                <div class="muted" style="font-size:12px; font-weight:700; margin-bottom:8px;">PERHATIAN!</div>
+                <ul style="margin:0; padding-left:18px; font-size:12px; color:#334155; display:grid; gap:4px;">
+                    <li>sampaikan pada petugas jika ada sepatu yang perlu perlakuan khusus.</li>
+                    <li>pengambilan harus di sertai link struk, jika link struk hilang atau terhapus bawa kartu
+                        identitas diri (KTP/SIM).</li>
+                    <li>pengaduan maksimal 1x24 jam setelah sepatu di terima, disertai link struk.</li>
+                    <li>sepatu tidak di ambil setelah tanggal kesepakatan pengambilan, jika mengalami kerusakan,
+                        kehilangan dan Kembali kotor bukan menjadi tanggung jawab kami.</li>
+                    <li>jika terjadi kerusakan dalam pengerjaan sepatu, penggantian kerugian maksimal 3x Harga
+                        pengerjaan sepatu tsb.</li>
+                    <li>jika terjadi hal yang bersifat force majeure, sepatu yang berada di store bukan menjadi tanggung
+                        jawab kami!</li>
+                </ul>
+            </div>
+        </section>
 
-          <div class="row">
-            <div class="label">Progress</div>
-            <div class="value">{{ $loy['stamps'] }} / {{ $loy['cycle'] }}</div>
-          </div>
-
-          @php
-          $cycle = (int)($loy['cycle'] ?? 10);
-          $stamps = (int)($loy['stamps'] ?? 0);
-          $filled = $cycle > 0 ? ($stamps % $cycle) : 0;
-          // Jika tepat jatuh reward pada transaksi ini (mod 0), tampilkan penuh:
-          if ($filled === 0 && !empty($order->loyalty_reward)) {
-          $filled = $cycle;
-          }
-          @endphp
-          <div class="stamps" role="list" aria-label="Progres stamp loyalty">
-            @for ($i = 1; $i <= $cycle; $i++)
-              @php
-              $isFilled=$i <=$filled;
-              $milestone=($i===5 || $i===10) ? $i : null; // penanda 5 & 10
-              @endphp
-              <div
-              role="listitem"
-              class="stamp {{ $isFilled ? 'stamp--filled' : '' }} {{ $milestone ? 'stamp--milestone' : '' }}"
-              @if($milestone) data-m="{{ $milestone }}" @endif>
-          </div>
-          @endfor
-        </div>
-
-        @if(!empty($order->loyalty_reward))
-        <div style="font-size:12px; margin:6px 0 8px 0;">
-          Reward diterapkan pada transaksi ini:
-          @if($order->loyalty_reward === 'DISC25') <strong>Diskon 25%</strong>.
-          @elseif($order->loyalty_reward === 'FREE100') <strong>Gratis 100%</strong>.
-          @else <strong>{{ $order->loyalty_reward }}</strong>.
-          @endif
-        </div>
-        @endif
-
-        <div class="row">
-          <div class="label">Sisa ke Diskon 25%</div>
-          <div class="value">{{ $loy['sisa25'] }}</div>
-        </div>
-        <div class="row">
-          <div class="label">Sisa ke Gratis 100%</div>
-          <div class="value">{{ $loy['sisa100'] }}</div>
-        </div>
-      </div>
-      @endif
-
-      @php
-      $qrisPath = 'qris.png';
-      $hasQris = \Illuminate\Support\Facades\Storage::disk('public')->exists($qrisPath);
-      @endphp
-
-      @if(!$isLunas && $hasQris)
-      <div class="section qris-box">
-        <div class="qris-caption">Scan untuk bayar (QRIS)</div>
-        <img class="qris" src="{{ asset('storage/'.$qrisPath) }}" alt="QRIS">
-      </div>
-      @endif
-      </div>
-    </section>
-
-    <!-- PERHATIAN / Ketentuan Layanan -->
-    <section class="card">
-      <div class="section">
-        <div class="muted" style="font-size:12px; font-weight:700; margin-bottom:8px;">PERHATIAN!</div>
-        <ul style="margin:0; padding-left:18px; font-size:12px; color:#334155; display:grid; gap:4px;">
-          <li>sampaikan pada petugas jika ada sepatu yang perlu perlakuan khusus.</li>
-          <li>pengambilan harus di sertai link struk, jika link struk hilang atau terhapus bawa kartu identitas diri (KTP/SIM).</li>
-          <li>pengaduan maksimal 1x24 jam setelah sepatu di terima, disertai link struk.</li>
-          <li>sepatu tidak di ambil setelah tanggal kesepakatan pengambilan, jika mengalami kerusakan, kehilangan dan Kembali kotor bukan menjadi tanggung jawab kami.</li>
-          <li>jika terjadi kerusakan dalam pengerjaan sepatu, penggantian kerugian maksimal 3x Harga pengerjaan sepatu tsb.</li>
-          <li>jika terjadi hal yang bersifat force majeure, sepatu yang berada di store bukan menjadi tanggung jawab kami!</li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- Footer -->
-    <section class="card">
-      <div class="section footer">
-        Dicetak: {{ $printedAt->format('d/m/Y H:i') }}
-      </div>
-    </section>
-  </main>
+        <!-- Footer -->
+        <section class="card">
+            <div class="section footer">
+                Dicetak: {{ $printedAt->format('d/m/Y H:i') }}
+            </div>
+        </section>
+    </main>
 </body>
 
 </html>
+
 ```
 </details>
 

@@ -43,6 +43,7 @@ class UserSeeder extends Seeder
         $users = [
             [
                 'name'       => 'Superadmin',
+                'username'   => 'superadmin',
                 'email'      => 'superadmin@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Superadmin',
@@ -51,6 +52,7 @@ class UserSeeder extends Seeder
             ],
             [
                 'name'       => 'Admin Cabang',
+                'username'   => 'admincabang',
                 'email'      => 'admincabang@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Admin Cabang',
@@ -59,6 +61,7 @@ class UserSeeder extends Seeder
             ],
             [
                 'name'       => 'Kasir',
+                'username'   => 'kasir',
                 'email'      => 'kasir@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Kasir',
@@ -67,6 +70,7 @@ class UserSeeder extends Seeder
             ],
             [
                 'name'       => 'Petugas Cuci',
+                'username'   => 'petugascuci',
                 'email'      => 'petugascuci@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Petugas Cuci',
@@ -75,6 +79,7 @@ class UserSeeder extends Seeder
             ],
             [
                 'name'       => 'Kurir',
+                'username'   => 'kurir',
                 'email'      => 'kurir@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Kurir',

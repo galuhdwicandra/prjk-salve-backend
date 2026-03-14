@@ -29,12 +29,22 @@ class OrderController extends Controller
         $me = $request->user();
         $q = Order::query()
             ->with(['customer', 'items.service', 'receivable'])
-            ->withCount('payments');
+            ->withCount('payments')
+            ->addSelect([
+                'latest_payment_method' => \App\Models\Payment::query()
+                    ->select('method')
+                    ->whereColumn('payments.order_id', 'orders.id')
+                    ->orderByDesc('created_at')
+                    ->limit(1),
+            ]);
 
         // ===== (1) Sorting yang fleksibel =====
-        $sortBy  = in_array($request->query('sort_by'), ['created_at', 'received_at', 'ready_at'])
-            ? $request->query('sort_by') : 'created_at';
+        $sortBy = in_array($request->query('sort_by'), ['created_at', 'received_at', 'ready_at'])
+            ? $request->query('sort_by')
+            : 'created_at';
+
         $sortDir = strtolower((string) $request->query('sort_dir')) === 'asc' ? 'asc' : 'desc';
+
         $q->orderBy($sortBy, $sortDir);
 
         // ===== (2) Scope cabang =====
@@ -42,22 +52,41 @@ class OrderController extends Controller
             if ($branchId = (string) $request->query('branch_id')) {
                 $q->where('branch_id', $branchId);
             }
-        } else if ($me->branch_id) {
+        } elseif ($me->branch_id) {
             $q->where('branch_id', $me->branch_id);
         }
 
-        // ===== (3) Pencarian cepat =====
-        if ($s = $request->query('q')) {
+        // ===== (3) Pencarian cepat diperluas =====
+        if ($s = trim((string) $request->query('q'))) {
             $q->where(function ($w) use ($s) {
                 $w->where('number', 'like', "%{$s}%")
-                    ->orWhere('notes', 'like', "%{$s}%");
+                    ->orWhere('invoice_no', 'like', "%{$s}%")
+                    ->orWhere('notes', 'like', "%{$s}%")
+                    ->orWhereHas('customer', function ($cq) use ($s) {
+                        $cq->where('name', 'like', "%{$s}%")
+                            ->orWhere('whatsapp', 'like', "%{$s}%");
+                    });
             });
         }
+
+        // ===== (4) Filter status order =====
         if ($st = $request->query('status')) {
             $q->where('status', $st);
         }
 
-        // ===== (4) Filter tanggal existing (created_at) — tetap dipertahankan =====
+        // ===== (5) Filter status pembayaran =====
+        if ($paymentStatus = $request->query('payment_status')) {
+            $q->where('payment_status', $paymentStatus);
+        }
+
+        // ===== (6) Filter metode pembayaran =====
+        if ($paymentMethod = $request->query('payment_method')) {
+            $q->whereHas('payments', function ($pq) use ($paymentMethod) {
+                $pq->where('method', $paymentMethod);
+            });
+        }
+
+        // ===== (7) Filter tanggal order dibuat =====
         if ($from = $request->query('from')) {
             $q->whereDate('created_at', '>=', $from);
         }
@@ -65,7 +94,7 @@ class OrderController extends Controller
             $q->whereDate('created_at', '<=', $to);
         }
 
-        // ===== (5) Filter tanggal baru: received_at =====
+        // ===== (8) Filter tanggal diterima =====
         if ($rf = $request->query('received_from')) {
             $q->whereDate('received_at', '>=', $rf);
         }
@@ -73,7 +102,7 @@ class OrderController extends Controller
             $q->whereDate('received_at', '<=', $rt);
         }
 
-        // ===== (6) Filter tanggal baru: ready_at =====
+        // ===== (9) Filter tanggal jadi =====
         if ($yf = $request->query('ready_from')) {
             $q->whereDate('ready_at', '>=', $yf);
         }
@@ -81,7 +110,7 @@ class OrderController extends Controller
             $q->whereDate('ready_at', '<=', $yt);
         }
 
-        $per  = (int) max(1, min(100, (int) $request->query('per_page', 10)));
+        $per = (int) max(1, min(100, (int) $request->query('per_page', 10)));
         $page = $q->paginate($per);
 
         return response()->json([
@@ -98,8 +127,6 @@ class OrderController extends Controller
             'errors'  => null,
         ]);
     }
-
-
     public function show(Order $order)
     {
         $this->authorize('view', $order);
@@ -175,6 +202,7 @@ class OrderController extends Controller
         $order->load([
             'items.service:id,name',
             'branch:id,name,address',
+            'payments' => fn($q) => $q->orderBy('paid_at')->orderBy('created_at'),
         ]);
 
         $loy = null;

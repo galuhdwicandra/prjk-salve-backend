@@ -93,24 +93,32 @@ class DashboardService
         $daily = DB::table('payments')
             ->join('orders', 'orders.id', '=', 'payments.order_id')
             ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereNotNull('payments.paid_at')
             ->whereBetween('payments.paid_at', [$from, $to])
-            ->selectRaw("date_trunc('day', payments.paid_at)::date AS d, SUM(payments.amount) AS sum")
-            ->groupBy('d')
-            ->orderBy('d')
+            ->selectRaw('DATE(payments.paid_at) AS d, SUM(payments.amount) AS sum')
+            ->groupByRaw('DATE(payments.paid_at)')
+            ->orderBy('d', 'asc')
             ->get()
-            ->map(fn($r) => ['date' => (string) $r->d, 'amount' => (float) $r->sum])
+            ->map(fn($r) => [
+                'date' => (string) $r->d,
+                'amount' => (float) $r->sum,
+            ])
             ->all();
 
         // === OMZET BULANAN (time-series untuk grafik) ===
         $monthly = DB::table('payments')
             ->join('orders', 'orders.id', '=', 'payments.order_id')
             ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereNotNull('payments.paid_at')
             ->whereBetween('payments.paid_at', [$from, $to])
-            ->selectRaw("to_char(date_trunc('month', payments.paid_at), 'YYYY-MM') AS m, SUM(payments.amount) AS sum")
-            ->groupBy('m')
-            ->orderBy('m')
+            ->selectRaw("DATE_FORMAT(payments.paid_at, '%Y-%m') AS m, SUM(payments.amount) AS sum")
+            ->groupByRaw("DATE_FORMAT(payments.paid_at, '%Y-%m')")
+            ->orderBy('m', 'asc')
             ->get()
-            ->map(fn($r) => ['month' => (string) $r->m, 'amount' => (float) $r->sum])
+            ->map(fn($r) => [
+                'month' => (string) $r->m,
+                'amount' => (float) $r->sum,
+            ])
             ->all();
 
         // === Payload yang DIHARAPKAN Frontend (flatten + time-series) ===

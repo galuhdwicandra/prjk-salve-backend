@@ -1,33 +1,82 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
     public function up(): void
     {
-        // 1) Drop kolom lama (uuid)
-        DB::statement('ALTER TABLE public.orders DROP COLUMN IF EXISTS created_by');
+        if (!Schema::hasTable('orders') || !Schema::hasTable('users')) {
+            return;
+        }
 
-        // 2) Tambah kolom baru bigint nullable
-        DB::statement('ALTER TABLE public.orders ADD COLUMN created_by BIGINT NULL');
+        // Lepas foreign key / index lama jika ada
+        try {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->dropForeign(['created_by']);
+            });
+        } catch (\Throwable $e) {
+            // abaikan jika belum ada
+        }
 
-        // 3) Index (opsional tapi disarankan)
-        DB::statement('CREATE INDEX IF NOT EXISTS orders_created_by_index ON public.orders (created_by)');
+        try {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->dropIndex(['created_by']);
+            });
+        } catch (\Throwable $e) {
+            // abaikan jika belum ada
+        }
 
-        // 4) Foreign key ke users(id)
-        DB::statement('ALTER TABLE public.orders
-            ADD CONSTRAINT orders_created_by_foreign
-            FOREIGN KEY (created_by) REFERENCES public.users(id)
-            ON UPDATE CASCADE ON DELETE SET NULL');
+        // Hapus kolom lama jika ada
+        if (Schema::hasColumn('orders', 'created_by')) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->dropColumn('created_by');
+            });
+        }
+
+        // Tambah ulang dengan tipe bigint agar cocok dengan users.id
+        Schema::table('orders', function (Blueprint $table) {
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->index('created_by', 'orders_created_by_index');
+            $table->foreign('created_by', 'orders_created_by_foreign')
+                ->references('id')
+                ->on('users')
+                ->cascadeOnUpdate()
+                ->nullOnDelete();
+        });
     }
 
     public function down(): void
     {
-        // Rollback: lepas FK & index, kembalikan ke uuid (tanpa FK, sesuai skema awal)
-        DB::statement('ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS orders_created_by_foreign');
-        DB::statement('DROP INDEX IF EXISTS orders_created_by_index');
-        DB::statement('ALTER TABLE public.orders DROP COLUMN IF EXISTS created_by');
-        DB::statement('ALTER TABLE public.orders ADD COLUMN created_by uuid');
+        if (!Schema::hasTable('orders')) {
+            return;
+        }
+
+        try {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->dropForeign('orders_created_by_foreign');
+            });
+        } catch (\Throwable $e) {
+            // abaikan jika belum ada
+        }
+
+        try {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->dropIndex('orders_created_by_index');
+            });
+        } catch (\Throwable $e) {
+            // abaikan jika belum ada
+        }
+
+        if (Schema::hasColumn('orders', 'created_by')) {
+            Schema::table('orders', function (Blueprint $table) {
+                $table->dropColumn('created_by');
+            });
+        }
+
+        Schema::table('orders', function (Blueprint $table) {
+            $table->uuid('created_by')->nullable();
+        });
     }
 };
