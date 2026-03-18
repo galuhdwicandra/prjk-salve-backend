@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-03-15 00:02:24_  
+_Dihasilkan otomatis: 2026-03-18 22:40:10_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -8660,7 +8660,7 @@ class ReceivableService
 
 ### app\Services\ReportService.php
 
-- SHA: `7ae9bcbe9c06`  
+- SHA: `9e606e7ea455`  
 - Ukuran: 7 KB  
 - Namespace: `App\Services`
 
@@ -8699,19 +8699,20 @@ class ReportService
                 b.name AS branch,
                 s.name AS service,
                 s.unit AS unit,
-                to_char(SUM(oi.qty), 'FM999999999.##') AS qty,
+                CAST(SUM(oi.qty) AS CHAR) AS qty,
                 SUM(oi.qty * oi.price) AS amount
             ")
             ->groupBy('b.name', 's.name', 's.unit')
-            ->orderByDesc(DB::raw('SUM(oi.qty)'));
+            ->orderByRaw('SUM(oi.qty) DESC');
     }
+
     /** SALES (basis kas) – window: payments.paid_at */
     public function buildSalesQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $method = null)
     {
         $q = DB::table('payments')
             ->join('orders', 'orders.id', '=', 'payments.order_id')
             ->leftJoin('branches', 'branches.id', '=', 'orders.branch_id')
-            ->leftJoin('users', 'users.id', '=', 'orders.created_by') // kasir (opsional)
+            ->leftJoin('users', 'users.id', '=', 'orders.created_by')
             ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
             ->whereBetween('payments.paid_at', [$from, $to])
             ->selectRaw("
@@ -8747,12 +8748,16 @@ class ReportService
                 orders.invoice_no,
                 customers.name AS customer,
                 orders.status,
-                string_agg((s.name || ' x' || to_char(oi.qty, 'FM999999999.##')), '; ' ORDER BY s.name) AS services,
-                to_char(SUM(oi.qty), 'FM999999999.##') AS qty,
+                GROUP_CONCAT(
+                    CONCAT(s.name, ' x', CAST(oi.qty AS CHAR))
+                    ORDER BY s.name
+                    SEPARATOR '; '
+                ) AS services,
+                CAST(SUM(oi.qty) AS CHAR) AS qty,
                 orders.grand_total,
                 orders.paid_amount,
-               orders.payment_status
-           ")
+                orders.payment_status
+            ")
             ->groupBy(
                 'branches.name',
                 'orders.created_at',
@@ -8782,16 +8787,19 @@ class ReportService
             ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
             ->where(function ($w) use ($from, $to) {
                 $w->whereBetween('receivables.due_date', [$from->toDateString(), $to->toDateString()])
-                    ->orWhereBetween('receivables.created_at', [$from, $to]);
+                  ->orWhereBetween('receivables.created_at', [$from, $to]);
             })
             ->selectRaw("
                 branches.name AS branch,
-                COALESCE(receivables.due_date::text, to_char(receivables.created_at, 'YYYY-MM-DD')) AS date,
+                COALESCE(
+                    DATE_FORMAT(receivables.due_date, '%Y-%m-%d'),
+                    DATE_FORMAT(receivables.created_at, '%Y-%m-%d')
+                ) AS date,
                 COALESCE(orders.invoice_no, orders.number) AS invoice,
                 receivables.remaining_amount,
                 receivables.status
             ")
-            ->orderByRaw("COALESCE(receivables.due_date, receivables.created_at) ASC");
+            ->orderByRaw('COALESCE(receivables.due_date, receivables.created_at) ASC');
 
         if ($status) {
             $q->where('receivables.status', $status);
@@ -8828,11 +8836,11 @@ class ReportService
     {
         return response()->streamDownload(function () use ($builder, $headers, $delimiter) {
             $out = fopen('php://output', 'w');
-            // BOM agar Excel nyaman membaca UTF-8 (opsional)
+
             fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
             fputcsv($out, $headers, $delimiter);
+
             foreach ($builder->cursor() as $row) {
-                // urutkan nilai sesuai headers
                 $line = [];
                 foreach ($headers as $h) {
                     $key = $this->normalizeKey($h);
@@ -8840,6 +8848,7 @@ class ReportService
                 }
                 fputcsv($out, $line, $delimiter);
             }
+
             fclose($out);
         }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -8848,7 +8857,6 @@ class ReportService
 
     private function normalizeKey(string $header): string
     {
-        // "Tanggal Bayar" -> "tanggal_bayar" (mapping sederhana: gunakan alias di SELECT agar sudah snake_case)
         return str_replace(' ', '_', strtolower($header));
     }
 }

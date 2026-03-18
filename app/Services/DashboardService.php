@@ -77,6 +77,50 @@ class DashboardService
         $dpOutstandingCount  = (int)   ($dp->cnt ?? 0);
         $dpOutstandingAmount = (float) ($dp->amt ?? 0);
 
+        // === TOTAL PEMBAYARAN PER METODE ===
+        $paymentMethodAgg = DB::table('payments')
+            ->join('orders', 'orders.id', '=', 'payments.order_id')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereNotNull('payments.paid_at')
+            ->whereBetween('payments.paid_at', [$from, $to])
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN payments.method = 'DP' THEN payments.amount ELSE 0 END), 0) AS dp_amount,
+                COALESCE(SUM(CASE WHEN payments.method = 'CASH' THEN payments.amount ELSE 0 END), 0) AS cash_amount,
+                COALESCE(SUM(CASE WHEN payments.method = 'TRANSFER' THEN payments.amount ELSE 0 END), 0) AS transfer_amount,
+                COALESCE(SUM(CASE WHEN payments.method = 'QRIS' THEN payments.amount ELSE 0 END), 0) AS qris_amount
+            ")
+            ->first();
+
+        $paymentMethodTotals = [
+            'dp_amount'       => (float) ($paymentMethodAgg->dp_amount ?? 0),
+            'cash_amount'     => (float) ($paymentMethodAgg->cash_amount ?? 0),
+            'transfer_amount' => (float) ($paymentMethodAgg->transfer_amount ?? 0),
+            'qris_amount'     => (float) ($paymentMethodAgg->qris_amount ?? 0),
+        ];
+
+        // === STATUS PEMBAYARAN ORDER ===
+        $paymentStatusAgg = DB::table('orders')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereBetween('orders.created_at', [$from, $to])
+            ->selectRaw("
+                SUM(CASE WHEN orders.payment_status = 'PENDING' THEN 1 ELSE 0 END) AS pending_count,
+                COALESCE(SUM(CASE WHEN orders.payment_status = 'PENDING' THEN orders.grand_total ELSE 0 END), 0) AS pending_amount,
+
+                SUM(CASE WHEN orders.payment_status = 'DP' THEN 1 ELSE 0 END) AS dp_count,
+                COALESCE(SUM(CASE WHEN orders.payment_status = 'DP' THEN orders.due_amount ELSE 0 END), 0) AS dp_due_amount,
+
+                SUM(CASE WHEN orders.payment_status = 'PAID' THEN 1 ELSE 0 END) AS paid_count
+            ")
+            ->first();
+
+        $paymentStatusTotals = [
+            'pending_count'  => (int) ($paymentStatusAgg->pending_count ?? 0),
+            'pending_amount' => (float) ($paymentStatusAgg->pending_amount ?? 0),
+            'dp_count'       => (int) ($paymentStatusAgg->dp_count ?? 0),
+            'dp_due_amount'  => (float) ($paymentStatusAgg->dp_due_amount ?? 0),
+            'paid_count'     => (int) ($paymentStatusAgg->paid_count ?? 0),
+        ];
+
         // === TOP LAYANAN (Top 5 by omzet dalam window order dibuat) ===
         $topServices = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
@@ -125,6 +169,9 @@ class DashboardService
         return [
             'omzet_total' => $omzetTotal,
             'orders_count' => $ordersCount,
+
+            'payment_method_totals' => $paymentMethodTotals,
+            'payment_status_totals' => $paymentStatusTotals,
 
             'delivery_shipping_fee' => $shippingFee,
 
