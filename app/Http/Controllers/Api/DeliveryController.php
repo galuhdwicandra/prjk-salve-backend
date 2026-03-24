@@ -1,13 +1,14 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Deliveries\DeliveryStoreRequest;
 use App\Http\Requests\Deliveries\DeliveryAssignRequest;
 use App\Http\Requests\Deliveries\DeliveryStatusRequest;
-use App\Models\{Order, Delivery};
+use App\Http\Requests\Deliveries\DeliveryStoreRequest;
 use App\Services\DeliveryService;
+
+use App\Models\Delivery;
+use App\Models\Order;
 use Illuminate\Http\Request;
 
 class DeliveryController extends Controller
@@ -22,7 +23,7 @@ class DeliveryController extends Controller
         $this->authorize('viewAny', Delivery::class);
 
         $user = $request->user();
-        $q = Delivery::query()
+        $q    = Delivery::query()
             ->with(['courier:id,name', 'order:id,branch_id,number,invoice_no'])
             ->latest('created_at');
 
@@ -35,16 +36,16 @@ class DeliveryController extends Controller
         }
         if ($term = trim((string) $request->query('q', ''))) {
             $q->where(function ($w) use ($term) {
-                $w->whereRaw('id::text ILIKE ?', ["%{$term}%"])
-                    ->orWhereRaw('order_id::text ILIKE ?', ["%{$term}%"])
+                $w->whereRaw('CAST(id AS CHAR) LIKE ?', ["%{$term}%"])
+                    ->orWhereRaw('CAST(order_id AS CHAR) LIKE ?', ["%{$term}%"])
                     ->orWhereHas('order', function ($oq) use ($term) {
-                        $oq->where('number', 'ILIKE', "%{$term}%")
-                            ->orWhere('invoice_no', 'ILIKE', "%{$term}%");
+                        $oq->where('number', 'LIKE', "%{$term}%")
+                            ->orWhere('invoice_no', 'LIKE', "%{$term}%");
                     });
             });
         }
 
-        // Scope cabang & peran (pola sama seperti controller lain yang Anda pakai)
+                                                     // Scope cabang & peran (pola sama seperti controller lain yang Anda pakai)
         $branchId = $this->branchScopeFor($request); // lihat helper di bawah
         if ($branchId) {
             $q->whereHas('order', fn($oq) => $oq->where('branch_id', $branchId));
@@ -55,35 +56,35 @@ class DeliveryController extends Controller
             $q->where('assigned_to', $user->id);
         }
 
-        $per = max(1, min(200, (int) $request->query('per_page', 50)));
+        $per  = max(1, min(200, (int) $request->query('per_page', 50)));
         $page = $q->paginate($per);
 
         $items = collect($page->items())->map(function (Delivery $d) {
             return [
-                'id' => $d->id,
-                'order_id' => $d->order_id,
+                'id'               => $d->id,
+                'order_id'         => $d->order_id,
                 'order_invoice_no' => $d->order?->invoice_no,
                 'order_number'     => $d->order?->number,
-                'type' => $d->type,
-                'fee' => $d->fee,
-                'assigned_to' => $d->assigned_to,
-                'status' => $d->status,
-                'created_at' => $d->created_at,
+                'type'             => $d->type,
+                'fee'              => $d->fee,
+                'assigned_to'      => $d->assigned_to,
+                'status'           => $d->status,
+                'created_at'       => $d->created_at,
                 // opsional: info kurir ringkas
-                'courier' => $d->courier ? ['id' => $d->courier->id, 'name' => $d->courier->name] : null,
+                'courier'          => $d->courier ? ['id' => $d->courier->id, 'name' => $d->courier->name] : null,
             ];
         })->all();
 
         return response()->json([
-            'data' => $items,
-            'meta' => [
+            'data'    => $items,
+            'meta'    => [
                 'current_page' => $page->currentPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-                'last_page' => $page->lastPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+                'last_page'    => $page->lastPage(),
             ],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -91,30 +92,30 @@ class DeliveryController extends Controller
     {
         $this->authorize('view', $delivery);
         return response()->json([
-            'data' => $delivery->load(['courier:id,name', 'events']),
-            'meta' => null,
+            'data'    => $delivery->load(['courier:id,name', 'events']),
+            'meta'    => null,
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
     public function store(DeliveryStoreRequest $request)
     {
         $payload = $request->validated();
-        $order = Order::query()->with('branch')->findOrFail($payload['order_id']);
+        $order   = Order::query()->with('branch')->findOrFail($payload['order_id']);
 
         $this->authorize('create', Delivery::class);
 
         $delivery = $this->svc->create($order, $payload, $request->user());
-        $res = $this->svc->autoAssign($order->getKey());
+        $res      = $this->svc->autoAssign($order->getKey());
 
         return response()->json([
-            'data' => [
+            'data'    => [
                 'delivery' => $res['delivery'],
             ],
-            'meta' => ['idempotent' => $res['idempotent']],
+            'meta'    => ['idempotent' => $res['idempotent']],
             'message' => $res['idempotent'] ? 'Created (already assigned)' : 'Created & auto-assigned',
-            'errors' => null,
+            'errors'  => null,
         ], 201);
     }
 
@@ -126,10 +127,10 @@ class DeliveryController extends Controller
         $next = $this->svc->assignManual($delivery, (int) $request->validated()['courier_id'], $request->user());
 
         return response()->json([
-            'data' => $next,
-            'meta' => [],
+            'data'    => $next,
+            'meta'    => [],
             'message' => 'Courier assigned',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -138,7 +139,7 @@ class DeliveryController extends Controller
         $delivery->loadMissing('order');
         $this->authorize('updateStatus', $delivery);
 
-        $f = $request->file('photo');
+        $f    = $request->file('photo');
         $next = $this->svc->updateStatus(
             $delivery,
             $request->validated()['status'],
@@ -148,10 +149,10 @@ class DeliveryController extends Controller
         );
 
         return response()->json([
-            'data' => $next,
-            'meta' => [],
+            'data'    => $next,
+            'meta'    => [],
             'message' => 'Status updated',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 

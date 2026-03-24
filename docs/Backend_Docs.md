@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-03-24 18:24:59_  
+_Dihasilkan otomatis: 2026-03-25 04:17:26_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -705,8 +705,8 @@ class DashboardController extends Controller
 
 ### app\Http\Controllers\Api\DeliveryController.php
 
-- SHA: `57ff79d75d6d`  
-- Ukuran: 5 KB  
+- SHA: `92cf9a5c0284`  
+- Ukuran: 6 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `DeliveryController` extends `Controller`**
@@ -722,15 +722,16 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Deliveries\DeliveryStoreRequest;
 use App\Http\Requests\Deliveries\DeliveryAssignRequest;
 use App\Http\Requests\Deliveries\DeliveryStatusRequest;
-use App\Models\{Order, Delivery};
+use App\Http\Requests\Deliveries\DeliveryStoreRequest;
 use App\Services\DeliveryService;
+
+use App\Models\Delivery;
+use App\Models\Order;
 use Illuminate\Http\Request;
 
 class DeliveryController extends Controller
@@ -745,7 +746,7 @@ class DeliveryController extends Controller
         $this->authorize('viewAny', Delivery::class);
 
         $user = $request->user();
-        $q = Delivery::query()
+        $q    = Delivery::query()
             ->with(['courier:id,name', 'order:id,branch_id,number,invoice_no'])
             ->latest('created_at');
 
@@ -758,16 +759,16 @@ class DeliveryController extends Controller
         }
         if ($term = trim((string) $request->query('q', ''))) {
             $q->where(function ($w) use ($term) {
-                $w->whereRaw('id::text ILIKE ?', ["%{$term}%"])
-                    ->orWhereRaw('order_id::text ILIKE ?', ["%{$term}%"])
+                $w->whereRaw('CAST(id AS CHAR) LIKE ?', ["%{$term}%"])
+                    ->orWhereRaw('CAST(order_id AS CHAR) LIKE ?', ["%{$term}%"])
                     ->orWhereHas('order', function ($oq) use ($term) {
-                        $oq->where('number', 'ILIKE', "%{$term}%")
-                            ->orWhere('invoice_no', 'ILIKE', "%{$term}%");
+                        $oq->where('number', 'LIKE', "%{$term}%")
+                            ->orWhere('invoice_no', 'LIKE', "%{$term}%");
                     });
             });
         }
 
-        // Scope cabang & peran (pola sama seperti controller lain yang Anda pakai)
+                                                     // Scope cabang & peran (pola sama seperti controller lain yang Anda pakai)
         $branchId = $this->branchScopeFor($request); // lihat helper di bawah
         if ($branchId) {
             $q->whereHas('order', fn($oq) => $oq->where('branch_id', $branchId));
@@ -778,35 +779,35 @@ class DeliveryController extends Controller
             $q->where('assigned_to', $user->id);
         }
 
-        $per = max(1, min(200, (int) $request->query('per_page', 50)));
+        $per  = max(1, min(200, (int) $request->query('per_page', 50)));
         $page = $q->paginate($per);
 
         $items = collect($page->items())->map(function (Delivery $d) {
             return [
-                'id' => $d->id,
-                'order_id' => $d->order_id,
+                'id'               => $d->id,
+                'order_id'         => $d->order_id,
                 'order_invoice_no' => $d->order?->invoice_no,
                 'order_number'     => $d->order?->number,
-                'type' => $d->type,
-                'fee' => $d->fee,
-                'assigned_to' => $d->assigned_to,
-                'status' => $d->status,
-                'created_at' => $d->created_at,
+                'type'             => $d->type,
+                'fee'              => $d->fee,
+                'assigned_to'      => $d->assigned_to,
+                'status'           => $d->status,
+                'created_at'       => $d->created_at,
                 // opsional: info kurir ringkas
-                'courier' => $d->courier ? ['id' => $d->courier->id, 'name' => $d->courier->name] : null,
+                'courier'          => $d->courier ? ['id' => $d->courier->id, 'name' => $d->courier->name] : null,
             ];
         })->all();
 
         return response()->json([
-            'data' => $items,
-            'meta' => [
+            'data'    => $items,
+            'meta'    => [
                 'current_page' => $page->currentPage(),
-                'per_page' => $page->perPage(),
-                'total' => $page->total(),
-                'last_page' => $page->lastPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+                'last_page'    => $page->lastPage(),
             ],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -814,30 +815,30 @@ class DeliveryController extends Controller
     {
         $this->authorize('view', $delivery);
         return response()->json([
-            'data' => $delivery->load(['courier:id,name', 'events']),
-            'meta' => null,
+            'data'    => $delivery->load(['courier:id,name', 'events']),
+            'meta'    => null,
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
     public function store(DeliveryStoreRequest $request)
     {
         $payload = $request->validated();
-        $order = Order::query()->with('branch')->findOrFail($payload['order_id']);
+        $order   = Order::query()->with('branch')->findOrFail($payload['order_id']);
 
         $this->authorize('create', Delivery::class);
 
         $delivery = $this->svc->create($order, $payload, $request->user());
-        $res = $this->svc->autoAssign($order->getKey());
+        $res      = $this->svc->autoAssign($order->getKey());
 
         return response()->json([
-            'data' => [
+            'data'    => [
                 'delivery' => $res['delivery'],
             ],
-            'meta' => ['idempotent' => $res['idempotent']],
+            'meta'    => ['idempotent' => $res['idempotent']],
             'message' => $res['idempotent'] ? 'Created (already assigned)' : 'Created & auto-assigned',
-            'errors' => null,
+            'errors'  => null,
         ], 201);
     }
 
@@ -849,10 +850,10 @@ class DeliveryController extends Controller
         $next = $this->svc->assignManual($delivery, (int) $request->validated()['courier_id'], $request->user());
 
         return response()->json([
-            'data' => $next,
-            'meta' => [],
+            'data'    => $next,
+            'meta'    => [],
             'message' => 'Courier assigned',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -861,7 +862,7 @@ class DeliveryController extends Controller
         $delivery->loadMissing('order');
         $this->authorize('updateStatus', $delivery);
 
-        $f = $request->file('photo');
+        $f    = $request->file('photo');
         $next = $this->svc->updateStatus(
             $delivery,
             $request->validated()['status'],
@@ -871,10 +872,10 @@ class DeliveryController extends Controller
         );
 
         return response()->json([
-            'data' => $next,
-            'meta' => [],
+            'data'    => $next,
+            'meta'    => [],
             'message' => 'Status updated',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -1955,7 +1956,7 @@ class ReceivableController extends Controller
 
 ### app\Http\Controllers\Api\ReportController.php
 
-- SHA: `0b14b81cbb73`  
+- SHA: `7e25a653af98`  
 - Ukuran: 4 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -1976,7 +1977,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Reports\ReportFilterRequest;
 use App\Services\ReportService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Str;
 
 class ReportController extends Controller
 {
@@ -2005,30 +2005,31 @@ class ReportController extends Controller
         ]);
     }
 
-    /** GET /reports/{kind}/export?format=csv|xlsx – file download (CSV baseline) */
+    /** GET /reports/{kind}/export?format=csv – file download */
     public function export(string $kind, ReportFilterRequest $req)
     {
         [$q, $columns] = $this->resolveQuery($kind, $req);
 
-        // format saat ini: CSV (Excel-ready). XLSX bisa ditambahkan kemudian.
-        $format = $req->input('format', 'csv');
         $from   = $req->input('from');
         $to     = $req->input('to');
         $branch = $req->branchId() ? 'branch' : 'all';
-        $filename = sprintf('%s_%s-%s_%s.%s', $kind, str_replace('-', '', $from), str_replace('-', '', $to), $branch, $format);
+
+        $filename = sprintf(
+            '%s_%s-%s_%s.csv',
+            $kind,
+            str_replace('-', '', $from),
+            str_replace('-', '', $to),
+            $branch
+        );
+
         $delimiterKey = $req->input('delimiter', 'semicolon');
         $delimiter = match ($delimiterKey) {
             'comma' => ',',
             'tab' => "\t",
-            default => ';', // 'semicolon'
+            default => ';',
         };
 
-        if ($format === 'csv') {
-            return $this->svc->streamCsv($q, $columns, $filename, $delimiter);
-        }
-
-        // Fallback, untuk saat ini tetap CSV bila XLSX belum diaktifkan
-        return $this->svc->streamCsv($q, $columns, Str::replaceLast('.xlsx', '.csv', $filename), $delimiter);
+        return $this->svc->streamCsv($q, $columns, $filename, $delimiter);
     }
 
     /** Resolver: mapping jenis report -> query builder + urutan kolom */
@@ -2042,13 +2043,36 @@ class ReportController extends Controller
             case 'sales':
             case 'payments':
                 $q = $this->svc->buildSalesQuery($from, $to, $bid, $req->input('method'));
-                // alias kolom SELECT sudah snake_case agar pas ke CSV
-                $columns = ['branch', 'paid_at', 'invoice', 'method', 'amount', 'cashier'];
+                $columns = [
+                    'branch_code',
+                    'branch_name',
+                    'invoice',
+                    'order_number',
+                    'invoice_no',
+                    'order_created_at',
+                    'received_at',
+                    'ready_at',
+                    'customer_name',
+                    'customer_whatsapp',
+                    'customer_address',
+                    'order_status',
+                    'payment_status',
+                    'payment_method',
+                    'payment_amount',
+                    'paid_at',
+                    'payment_note',
+                    'subtotal',
+                    'discount',
+                    'dp_amount',
+                    'grand_total',
+                    'paid_amount',
+                    'due_amount',
+                    'cashier',
+                ];
                 return [$q, $columns];
 
             case 'orders':
                 $q = $this->svc->buildOrdersQuery($from, $to, $bid, $req->input('status'));
-                // urutan kolom sinkron dengan alias SELECT
                 $columns = ['branch', 'created_at', 'number', 'invoice_no', 'customer', 'status', 'services', 'qty', 'grand_total', 'paid_amount', 'payment_status'];
                 return [$q, $columns];
 
@@ -6518,7 +6542,7 @@ class ReceivableSettleRequest extends FormRequest
 
 ### app\Http\Requests\Reports\ReportFilterRequest.php
 
-- SHA: `6ee01e303594`  
+- SHA: `4ffa0fb25f12`  
 - Ukuran: 2 KB  
 - Namespace: `App\Http\Requests\Reports`
 
@@ -6557,7 +6581,7 @@ class ReportFilterRequest extends FormRequest
             // filter spesifik opsional
             'method' => ['nullable', 'string', 'max:32'], // untuk sales (payments)
             'status' => ['nullable', 'string', 'max:32'], // untuk orders/receivables
-            'format' => ['nullable', 'in:csv,xlsx'],
+            'format' => ['nullable', 'in:csv'],
             'delimiter' => ['nullable', 'in:comma,semicolon,tab'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
@@ -8707,8 +8731,8 @@ class ReceivableService
 
 ### app\Services\ReportService.php
 
-- SHA: `9e606e7ea455`  
-- Ukuran: 7 KB  
+- SHA: `dc8a22efad61`  
+- Ukuran: 8 KB  
 - Namespace: `App\Services`
 
 **Class `ReportService`**
@@ -8760,16 +8784,35 @@ class ReportService
             ->join('orders', 'orders.id', '=', 'payments.order_id')
             ->leftJoin('branches', 'branches.id', '=', 'orders.branch_id')
             ->leftJoin('users', 'users.id', '=', 'orders.created_by')
+            ->leftJoin('customers', 'customers.id', '=', 'orders.customer_id')
             ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
             ->whereBetween('payments.paid_at', [$from, $to])
             ->selectRaw("
-                branches.name AS branch,
-                payments.paid_at,
-                COALESCE(orders.invoice_no, orders.number) AS invoice,
-                payments.method,
-                payments.amount,
-                users.name AS cashier
-            ");
+            branches.code AS branch_code,
+            branches.name AS branch_name,
+            COALESCE(orders.invoice_no, orders.number) AS invoice,
+            orders.number AS order_number,
+            orders.invoice_no AS invoice_no,
+            DATE_FORMAT(orders.created_at, '%Y-%m-%d %H:%i:%s') AS order_created_at,
+            DATE_FORMAT(orders.received_at, '%Y-%m-%d %H:%i:%s') AS received_at,
+            DATE_FORMAT(orders.ready_at, '%Y-%m-%d %H:%i:%s') AS ready_at,
+            customers.name AS customer_name,
+            customers.whatsapp AS customer_whatsapp,
+            customers.address AS customer_address,
+            orders.status AS order_status,
+            orders.payment_status,
+            payments.method AS payment_method,
+            payments.amount AS payment_amount,
+            DATE_FORMAT(payments.paid_at, '%Y-%m-%d %H:%i:%s') AS paid_at,
+            payments.note AS payment_note,
+            orders.subtotal,
+            orders.discount,
+            orders.dp_amount,
+            orders.grand_total,
+            orders.paid_amount,
+            orders.due_amount,
+            users.name AS cashier
+        ");
 
         if ($method) {
             $q->where('payments.method', $method);
@@ -8834,7 +8877,7 @@ class ReportService
             ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
             ->where(function ($w) use ($from, $to) {
                 $w->whereBetween('receivables.due_date', [$from->toDateString(), $to->toDateString()])
-                  ->orWhereBetween('receivables.created_at', [$from, $to]);
+                    ->orWhereBetween('receivables.created_at', [$from, $to]);
             })
             ->selectRaw("
                 branches.name AS branch,
@@ -10157,7 +10200,7 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `95d2492a1b99`  
+- SHA: `2d817e7a8483`  
 - Ukuran: 7 KB
 
 **Ringkasan Routes (deteksi heuristik):**
@@ -10261,6 +10304,7 @@ use App\Http\Controllers\Api\WashNoteController;
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('/login', [AuthController::class, 'login']);
+
         Route::middleware('auth:sanctum')->group(function () {
             Route::get('/me', [AuthController::class, 'me']);
             Route::post('/logout', [AuthController::class, 'logout']);
