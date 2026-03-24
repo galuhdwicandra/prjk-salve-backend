@@ -22,7 +22,7 @@ class ReportFilterRequest extends FormRequest
             // filter spesifik opsional
             'method' => ['nullable', 'string', 'max:32'], // untuk sales (payments)
             'status' => ['nullable', 'string', 'max:32'], // untuk orders/receivables
-            'format' => ['nullable', 'in:csv,xlsx'],
+            'format' => ['nullable', 'in:csv'],
             'delimiter' => ['nullable', 'in:comma,semicolon,tab'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];

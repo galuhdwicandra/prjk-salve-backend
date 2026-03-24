@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Reports\ReportFilterRequest;
 use App\Services\ReportService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Str;
 
 class ReportController extends Controller
 {
@@ -35,30 +34,31 @@ class ReportController extends Controller
         ]);
     }
 
-    /** GET /reports/{kind}/export?format=csv|xlsx – file download (CSV baseline) */
+    /** GET /reports/{kind}/export?format=csv – file download */
     public function export(string $kind, ReportFilterRequest $req)
     {
         [$q, $columns] = $this->resolveQuery($kind, $req);
 
-        // format saat ini: CSV (Excel-ready). XLSX bisa ditambahkan kemudian.
-        $format = $req->input('format', 'csv');
         $from   = $req->input('from');
         $to     = $req->input('to');
         $branch = $req->branchId() ? 'branch' : 'all';
-        $filename = sprintf('%s_%s-%s_%s.%s', $kind, str_replace('-', '', $from), str_replace('-', '', $to), $branch, $format);
+
+        $filename = sprintf(
+            '%s_%s-%s_%s.csv',
+            $kind,
+            str_replace('-', '', $from),
+            str_replace('-', '', $to),
+            $branch
+        );
+
         $delimiterKey = $req->input('delimiter', 'semicolon');
         $delimiter = match ($delimiterKey) {
             'comma' => ',',
             'tab' => "\t",
-            default => ';', // 'semicolon'
+            default => ';',
         };
 
-        if ($format === 'csv') {
-            return $this->svc->streamCsv($q, $columns, $filename, $delimiter);
-        }
-
-        // Fallback, untuk saat ini tetap CSV bila XLSX belum diaktifkan
-        return $this->svc->streamCsv($q, $columns, Str::replaceLast('.xlsx', '.csv', $filename), $delimiter);
+        return $this->svc->streamCsv($q, $columns, $filename, $delimiter);
     }
 
     /** Resolver: mapping jenis report -> query builder + urutan kolom */
@@ -72,13 +72,36 @@ class ReportController extends Controller
             case 'sales':
             case 'payments':
                 $q = $this->svc->buildSalesQuery($from, $to, $bid, $req->input('method'));
-                // alias kolom SELECT sudah snake_case agar pas ke CSV
-                $columns = ['branch', 'paid_at', 'invoice', 'method', 'amount', 'cashier'];
+                $columns = [
+                    'branch_code',
+                    'branch_name',
+                    'invoice',
+                    'order_number',
+                    'invoice_no',
+                    'order_created_at',
+                    'received_at',
+                    'ready_at',
+                    'customer_name',
+                    'customer_whatsapp',
+                    'customer_address',
+                    'order_status',
+                    'payment_status',
+                    'payment_method',
+                    'payment_amount',
+                    'paid_at',
+                    'payment_note',
+                    'subtotal',
+                    'discount',
+                    'dp_amount',
+                    'grand_total',
+                    'paid_amount',
+                    'due_amount',
+                    'cashier',
+                ];
                 return [$q, $columns];
 
             case 'orders':
                 $q = $this->svc->buildOrdersQuery($from, $to, $bid, $req->input('status'));
-                // urutan kolom sinkron dengan alias SELECT
                 $columns = ['branch', 'created_at', 'number', 'invoice_no', 'customer', 'status', 'services', 'qty', 'grand_total', 'paid_amount', 'payment_status'];
                 return [$q, $columns];
 

@@ -34,16 +34,35 @@ class ReportService
             ->join('orders', 'orders.id', '=', 'payments.order_id')
             ->leftJoin('branches', 'branches.id', '=', 'orders.branch_id')
             ->leftJoin('users', 'users.id', '=', 'orders.created_by')
+            ->leftJoin('customers', 'customers.id', '=', 'orders.customer_id')
             ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
             ->whereBetween('payments.paid_at', [$from, $to])
             ->selectRaw("
-                branches.name AS branch,
-                payments.paid_at,
-                COALESCE(orders.invoice_no, orders.number) AS invoice,
-                payments.method,
-                payments.amount,
-                users.name AS cashier
-            ");
+            branches.code AS branch_code,
+            branches.name AS branch_name,
+            COALESCE(orders.invoice_no, orders.number) AS invoice,
+            orders.number AS order_number,
+            orders.invoice_no AS invoice_no,
+            DATE_FORMAT(orders.created_at, '%Y-%m-%d %H:%i:%s') AS order_created_at,
+            DATE_FORMAT(orders.received_at, '%Y-%m-%d %H:%i:%s') AS received_at,
+            DATE_FORMAT(orders.ready_at, '%Y-%m-%d %H:%i:%s') AS ready_at,
+            customers.name AS customer_name,
+            customers.whatsapp AS customer_whatsapp,
+            customers.address AS customer_address,
+            orders.status AS order_status,
+            orders.payment_status,
+            payments.method AS payment_method,
+            payments.amount AS payment_amount,
+            DATE_FORMAT(payments.paid_at, '%Y-%m-%d %H:%i:%s') AS paid_at,
+            payments.note AS payment_note,
+            orders.subtotal,
+            orders.discount,
+            orders.dp_amount,
+            orders.grand_total,
+            orders.paid_amount,
+            orders.due_amount,
+            users.name AS cashier
+        ");
 
         if ($method) {
             $q->where('payments.method', $method);
@@ -108,7 +127,7 @@ class ReportService
             ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
             ->where(function ($w) use ($from, $to) {
                 $w->whereBetween('receivables.due_date', [$from->toDateString(), $to->toDateString()])
-                  ->orWhereBetween('receivables.created_at', [$from, $to]);
+                    ->orWhereBetween('receivables.created_at', [$from, $to]);
             })
             ->selectRaw("
                 branches.name AS branch,
