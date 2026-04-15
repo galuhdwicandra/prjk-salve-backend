@@ -9,8 +9,9 @@ class OrderPolicy
 {
     public function before(User $user, $ability)
     {
-        if ($user->hasRole('Superadmin'))
+        if ($user->hasRole('Superadmin')) {
             return true;
+        }
         return null;
     }
 
@@ -24,6 +25,7 @@ class OrderPolicy
         if ($user->hasAnyRole(['Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir'])) {
             return (string) $user->branch_id === (string) $order->branch_id;
         }
+
         return false;
     }
 
@@ -37,27 +39,59 @@ class OrderPolicy
         if (! $user->hasRole('Admin Cabang')) {
             return false;
         }
-        // Harus satu cabang
+
         $sameBranch = (string) $user->branch_id === (string) $order->branch_id;
-        if (! $sameBranch) return false;
-        // Kunci: status terminal tidak boleh diedit
+        if (! $sameBranch) {
+            return false;
+        }
+
         $terminal = in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true);
-        if ($terminal) return false;
+        if ($terminal) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function uploadPhotos(User $user, Order $order): bool
+    {
+        if (! $user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
+            return false;
+        }
+
+        $sameBranch = (string) $user->branch_id === (string) $order->branch_id;
+        if (! $sameBranch) {
+            return false;
+        }
+
+        $terminal = in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true);
+        if ($terminal) {
+            return false;
+        }
+
         return true;
     }
 
     public function delete(User $user, Order $order): bool
     {
-        // Hanya Admin Cabang
-        if (! $user->hasRole('Admin Cabang')) return false;
-        // Harus satu cabang
+        if (! $user->hasRole('Admin Cabang')) {
+            return false;
+        }
+
         $sameBranch = (string) $user->branch_id === (string) $order->branch_id;
-        if (! $sameBranch) return false;
-        // Kunci: status terminal tidak boleh dihapus
+        if (! $sameBranch) {
+            return false;
+        }
+
         $terminal = in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true);
-        if ($terminal) return false;
-        // Kunci: jika sudah ada pembayaran tidak boleh dihapus
-        if ($order->payments()->exists()) return false;
+        if ($terminal) {
+            return false;
+        }
+
+        if ($order->payments()->exists()) {
+            return false;
+        }
+
         return true;
     }
 
@@ -66,6 +100,7 @@ class OrderPolicy
         if ($user->hasAnyRole(['Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir'])) {
             return (string) $user->branch_id === (string) $order->branch_id;
         }
+
         return false;
     }
 
@@ -74,6 +109,7 @@ class OrderPolicy
         if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
             return (string) $user->branch_id === (string) $order->branch_id;
         }
+
         return false;
     }
 }

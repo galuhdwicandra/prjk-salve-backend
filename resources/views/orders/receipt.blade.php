@@ -438,6 +438,33 @@
                             </tbody>
                         </table>
                     </div>
+
+                    @if(!empty(trim((string) $order->notes)))
+                        <div
+                            style="margin-top:12px; padding:12px; border:1px solid var(--border); border-radius:var(--radius-md); background:#fff;">
+                            <div class="muted" style="font-size:12px; margin-bottom:6px;">Catatan</div>
+                            <div style="font-size:14px; line-height:1.5;">
+                                {!! nl2br(e($order->notes)) !!}
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Foto Before --}}
+                    @php
+                        $beforePhoto = collect($order->photos ?? [])->first(function ($photo) {
+                            return strtolower((string) $photo->kind) === 'before';
+                        });
+                    @endphp
+
+                    @if($beforePhoto && !empty($beforePhoto->path))
+                        <div style="margin-top:12px;">
+                            <div class="muted" style="font-size:12px; margin-bottom:6px;">Foto Before</div>
+
+                            <img src="{{ asset($beforePhoto->path) }}" alt="Foto Before"
+                                style="width:100%; max-width:250px; border-radius:8px; border:1px solid var(--border);">
+                        </div>
+                    @endif
+
                 </div>
             </div>
 

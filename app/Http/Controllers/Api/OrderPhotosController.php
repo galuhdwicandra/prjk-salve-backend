@@ -7,7 +7,6 @@ use App\Http\Requests\Orders\OrderPhotosRequest;
 use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Str;
 
 class OrderPhotosController extends Controller
 {
@@ -18,7 +17,7 @@ class OrderPhotosController extends Controller
 
     public function store(OrderPhotosRequest $request, Order $order): JsonResponse
     {
-        $this->authorize('update', $order);
+        $this->authorize('uploadPhotos', $order);
 
         $before = $request->file('photos.before', []);
         $after = $request->file('photos.after', []);
@@ -39,6 +38,7 @@ class OrderPhotosController extends Controller
             $p = $f->store($dir . '/before', 'public');
             $rows[] = ['kind' => 'before', 'path' => "storage/{$p}"];
         }
+
         foreach ($after as $f) {
             $p = $f->store($dir . '/after', 'public');
             $rows[] = ['kind' => 'after', 'path' => "storage/{$p}"];

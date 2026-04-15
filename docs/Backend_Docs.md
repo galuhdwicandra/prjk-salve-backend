@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-15 09:16:57_  
+_Dihasilkan otomatis: 2026-04-15 14:49:33_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -1770,7 +1770,7 @@ class OrderPaymentsController extends Controller
 
 ### app\Http\Controllers\Api\OrderPhotosController.php
 
-- SHA: `6f0a722896b0`  
+- SHA: `76e4af51aca7`  
 - Ukuran: 2 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -1791,7 +1791,6 @@ use App\Http\Requests\Orders\OrderPhotosRequest;
 use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Str;
 
 class OrderPhotosController extends Controller
 {
@@ -1802,7 +1801,7 @@ class OrderPhotosController extends Controller
 
     public function store(OrderPhotosRequest $request, Order $order): JsonResponse
     {
-        $this->authorize('update', $order);
+        $this->authorize('uploadPhotos', $order);
 
         $before = $request->file('photos.before', []);
         $after = $request->file('photos.after', []);
@@ -1823,6 +1822,7 @@ class OrderPhotosController extends Controller
             $p = $f->store($dir . '/before', 'public');
             $rows[] = ['kind' => 'before', 'path' => "storage/{$p}"];
         }
+
         foreach ($after as $f) {
             $p = $f->store($dir . '/after', 'public');
             $rows[] = ['kind' => 'after', 'path' => "storage/{$p}"];
@@ -4986,8 +4986,8 @@ class LoyaltyPolicy
 
 ### app\Policies\OrderPolicy.php
 
-- SHA: `5d88ccb506d5`  
-- Ukuran: 2 KB  
+- SHA: `f02c952d0933`  
+- Ukuran: 3 KB  
 - Namespace: `App\Policies`
 
 **Class `OrderPolicy`**
@@ -4998,6 +4998,7 @@ Metode Publik:
 - **view**(User $user, Order $order) : *bool*
 - **create**(User $user) : *bool*
 - **update**(User $user, Order $order) : *bool*
+- **uploadPhotos**(User $user, Order $order) : *bool*
 - **delete**(User $user, Order $order) : *bool*
 - **transitionStatus**(User $user, Order $order) : *bool*
 - **settlePayment**(User $user, Order $order) : *bool*
@@ -5015,8 +5016,9 @@ class OrderPolicy
 {
     public function before(User $user, $ability)
     {
-        if ($user->hasRole('Superadmin'))
+        if ($user->hasRole('Superadmin')) {
             return true;
+        }
         return null;
     }
 
@@ -5030,6 +5032,7 @@ class OrderPolicy
         if ($user->hasAnyRole(['Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir'])) {
             return (string) $user->branch_id === (string) $order->branch_id;
         }
+
         return false;
     }
 
@@ -5043,27 +5046,59 @@ class OrderPolicy
         if (! $user->hasRole('Admin Cabang')) {
             return false;
         }
-        // Harus satu cabang
+
         $sameBranch = (string) $user->branch_id === (string) $order->branch_id;
-        if (! $sameBranch) return false;
-        // Kunci: status terminal tidak boleh diedit
+        if (! $sameBranch) {
+            return false;
+        }
+
         $terminal = in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true);
-        if ($terminal) return false;
+        if ($terminal) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function uploadPhotos(User $user, Order $order): bool
+    {
+        if (! $user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
+            return false;
+        }
+
+        $sameBranch = (string) $user->branch_id === (string) $order->branch_id;
+        if (! $sameBranch) {
+            return false;
+        }
+
+        $terminal = in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true);
+        if ($terminal) {
+            return false;
+        }
+
         return true;
     }
 
     public function delete(User $user, Order $order): bool
     {
-        // Hanya Admin Cabang
-        if (! $user->hasRole('Admin Cabang')) return false;
-        // Harus satu cabang
+        if (! $user->hasRole('Admin Cabang')) {
+            return false;
+        }
+
         $sameBranch = (string) $user->branch_id === (string) $order->branch_id;
-        if (! $sameBranch) return false;
-        // Kunci: status terminal tidak boleh dihapus
+        if (! $sameBranch) {
+            return false;
+        }
+
         $terminal = in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true);
-        if ($terminal) return false;
-        // Kunci: jika sudah ada pembayaran tidak boleh dihapus
-        if ($order->payments()->exists()) return false;
+        if ($terminal) {
+            return false;
+        }
+
+        if ($order->payments()->exists()) {
+            return false;
+        }
+
         return true;
     }
 
@@ -5072,6 +5107,7 @@ class OrderPolicy
         if ($user->hasAnyRole(['Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir'])) {
             return (string) $user->branch_id === (string) $order->branch_id;
         }
+
         return false;
     }
 
@@ -5080,6 +5116,7 @@ class OrderPolicy
         if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
             return (string) $user->branch_id === (string) $order->branch_id;
         }
+
         return false;
     }
 }
@@ -10031,8 +10068,8 @@ class UserSeeder extends Seeder
 
 ### resources\views\orders\receipt.blade.php
 
-- SHA: `025fe0910d5b`  
-- Ukuran: 21 KB  
+- SHA: `e78a6cb0334c`  
+- Ukuran: 22 KB  
 - Namespace: ``
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -10477,6 +10514,27 @@ class UserSeeder extends Seeder
                             </tbody>
                         </table>
                     </div>
+
+                    @if(!empty(trim((string) $order->notes)))
+                        <div
+                            style="margin-top:12px; padding:12px; border:1px solid var(--border); border-radius:var(--radius-md); background:#fff;">
+                            <div class="muted" style="font-size:12px; margin-bottom:6px;">Catatan</div>
+                            <div style="font-size:14px; line-height:1.5;">
+                                {!! nl2br(e($order->notes)) !!}
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Foto Before --}}
+                    @if(!empty($order->before_photo))
+                        <div style="margin-top:12px;">
+                            <div class="muted" style="font-size:12px; margin-bottom:6px;">Foto Before</div>
+
+                            <img src="{{ asset('storage/' . $order->before_photo) }}" alt="Foto Before"
+                                style="width:100%; max-width:250px; border-radius:8px; border:1px solid var(--border);">
+                        </div>
+                    @endif
+
                 </div>
             </div>
 

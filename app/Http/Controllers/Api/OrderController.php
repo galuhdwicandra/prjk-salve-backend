@@ -202,6 +202,7 @@ class OrderController extends Controller
         $order->load([
             'items.service:id,name',
             'branch:id,name,address',
+            'photos',
             'payments' => fn($q) => $q->orderBy('paid_at')->orderBy('created_at'),
         ]);
 
