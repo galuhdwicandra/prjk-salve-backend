@@ -1,24 +1,25 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\BranchController;
-use App\Http\Controllers\Api\InvoiceCounterController;
 use App\Http\Controllers\Api\CategoryController;
-use App\Http\Controllers\Api\ServiceController;
-use App\Http\Controllers\Api\ServicePriceController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DeliveryController;
+use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\InvoiceCounterController;
+use App\Http\Controllers\Api\LoyaltyController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OrderPaymentsController;
 use App\Http\Controllers\Api\OrderPhotosController;
-use App\Http\Controllers\Api\DeliveryController;
 use App\Http\Controllers\Api\ReceivableController;
-use App\Http\Controllers\Api\ExpenseController;
-use App\Http\Controllers\Api\DashboardController;
-use App\Http\Controllers\Api\LoyaltyController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\ServicePriceController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WashNoteController;
+use App\Http\Controllers\Api\WhatsappTemplateController;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
@@ -33,9 +34,9 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         // User routes
         Route::get('/users', [UserController::class, 'index']);
-        Route::get('/users/{user}', [UserController::class, 'show']);   // was {id}
+        Route::get('/users/{user}', [UserController::class, 'show']); // was {id}
         Route::post('/users', [UserController::class, 'store']);
-        Route::put('/users/{user}', [UserController::class, 'update']); // was {id}
+        Route::put('/users/{user}', [UserController::class, 'update']);     // was {id}
         Route::delete('/users/{user}', [UserController::class, 'destroy']); // was {id}
 
         // Aksi khusus sudah benar (sudah {user})
@@ -131,6 +132,14 @@ Route::prefix('v1')->group(function () {
             ->only(['index', 'store', 'show', 'update', 'destroy']);
 
         Route::get('dashboard/summary', [DashboardController::class, 'summary']);
+
+        // WhatsApp Templates
+        Route::get('/whatsapp-templates', [WhatsappTemplateController::class, 'index']);
+        Route::post('/whatsapp-templates', [WhatsappTemplateController::class, 'store']);
+        Route::get('/whatsapp-templates/resolve', [WhatsappTemplateController::class, 'resolve']);
+        Route::get('/whatsapp-templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'show']);
+        Route::put('/whatsapp-templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'update']);
+        Route::delete('/whatsapp-templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'destroy']);
 
         // Tambahkan route lain di sini sesuai kebutuhan
     });

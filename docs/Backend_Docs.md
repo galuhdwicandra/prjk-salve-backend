@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-03-25 04:17:26_  
+_Dihasilkan otomatis: 2026-04-15 09:16:57_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -26,6 +26,7 @@ _Dihasilkan otomatis: 2026-03-25 04:17:26_
   - [app\Http\Controllers\Api\UserController.php](#file-apphttpcontrollersapiusercontrollerphp)
   - [app\Http\Controllers\Api\VoucherController.php](#file-apphttpcontrollersapivouchercontrollerphp)
   - [app\Http\Controllers\Api\WashNoteController.php](#file-apphttpcontrollersapiwashnotecontrollerphp)
+  - [app\Http\Controllers\Api\WhatsappTemplateController.php](#file-apphttpcontrollersapiwhatsapptemplatecontrollerphp)
 
 - [Models (app/Models)](#models-appmodels)
   - [app\Models\Branch.php](#file-appmodelsbranchphp)
@@ -49,6 +50,7 @@ _Dihasilkan otomatis: 2026-03-25 04:17:26_
   - [app\Models\Voucher.php](#file-appmodelsvoucherphp)
   - [app\Models\WashNote.php](#file-appmodelswashnotephp)
   - [app\Models\WashNoteItem.php](#file-appmodelswashnoteitemphp)
+  - [app\Models\WhatsappTemplate.php](#file-appmodelswhatsapptemplatephp)
 
 - [Policies (app/Policies)](#policies-apppolicies)
   - [app\Policies\BranchPolicy.php](#file-apppoliciesbranchpolicyphp)
@@ -63,6 +65,7 @@ _Dihasilkan otomatis: 2026-03-25 04:17:26_
   - [app\Policies\UserPolicy.php](#file-apppoliciesuserpolicyphp)
   - [app\Policies\VoucherPolicy.php](#file-apppoliciesvoucherpolicyphp)
   - [app\Policies\WashNotePolicy.php](#file-apppolicieswashnotepolicyphp)
+  - [app\Policies\WhatsappTemplatePolicy.php](#file-apppolicieswhatsapptemplatepolicyphp)
 
 - [Form Requests (app/Http/Requests)](#form-requests-apphttprequests)
   - [app\Http\Requests\Auth\LoginRequest.php](#file-apphttprequestsauthloginrequestphp)
@@ -100,6 +103,8 @@ _Dihasilkan otomatis: 2026-03-25 04:17:26_
   - [app\Http\Requests\Vouchers\VoucherUpdateRequest.php](#file-apphttprequestsvouchersvoucherupdaterequestphp)
   - [app\Http\Requests\WashNoteStoreRequest.php](#file-apphttprequestswashnotestorerequestphp)
   - [app\Http\Requests\WashNoteUpdateRequest.php](#file-apphttprequestswashnoteupdaterequestphp)
+  - [app\Http\Requests\WhatsappTemplateStoreRequest.php](#file-apphttprequestswhatsapptemplatestorerequestphp)
+  - [app\Http\Requests\WhatsappTemplateUpdateRequest.php](#file-apphttprequestswhatsapptemplateupdaterequestphp)
 
 - [Services (app/Services)](#services-appservices)
   - [app\Services\AuthService.php](#file-appservicesauthservicephp)
@@ -3119,6 +3124,241 @@ class WashNoteController extends Controller
 ```
 </details>
 
+### app\Http\Controllers\Api\WhatsappTemplateController.php
+
+- SHA: `6aa588f39498`  
+- Ukuran: 6 KB  
+- Namespace: `App\Http\Controllers\Api`
+
+**Class `WhatsappTemplateController` extends `Controller`**
+
+Metode Publik:
+- **index**(Request $request)
+- **show**(WhatsappTemplate $whatsappTemplate)
+- **store**(WhatsappTemplateStoreRequest $request)
+- **update**(WhatsappTemplateUpdateRequest $request, WhatsappTemplate $whatsappTemplate)
+- **destroy**(WhatsappTemplate $whatsappTemplate)
+- **resolve**(Request $request) — GET /whatsapp-templates/resolve?key=receipt_paid&branch_id=...
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\WhatsappTemplateStoreRequest;
+use App\Http\Requests\WhatsappTemplateUpdateRequest;
+use App\Models\WhatsappTemplate;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+
+class WhatsappTemplateController extends Controller
+{
+    public function index(Request $request)
+    {
+        $this->authorize('viewAny', WhatsappTemplate::class);
+
+        $user = $request->user();
+
+        $q = WhatsappTemplate::query()
+            ->with('branch:id,name')
+            ->orderBy('key')
+            ->orderByDesc('created_at');
+
+        if ($request->filled('key')) {
+            $q->where('key', $request->query('key'));
+        }
+
+        if ($request->filled('is_active')) {
+            $q->where('is_active', (bool) $request->query('is_active'));
+        }
+
+        if ($user->hasRole('Superadmin')) {
+            if ($request->filled('branch_id')) {
+                $branchId = $request->query('branch_id');
+                if ($branchId === 'global') {
+                    $q->whereNull('branch_id');
+                } else {
+                    $q->where('branch_id', $branchId);
+                }
+            }
+        } else {
+            $q->where('branch_id', $user->branch_id);
+        }
+
+        $items = $q->paginate((int) $request->query('per_page', 20));
+
+        return response()->json([
+            'data'    => $items->items(),
+            'meta'    => [
+                'current_page' => $items->currentPage(),
+                'per_page'     => $items->perPage(),
+                'total'        => $items->total(),
+                'last_page'    => $items->lastPage(),
+            ],
+            'message' => 'OK',
+            'errors'  => null,
+        ]);
+    }
+
+    public function show(WhatsappTemplate $whatsappTemplate)
+    {
+        $this->authorize('view', $whatsappTemplate);
+
+        return response()->json([
+            'data'    => $whatsappTemplate->load('branch:id,name'),
+            'meta'    => [],
+            'message' => 'OK',
+            'errors'  => null,
+        ]);
+    }
+
+    public function store(WhatsappTemplateStoreRequest $request)
+    {
+        $this->authorize('create', WhatsappTemplate::class);
+
+        $payload = $request->validated();
+        $user    = $request->user();
+
+        if ($user->hasRole('Admin Cabang')) {
+            $payload['branch_id'] = (string) $user->branch_id;
+        }
+
+        $exists = WhatsappTemplate::query()
+            ->where('branch_id', $payload['branch_id'] ?? null)
+            ->where('key', $payload['key'])
+            ->exists();
+
+        if ($exists) {
+            return response()->json([
+                'data'    => null,
+                'meta'    => [],
+                'message' => 'Template untuk key ini sudah ada.',
+                'errors'  => ['key' => ['unique_for_scope']],
+            ], 422);
+        }
+
+        $row = WhatsappTemplate::query()->create([
+            'id'        => (string) Str::uuid(),
+            'branch_id' => $payload['branch_id'] ?? null,
+            'key'       => $payload['key'],
+            'name'      => $payload['name'],
+            'content'   => $payload['content'],
+            'is_active' => $payload['is_active'] ?? true,
+        ]);
+
+        return response()->json([
+            'data'    => $row->load('branch:id,name'),
+            'meta'    => [],
+            'message' => 'Created',
+            'errors'  => null,
+        ], 201);
+    }
+
+    public function update(WhatsappTemplateUpdateRequest $request, WhatsappTemplate $whatsappTemplate)
+    {
+        $this->authorize('update', $whatsappTemplate);
+
+        $payload = $request->validated();
+
+        $branchId = $payload['branch_id'] ?? $whatsappTemplate->branch_id;
+        $key      = $payload['key'] ?? $whatsappTemplate->key;
+
+        $exists = WhatsappTemplate::query()
+            ->where('id', '!=', $whatsappTemplate->id)
+            ->where('branch_id', $branchId)
+            ->where('key', $key)
+            ->exists();
+
+        if ($exists) {
+            return response()->json([
+                'data'    => null,
+                'meta'    => [],
+                'message' => 'Template untuk key ini sudah ada.',
+                'errors'  => ['key' => ['unique_for_scope']],
+            ], 422);
+        }
+
+        $whatsappTemplate->fill($payload)->save();
+
+        return response()->json([
+            'data'    => $whatsappTemplate->fresh()->load('branch:id,name'),
+            'meta'    => [],
+            'message' => 'Updated',
+            'errors'  => null,
+        ]);
+    }
+
+    public function destroy(WhatsappTemplate $whatsappTemplate)
+    {
+        $this->authorize('delete', $whatsappTemplate);
+
+        $whatsappTemplate->delete();
+
+        return response()->json([
+            'data'    => null,
+            'meta'    => [],
+            'message' => 'Deleted',
+            'errors'  => null,
+        ]);
+    }
+
+    /**
+     * GET /whatsapp-templates/resolve?key=receipt_paid&branch_id=...
+     * Fallback: branch template -> global template
+     */
+    public function resolve(Request $request)
+    {
+        $this->authorize('viewAny', WhatsappTemplate::class);
+
+        $request->validate([
+            'key'       => ['required', 'string', 'in:receipt_pending,receipt_paid'],
+            'branch_id' => ['nullable', 'uuid'],
+        ]);
+
+        $user     = $request->user();
+        $key      = (string) $request->query('key');
+        $branchId = null;
+
+        if ($user->hasRole('Superadmin')) {
+            $branchId = $request->query('branch_id');
+        } else {
+            $branchId = $user->branch_id;
+        }
+
+        $template = null;
+
+        if ($branchId) {
+            $template = WhatsappTemplate::query()
+                ->where('branch_id', $branchId)
+                ->where('key', $key)
+                ->where('is_active', true)
+                ->first();
+        }
+
+        if (! $template) {
+            $template = WhatsappTemplate::query()
+                ->whereNull('branch_id')
+                ->where('key', $key)
+                ->where('is_active', true)
+                ->first();
+        }
+
+        return response()->json([
+            'data'    => $template,
+            'meta'    => [
+                'resolved_branch_id' => $branchId,
+                'fallback_global'    => $template ? $template->branch_id === null : false,
+            ],
+            'message' => 'OK',
+            'errors'  => null,
+        ]);
+    }
+}
+
+```
+</details>
+
 
 
 ## Models (app/Models)
@@ -4288,6 +4528,55 @@ class WashNoteItem extends Model
 ```
 </details>
 
+### app\Models\WhatsappTemplate.php
+
+- SHA: `94eb3492a091`  
+- Ukuran: 595 B  
+- Namespace: `App\Models`
+
+**Class `WhatsappTemplate` extends `Model`**
+
+Metode Publik:
+- **branch**()
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+
+class WhatsappTemplate extends Model
+{
+    use HasUuids;
+
+    protected $table = 'whatsapp_templates';
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'id',
+        'branch_id',
+        'key',
+        'name',
+        'content',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+}
+```
+</details>
+
 
 
 ## Policies (app/Policies)
@@ -5216,6 +5505,76 @@ class WashNotePolicy
     }
 }
 
+```
+</details>
+
+### app\Policies\WhatsappTemplatePolicy.php
+
+- SHA: `93f74596b860`  
+- Ukuran: 1 KB  
+- Namespace: `App\Policies`
+
+**Class `WhatsappTemplatePolicy`**
+
+Metode Publik:
+- **viewAny**(User $user) : *bool*
+- **view**(User $user, WhatsappTemplate $template) : *bool*
+- **create**(User $user) : *bool*
+- **update**(User $user, WhatsappTemplate $template) : *bool*
+- **delete**(User $user, WhatsappTemplate $template) : *bool*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Policies;
+
+use App\Models\User;
+use App\Models\WhatsappTemplate;
+
+class WhatsappTemplatePolicy
+{
+    public function viewAny(User $user): bool
+    {
+        return $user->hasRole('Superadmin') || $user->hasRole('Admin Cabang');
+    }
+
+    public function view(User $user, WhatsappTemplate $template): bool
+    {
+        if ($user->hasRole('Superadmin')) {
+            return true;
+        }
+
+        if ($user->hasRole('Admin Cabang')) {
+            return (string) $template->branch_id === (string) $user->branch_id;
+        }
+
+        return false;
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->hasRole('Superadmin') || $user->hasRole('Admin Cabang');
+    }
+
+    public function update(User $user, WhatsappTemplate $template): bool
+    {
+        if ($user->hasRole('Superadmin')) {
+            return true;
+        }
+
+        if ($user->hasRole('Admin Cabang')) {
+            return (string) $template->branch_id === (string) $user->branch_id;
+        }
+
+        return false;
+    }
+
+    public function delete(User $user, WhatsappTemplate $template): bool
+    {
+        return $this->update($user, $template);
+    }
+}
 ```
 </details>
 
@@ -7324,6 +7683,90 @@ class WashNoteUpdateRequest extends WashNoteStoreRequest
 ```
 </details>
 
+### app\Http\Requests\WhatsappTemplateStoreRequest.php
+
+- SHA: `2815f96793bd`  
+- Ukuran: 640 B  
+- Namespace: `App\Http\Requests`
+
+**Class `WhatsappTemplateStoreRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class WhatsappTemplateStoreRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+            'key' => ['required', 'string', Rule::in(['receipt_pending', 'receipt_paid'])],
+            'name' => ['required', 'string', 'max:100'],
+            'content' => ['required', 'string'],
+            'is_active' => ['nullable', 'boolean'],
+        ];
+    }
+}
+```
+</details>
+
+### app\Http\Requests\WhatsappTemplateUpdateRequest.php
+
+- SHA: `d6fc37c20f44`  
+- Ukuran: 681 B  
+- Namespace: `App\Http\Requests`
+
+**Class `WhatsappTemplateUpdateRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class WhatsappTemplateUpdateRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'name' => ['sometimes', 'required', 'string', 'max:100'],
+            'content' => ['sometimes', 'required', 'string'],
+            'is_active' => ['sometimes', 'boolean'],
+            'key' => ['sometimes', 'required', 'string', Rule::in(['receipt_pending', 'receipt_paid'])],
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+        ];
+    }
+}
+```
+</details>
+
 
 
 ## Services (app/Services)
@@ -9282,8 +9725,8 @@ class VoucherService
 
 ### database\seeders\BranchSeeder.php
 
-- SHA: `ec126954600d`  
-- Ukuran: 781 B  
+- SHA: `759308ba0c94`  
+- Ukuran: 2 KB  
 - Namespace: `Database\Seeders`
 
 **Class `BranchSeeder` extends `Seeder`**
@@ -9294,34 +9737,50 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
 
 class BranchSeeder extends Seeder
 {
     public function run(): void
     {
-        if (!Schema::hasTable('branches')) {
+        if (! Schema::hasTable('branches')) {
             // modul cabang belum dimigrasi pada M0 → skip aman
             return;
         }
 
         $exists = DB::table('branches')->count() > 0;
-        if ($exists)
+        if ($exists) {
             return;
+        }
 
         DB::table('branches')->insert([
-            'id' => (string) Str::uuid(),
-            'code' => 'CBG-001',
-            'name' => 'Cabang Utama',
-            'address' => 'Jl. Contoh No. 1',
+            'id'             => (string) Str::uuid(),
+            'code'           => 'CBG-001',
+            'name'           => 'Cabang Permata Biru',
+            'address'        => 'Komplek Permata Biru Blok Ar.06',
             'invoice_prefix' => 'SLV',
-            'reset_policy' => 'monthly',
+            'reset_policy'   => 'monthly',
+        ]);
+        DB::table('branches')->insert([
+            'id'             => (string) Str::uuid(),
+            'code'           => 'CBG-002',
+            'name'           => 'Cabang Ujung Berung',
+            'address'        => 'Jl. A.H. Nasution No. 112',
+            'invoice_prefix' => 'SLV',
+            'reset_policy'   => 'monthly',
+        ]);
+        DB::table('branches')->insert([
+            'id'             => (string) Str::uuid(),
+            'code'           => 'CBG-003',
+            'name'           => 'Cabang Rancabolang',
+            'address'        => 'Jl. Rancabolang',
+            'invoice_prefix' => 'SLV',
+            'reset_policy'   => 'monthly',
         ]);
     }
 }
@@ -9416,7 +9875,7 @@ class RolesTableSeeder extends Seeder
 
 ### database\seeders\UserSeeder.php
 
-- SHA: `1ea3bb0eafeb`  
+- SHA: `1c813fc84ec2`  
 - Ukuran: 5 KB  
 - Namespace: `Database\Seeders`
 
@@ -9476,40 +9935,40 @@ class UserSeeder extends Seeder
                 'email'      => 'superadmin@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Superadmin',
-                'branch_id'  => null,               // Superadmin tanpa cabang
+                'branch_id'  => null,
                 'is_active'  => true,
             ],
             [
-                'name'       => 'Admin Cabang',
-                'username'   => 'admincabang',
-                'email'      => 'admincabang@gmail.com',
+                'name'       => 'Admin PB',
+                'username'   => 'adminpb',
+                'email'      => 'adminpb@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Admin Cabang',
                 'branch_id'  => $defaultBranchId,   // wajib punya cabang
                 'is_active'  => true,
             ],
             [
-                'name'       => 'Kasir',
-                'username'   => 'kasir',
-                'email'      => 'kasir@gmail.com',
+                'name'       => 'Kasir PB',
+                'username'   => 'kasirpb',
+                'email'      => 'kasirpb@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Kasir',
                 'branch_id'  => $defaultBranchId,
                 'is_active'  => true,
             ],
             [
-                'name'       => 'Petugas Cuci',
-                'username'   => 'petugascuci',
-                'email'      => 'petugascuci@gmail.com',
+                'name'       => 'Petugas Cuci PB',
+                'username'   => 'petugascucipb',
+                'email'      => 'petugascucipb@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Petugas Cuci',
                 'branch_id'  => $defaultBranchId,
                 'is_active'  => true,
             ],
             [
-                'name'       => 'Kurir',
-                'username'   => 'kurir',
-                'email'      => 'kurir@gmail.com',
+                'name'       => 'Kurir PB',
+                'username'   => 'kurirpb',
+                'email'      => 'kurirpb@gmail.com',
                 'password'   => 'password',
                 'role'       => 'Kurir',
                 'branch_id'  => $defaultBranchId,
@@ -10200,8 +10659,8 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `2d817e7a8483`  
-- Ukuran: 7 KB
+- SHA: `bb1186cd0971`  
+- Ukuran: 8 KB
 
 **Ringkasan Routes (deteksi heuristik):**
 
@@ -10275,31 +10734,38 @@ class UserSeeder extends Seeder
 | GET | `/receivables` | `ReceivableController` | `index` |
 | POST | `/receivables/{id}/settle` | `ReceivableController` | `settle` |
 | GET | `dashboard/summary` | `DashboardController` | `summary` |
+| GET | `/whatsapp-templates` | `WhatsappTemplateController` | `index` |
+| POST | `/whatsapp-templates` | `WhatsappTemplateController` | `store` |
+| GET | `/whatsapp-templates/resolve` | `WhatsappTemplateController` | `resolve` |
+| GET | `/whatsapp-templates/{whatsappTemplate}` | `WhatsappTemplateController` | `show` |
+| PUT | `/whatsapp-templates/{whatsappTemplate}` | `WhatsappTemplateController` | `update` |
+| DELETE | `/whatsapp-templates/{whatsappTemplate}` | `WhatsappTemplateController` | `destroy` |
 
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\BranchController;
-use App\Http\Controllers\Api\InvoiceCounterController;
 use App\Http\Controllers\Api\CategoryController;
-use App\Http\Controllers\Api\ServiceController;
-use App\Http\Controllers\Api\ServicePriceController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DeliveryController;
+use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\InvoiceCounterController;
+use App\Http\Controllers\Api\LoyaltyController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OrderPaymentsController;
 use App\Http\Controllers\Api\OrderPhotosController;
-use App\Http\Controllers\Api\DeliveryController;
 use App\Http\Controllers\Api\ReceivableController;
-use App\Http\Controllers\Api\ExpenseController;
-use App\Http\Controllers\Api\DashboardController;
-use App\Http\Controllers\Api\LoyaltyController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\ServicePriceController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WashNoteController;
+use App\Http\Controllers\Api\WhatsappTemplateController;
+use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
@@ -10314,9 +10780,9 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         // User routes
         Route::get('/users', [UserController::class, 'index']);
-        Route::get('/users/{user}', [UserController::class, 'show']);   // was {id}
+        Route::get('/users/{user}', [UserController::class, 'show']); // was {id}
         Route::post('/users', [UserController::class, 'store']);
-        Route::put('/users/{user}', [UserController::class, 'update']); // was {id}
+        Route::put('/users/{user}', [UserController::class, 'update']);     // was {id}
         Route::delete('/users/{user}', [UserController::class, 'destroy']); // was {id}
 
         // Aksi khusus sudah benar (sudah {user})
@@ -10413,6 +10879,14 @@ Route::prefix('v1')->group(function () {
 
         Route::get('dashboard/summary', [DashboardController::class, 'summary']);
 
+        // WhatsApp Templates
+        Route::get('/whatsapp-templates', [WhatsappTemplateController::class, 'index']);
+        Route::post('/whatsapp-templates', [WhatsappTemplateController::class, 'store']);
+        Route::get('/whatsapp-templates/resolve', [WhatsappTemplateController::class, 'resolve']);
+        Route::get('/whatsapp-templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'show']);
+        Route::put('/whatsapp-templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'update']);
+        Route::delete('/whatsapp-templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'destroy']);
+
         // Tambahkan route lain di sini sesuai kebutuhan
     });
 });
@@ -10424,7 +10898,7 @@ Route::prefix('v1')->group(function () {
 
 ## AuthServiceProvider.php
 
-- SHA: `4dd5fe74ab5e`  
+- SHA: `4541d789e3b7`  
 - Ukuran: 3 KB
 
 **$policies**
@@ -10439,6 +10913,7 @@ Route::prefix('v1')->group(function () {
 - `Receivable` => `ReceivablePolicy`
 - `Expense` => `ExpensePolicy`
 - `WashNote` => `WashNotePolicy`
+- `WhatsappTemplate` => `WhatsappTemplatePolicy`
 
 **Gate::define()**
 - `user.assignRole`
@@ -10480,6 +10955,8 @@ use App\Models\Expense;
 use App\Policies\ExpensePolicy;
 use App\Models\WashNote;
 use App\Policies\WashNotePolicy;
+use App\Models\WhatsappTemplate;
+use App\Policies\WhatsappTemplatePolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -10496,6 +10973,7 @@ class AuthServiceProvider extends ServiceProvider
         Receivable::class => ReceivablePolicy::class,
         Expense::class => ExpensePolicy::class,
         WashNote::class => WashNotePolicy::class,
+        WhatsappTemplate::class => WhatsappTemplatePolicy::class,
     ];
 
     /**
@@ -10524,7 +11002,7 @@ class AuthServiceProvider extends ServiceProvider
             ($user->hasRole('Admin Cabang') && ($target->branch_id === $user->branch_id)) ||
             ($user->id === $target->id)
         );
-        
+
         Gate::define('user.create', fn($user) => $user->hasAnyRole(['Superadmin', 'Admin Cabang']));
         Gate::define(
             'user.update',

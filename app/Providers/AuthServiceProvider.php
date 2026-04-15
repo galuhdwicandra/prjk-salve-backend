@@ -26,6 +26,8 @@ use App\Models\Expense;
 use App\Policies\ExpensePolicy;
 use App\Models\WashNote;
 use App\Policies\WashNotePolicy;
+use App\Models\WhatsappTemplate;
+use App\Policies\WhatsappTemplatePolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -42,6 +44,7 @@ class AuthServiceProvider extends ServiceProvider
         Receivable::class => ReceivablePolicy::class,
         Expense::class => ExpensePolicy::class,
         WashNote::class => WashNotePolicy::class,
+        WhatsappTemplate::class => WhatsappTemplatePolicy::class,
     ];
 
     /**
@@ -70,7 +73,7 @@ class AuthServiceProvider extends ServiceProvider
             ($user->hasRole('Admin Cabang') && ($target->branch_id === $user->branch_id)) ||
             ($user->id === $target->id)
         );
-        
+
         Gate::define('user.create', fn($user) => $user->hasAnyRole(['Superadmin', 'Admin Cabang']));
         Gate::define(
             'user.update',
