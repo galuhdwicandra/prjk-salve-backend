@@ -11,21 +11,24 @@ class OrderUpdateRequest extends FormRequest
         return true;
     }
 
-    /**
-     * Normalisasi waktu lokal "naif" ke 'Y-m-d H:i:s' tanpa konversi zona waktu.
-     */
     protected function normalizeLocal(?string $dt): ?string
     {
         if (!$dt) return null;
+
         $s = str_replace('T', ' ', trim($dt));
-        $s = preg_replace('/Z$/', '', $s); // buang Z bila ada
-        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
-            $s .= ':00';
+        $s = preg_replace('/Z$/', '', $s);
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
+            return $s . ' 00:00:00';
         }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
+            return $s . ':00';
+        }
+
         try {
-            return \Carbon\CarbonImmutable::createFromFormat('Y-m-d H:i:s', $s)->format('Y-m-d H:i:s');
+            return \Carbon\CarbonImmutable::parse($s)->format('Y-m-d H:i:s');
         } catch (\Throwable) {
-            // Jika format tak cocok, biarkan apa adanya agar validator 'date' menangkapnya.
             return $s;
         }
     }
@@ -42,24 +45,28 @@ class OrderUpdateRequest extends FormRequest
             'items.*.service_id' => ['required_with:items', 'uuid', 'exists:services,id', 'distinct'],
             'items.*.qty'        => ['required_with:items', 'integer', 'min:1'],
             'items.*.note'       => ['sometimes', 'nullable', 'string', 'max:300'],
-            'received_at' => ['nullable', 'date'],
-            'ready_at'    => ['nullable', 'date', 'after_or_equal:received_at'],
+
+            'received_at'        => ['sometimes', 'required', 'date'],
+            'ready_at'           => ['sometimes', 'required', 'date', 'after_or_equal:received_at'],
         ];
     }
 
     protected function prepareForValidation(): void
     {
         $data = $this->all();
-        // Trim field sederhana bila dikirim
+
         if (array_key_exists('customer_id', $data) && $data['customer_id'] !== null) {
             $data['customer_id'] = trim((string) $data['customer_id']);
         }
+
         if (array_key_exists('notes', $data)) {
             $data['notes'] = $data['notes'] === null ? null : trim((string) $data['notes']);
         }
+
         if (isset($data['discount']) && $data['discount'] !== null) {
             $data['discount'] = is_numeric($data['discount']) ? (float) $data['discount'] : $data['discount'];
         }
+
         if (isset($data['items']) && is_array($data['items'])) {
             foreach ($data['items'] as $k => $row) {
                 if (isset($row['qty'])) {
@@ -67,13 +74,27 @@ class OrderUpdateRequest extends FormRequest
                 }
             }
         }
-        // Normalisasi datetime lokal (tanpa konversi TZ) untuk kolom TIMESTAMP WITHOUT TIME ZONE
+
         if (array_key_exists('received_at', $data)) {
             $data['received_at'] = $this->normalizeLocal($data['received_at']);
         }
+
         if (array_key_exists('ready_at', $data)) {
             $data['ready_at'] = $this->normalizeLocal($data['ready_at']);
         }
+
         $this->replace($data);
+    }
+
+    public function messages(): array
+    {
+        return [
+            'received_at.required' => 'Tanggal masuk wajib diisi.',
+            'received_at.date' => 'Tanggal masuk tidak valid.',
+
+            'ready_at.required' => 'Tanggal selesai wajib diisi.',
+            'ready_at.date' => 'Tanggal selesai tidak valid.',
+            'ready_at.after_or_equal' => 'Tanggal selesai harus sama dengan atau setelah tanggal masuk.',
+        ];
     }
 }

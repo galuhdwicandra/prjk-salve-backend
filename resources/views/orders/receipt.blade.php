@@ -397,13 +397,13 @@
                     <div>
                         <dt>Tgl Masuk</dt>
                         <dd>
-                            {{ $order->received_at ? \Illuminate\Support\Carbon::parse($order->received_at)->format('d/m/Y H:i') : '—' }}
+                            {{ $order->received_at ? \Illuminate\Support\Carbon::parse($order->received_at)->format('d/m/Y') : '—' }}
                         </dd>
                     </div>
                     <div>
                         <dt>Tgl Selesai</dt>
                         <dd>
-                            {{ $order->ready_at ? \Illuminate\Support\Carbon::parse($order->ready_at)->format('d/m/Y H:i') : '—' }}
+                            {{ $order->ready_at ? \Illuminate\Support\Carbon::parse($order->ready_at)->format('d/m/Y') : '—' }}
                         </dd>
                     </div>
                 </dl>
