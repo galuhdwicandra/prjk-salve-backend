@@ -47,6 +47,38 @@ class DashboardService
         $vouchersUsedCount  = (int) ($voucherAgg->used_count  ?? 0);
         $vouchersUsedAmount = (float) ($voucherAgg->used_amount ?? 0);
 
+        // === PIUTANG BELUM LUNAS ===
+        $receivableAgg = DB::table('receivables')
+            ->join('orders', 'orders.id', '=', 'receivables.order_id')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereIn('receivables.status', ['OPEN', 'PARTIAL'])
+            ->where('receivables.remaining_amount', '>', 0)
+            ->selectRaw('
+                COUNT(*) AS open_count,
+                COALESCE(SUM(receivables.remaining_amount), 0) AS open_amount
+            ')
+            ->first();
+
+        $receivablesOpenCount  = (int) ($receivableAgg->open_count ?? 0);
+        $receivablesOpenAmount = (float) ($receivableAgg->open_amount ?? 0);
+
+        // === PIUTANG JATUH TEMPO / OVERDUE ===
+        $overdueAgg = DB::table('receivables')
+            ->join('orders', 'orders.id', '=', 'receivables.order_id')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereIn('receivables.status', ['OPEN', 'PARTIAL'])
+            ->where('receivables.remaining_amount', '>', 0)
+            ->whereNotNull('receivables.due_date')
+            ->where('receivables.due_date', '<', now()->toDateString())
+            ->selectRaw('
+                COUNT(*) AS overdue_count,
+                COALESCE(SUM(receivables.remaining_amount), 0) AS overdue_amount
+            ')
+            ->first();
+
+        $dpOutstandingCount  = (int) ($overdueAgg->overdue_count ?? 0);
+        $dpOutstandingAmount = (float) ($overdueAgg->overdue_amount ?? 0);
+
         // === PIUTANG (outstanding & overdue) ===
         $now = now();
         $recv = DB::table('receivables')
@@ -186,8 +218,8 @@ class DashboardService
             'dp_outstanding_count'  => $dpOutstandingCount,
             'dp_outstanding_amount' => $dpOutstandingAmount,
 
-            'omzet_daily'   => $daily,    // [{ date: 'YYYY-MM-DD', amount: number }, ...]
-            'omzet_monthly' => $monthly,  // [{ month: 'YYYY-MM', amount: number }, ...]
+            'omzet_daily'   => $daily,
+            'omzet_monthly' => $monthly,
             'top_services'  => $topServices,
         ];
     }

@@ -20,6 +20,11 @@ class Customer extends Model
         'whatsapp',
         'address',
         'notes',
+        'tags',
+    ];
+
+    protected $casts = [
+        'tags' => 'array',
     ];
 
     public function branch()

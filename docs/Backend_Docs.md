@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-15 14:49:33_  
+_Dihasilkan otomatis: 2026-04-16 13:50:06_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -468,7 +468,7 @@ class CategoryController extends Controller
 
 ### app\Http\Controllers\Api\CustomerController.php
 
-- SHA: `3182cb22cc7f`  
+- SHA: `893a657c884b`  
 - Ukuran: 5 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -478,20 +478,19 @@ Metode Publik:
 - **index**(Request $request)
 - **show**(Customer $customer)
 - **store**(CustomerStoreRequest $request)
-- **update**(CustomerUpdateRequest $request, Customer $customer) — @var Customer $customer
-- **destroy**(Request $request, Customer $customer) — @var Customer $customer
-- **searchByWhatsapp**(CustomerSearchWARequest $request) — @var Customer $customer
+- **update**(CustomerUpdateRequest $request, Customer $customer)
+- **destroy**(Request $request, Customer $customer)
+- **searchByWhatsapp**(CustomerSearchWARequest $request) — GET /customers/search-wa?wa=...
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CustomerSearchWARequest;
 use App\Http\Requests\CustomerStoreRequest;
 use App\Http\Requests\CustomerUpdateRequest;
-use App\Http\Requests\CustomerSearchWARequest;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -510,26 +509,28 @@ class CustomerController extends Controller
             $q->where('branch_id', $branchId);
         }
 
-        if ($s = $request->query('q')) {
-            $q->where(function ($w) use ($s) {
-                $w->where('name', 'like', "%{$s}%")
-                    ->orWhere('whatsapp', 'like', "%{$s}%")
-                    ->orWhere('address', 'like', "%{$s}%");
-            });
-        }
+if ($s = $request->query('q')) {
+    $q->where(function ($w) use ($s) {
+        $w->where('name', 'like', "%{$s}%")
+            ->orWhere('whatsapp', 'like', "%{$s}%")
+            ->orWhere('address', 'like', "%{$s}%")
+            ->orWhere('notes', 'like', "%{$s}%")
+            ->orWhereJsonContains('tags', $s);
+    });
+}
 
         $items = $q->paginate((int) $request->query('per_page', 10));
 
         return response()->json([
-            'data' => $items->items(),
-            'meta' => [
+            'data'    => $items->items(),
+            'meta'    => [
                 'current_page' => $items->currentPage(),
-                'per_page' => $items->perPage(),
-                'total' => $items->total(),
-                'last_page' => $items->lastPage(),
+                'per_page'     => $items->perPage(),
+                'total'        => $items->total(),
+                'last_page'    => $items->lastPage(),
             ],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -538,10 +539,10 @@ class CustomerController extends Controller
         $this->authorize('view', $customer);
 
         return response()->json([
-            'data' => $customer,
-            'meta' => [],
+            'data'    => $customer->load('branch'),
+            'meta'    => [],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -549,26 +550,21 @@ class CustomerController extends Controller
     {
         $payload = $request->validated();
 
-        // Admin Cabang: paksa branch_id miliknya bila kosong
         if ($request->user()->hasRole('Admin Cabang') || $request->user()->hasRole('Kasir')) {
-            $payload['branch_id'] = $payload['branch_id'] ?? $request->user()->branch_id;
+            $payload['branch_id'] = (string) $request->user()->branch_id;
         }
 
         $this->authorize('create', Customer::class);
 
-        /** @var Customer $customer */
         $customer = DB::transaction(function () use ($payload) {
             $c = new Customer($payload);
             $c->id = (string) Str::uuid();
             $c->save();
-
-            // TODO: audit('CUSTOMER_CREATE', $c)
-
             return $c;
         });
 
         return response()->json([
-            'data' => $customer,
+            'data' => $customer->load('branch'),
             'meta' => [],
             'message' => 'Created',
             'errors' => null,
@@ -580,13 +576,16 @@ class CustomerController extends Controller
         $payload = $request->validated();
         $this->authorize('update', $customer);
 
-        DB::transaction(function () use ($customer, $payload) {
+        DB::transaction(function () use ($customer, $payload, $request) {
+            if ($request->user()->hasRole('Admin Cabang') || $request->user()->hasRole('Kasir')) {
+                $payload['branch_id'] = (string) $request->user()->branch_id;
+            }
+
             $customer->fill($payload)->save();
-            // TODO: audit('CUSTOMER_UPDATE', $customer)
         });
 
         return response()->json([
-            'data' => $customer->refresh(),
+            'data' => $customer->refresh()->load('branch'),
             'meta' => [],
             'message' => 'Updated',
             'errors' => null,
@@ -599,14 +598,13 @@ class CustomerController extends Controller
 
         DB::transaction(function () use ($customer) {
             $customer->delete();
-            // TODO: audit('CUSTOMER_DELETE', ['id' => $customer->id])
         });
 
         return response()->json([
-            'data' => null,
-            'meta' => [],
+            'data'    => null,
+            'meta'    => [],
             'message' => 'Deleted',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -615,7 +613,7 @@ class CustomerController extends Controller
     {
         $this->authorize('viewAny', Customer::class);
 
-        $wa = preg_replace('/\s+/', '', (string) $request->query('wa'));
+        $wa       = preg_replace('/\s+/', '', (string) $request->query('wa'));
         $branchId = $this->branchScopeFor($request);
 
         $q = Customer::query()->where('whatsapp', $wa);
@@ -625,20 +623,20 @@ class CustomerController extends Controller
 
         $found = $q->first();
 
-        if (!$found) {
+        if (! $found) {
             return response()->json([
-                'data' => null,
-                'meta' => [],
+                'data'    => null,
+                'meta'    => [],
                 'message' => 'Not found',
-                'errors' => ['wa' => ['not_found']],
+                'errors'  => ['wa' => ['not_found']],
             ], 404);
         }
 
         return response()->json([
-            'data' => $found,
-            'meta' => [],
+            'data'    => $found,
+            'meta'    => [],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -1404,7 +1402,7 @@ class LoyaltyController extends Controller
 
 ### app\Http\Controllers\Api\OrderController.php
 
-- SHA: `ca9e68481d91`  
+- SHA: `0dd3d71ea78f`  
 - Ukuran: 9 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -1626,6 +1624,7 @@ class OrderController extends Controller
         $order->load([
             'items.service:id,name',
             'branch:id,name,address',
+            'photos',
             'payments' => fn($q) => $q->orderBy('paid_at')->orderBy('created_at'),
         ]);
 
@@ -3417,8 +3416,8 @@ class Branch extends Model
 
 ### app\Models\Customer.php
 
-- SHA: `2b1004dedcaa`  
-- Ukuran: 585 B  
+- SHA: `ca86feab4325`  
+- Ukuran: 661 B  
 - Namespace: `App\Models`
 
 **Class `Customer` extends `Model`**
@@ -3450,6 +3449,11 @@ class Customer extends Model
         'whatsapp',
         'address',
         'notes',
+        'tags',
+    ];
+
+    protected $casts = [
+        'tags' => 'array',
     ];
 
     public function branch()
@@ -5932,8 +5936,8 @@ class CustomerSearchWARequest extends FormRequest
 
 ### app\Http\Requests\CustomerStoreRequest.php
 
-- SHA: `38679783f912`  
-- Ukuran: 1 KB  
+- SHA: `9fe7cf058e51`  
+- Ukuran: 2 KB  
 - Namespace: `App\Http\Requests`
 
 **Class `CustomerStoreRequest` extends `FormRequest`**
@@ -5945,7 +5949,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -5953,6 +5956,17 @@ use Illuminate\Validation\Rule;
 
 class CustomerStoreRequest extends FormRequest
 {
+    private const ALLOWED_TAGS = [
+        'VIP',
+        'Langganan',
+        'Corporate',
+        'Member',
+        'Prioritas',
+        'Outlet',
+        'Komplain',
+        'Blacklist',
+    ];
+
     public function authorize(): bool
     {
         return $this->user()?->can('create', \App\Models\Customer::class) ?? false;
@@ -5964,33 +5978,48 @@ class CustomerStoreRequest extends FormRequest
 
         return [
             'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
-            'name' => ['required', 'string', 'max:150'],
-            'whatsapp' => [
+            'name'      => ['required', 'string', 'max:150'],
+            'whatsapp'  => [
                 'required',
                 'string',
                 'max:32',
                 Rule::unique('customers', 'whatsapp')->where(fn($q) => $q->where('branch_id', $branchId)),
             ],
-            'address' => ['nullable', 'string', 'max:255'],
-            'notes' => ['nullable', 'string'],
+            'address'   => ['nullable', 'string', 'max:255'],
+            'notes'     => ['nullable', 'string'],
+            'tags'      => ['nullable', 'array', 'max:10'],
+            'tags.*'    => ['string', Rule::in(self::ALLOWED_TAGS)],
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        // Normalisasi ringan: trim dan hilangkan spasi pada whatsapp
         $wa = preg_replace('/\s+/', '', (string) $this->input('whatsapp'));
-        $this->merge(['whatsapp' => $wa]);
+
+        $tags = $this->input('tags', null);
+
+        if (is_array($tags)) {
+            $tags = collect($tags)
+                ->map(fn($tag) => trim((string) $tag))
+                ->filter(fn($tag) => $tag !== '')
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        $this->merge([
+            'whatsapp' => $wa,
+            'tags'     => $tags,
+        ]);
     }
 }
-
 ```
 </details>
 
 ### app\Http\Requests\CustomerUpdateRequest.php
 
-- SHA: `5285851be61d`  
-- Ukuran: 1 KB  
+- SHA: `27129b2d3b89`  
+- Ukuran: 2 KB  
 - Namespace: `App\Http\Requests`
 
 **Class `CustomerUpdateRequest` extends `FormRequest`**
@@ -6002,15 +6031,25 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Requests;
 
+use App\Models\Customer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use App\Models\Customer;
 
 class CustomerUpdateRequest extends FormRequest
 {
+    private const ALLOWED_TAGS = [
+        'VIP',
+        'Langganan',
+        'Corporate',
+        'Member',
+        'Prioritas',
+        'Outlet',
+        'Komplain',
+        'Blacklist',
+    ];
+
     public function authorize(): bool
     {
         /** @var Customer $customer */
@@ -6025,7 +6064,7 @@ class CustomerUpdateRequest extends FormRequest
         $branchId = $customer->branch_id;
 
         return [
-            'name' => ['sometimes', 'required', 'string', 'max:150'],
+            'name'     => ['sometimes', 'required', 'string', 'max:150'],
             'whatsapp' => [
                 'sometimes',
                 'required',
@@ -6035,19 +6074,35 @@ class CustomerUpdateRequest extends FormRequest
                     ->where(fn($q) => $q->where('branch_id', $branchId))
                     ->ignore($customer->id, 'id'),
             ],
-            'address' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'notes' => ['sometimes', 'nullable', 'string'],
+            'address'  => ['sometimes', 'nullable', 'string', 'max:255'],
+            'notes'    => ['sometimes', 'nullable', 'string'],
+            'tags'     => ['sometimes', 'nullable', 'array', 'max:10'],
+            'tags.*'   => ['string', Rule::in(self::ALLOWED_TAGS)],
         ];
     }
 
     protected function prepareForValidation(): void
     {
+        $payload = [];
+
         if ($this->has('whatsapp')) {
-            $this->merge(['whatsapp' => preg_replace('/\s+/', '', (string) $this->input('whatsapp'))]);
+            $payload['whatsapp'] = preg_replace('/\s+/', '', (string) $this->input('whatsapp'));
+        }
+
+        if ($this->has('tags') && is_array($this->input('tags'))) {
+            $payload['tags'] = collect($this->input('tags', []))
+                ->map(fn($tag) => trim((string) $tag))
+                ->filter(fn($tag) => $tag !== '')
+                ->unique()
+                ->values()
+                ->all();
+        }
+
+        if (!empty($payload)) {
+            $this->merge($payload);
         }
     }
 }
-
 ```
 </details>
 
@@ -7900,8 +7955,8 @@ class AuthService
 
 ### app\Services\DashboardService.php
 
-- SHA: `1df3b7c78d58`  
-- Ukuran: 9 KB  
+- SHA: `a6e83cf46dbe`  
+- Ukuran: 11 KB  
 - Namespace: `App\Services`
 
 **Class `DashboardService`**
@@ -7959,6 +8014,38 @@ class DashboardService
 
         $vouchersUsedCount  = (int) ($voucherAgg->used_count  ?? 0);
         $vouchersUsedAmount = (float) ($voucherAgg->used_amount ?? 0);
+
+        // === PIUTANG BELUM LUNAS ===
+        $receivableAgg = DB::table('receivables')
+            ->join('orders', 'orders.id', '=', 'receivables.order_id')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereIn('receivables.status', ['OPEN', 'PARTIAL'])
+            ->where('receivables.remaining_amount', '>', 0)
+            ->selectRaw('
+                COUNT(*) AS open_count,
+                COALESCE(SUM(receivables.remaining_amount), 0) AS open_amount
+            ')
+            ->first();
+
+        $receivablesOpenCount  = (int) ($receivableAgg->open_count ?? 0);
+        $receivablesOpenAmount = (float) ($receivableAgg->open_amount ?? 0);
+
+        // === PIUTANG JATUH TEMPO / OVERDUE ===
+        $overdueAgg = DB::table('receivables')
+            ->join('orders', 'orders.id', '=', 'receivables.order_id')
+            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->whereIn('receivables.status', ['OPEN', 'PARTIAL'])
+            ->where('receivables.remaining_amount', '>', 0)
+            ->whereNotNull('receivables.due_date')
+            ->where('receivables.due_date', '<', now()->toDateString())
+            ->selectRaw('
+                COUNT(*) AS overdue_count,
+                COALESCE(SUM(receivables.remaining_amount), 0) AS overdue_amount
+            ')
+            ->first();
+
+        $dpOutstandingCount  = (int) ($overdueAgg->overdue_count ?? 0);
+        $dpOutstandingAmount = (float) ($overdueAgg->overdue_amount ?? 0);
 
         // === PIUTANG (outstanding & overdue) ===
         $now = now();
@@ -8099,8 +8186,8 @@ class DashboardService
             'dp_outstanding_count'  => $dpOutstandingCount,
             'dp_outstanding_amount' => $dpOutstandingAmount,
 
-            'omzet_daily'   => $daily,    // [{ date: 'YYYY-MM-DD', amount: number }, ...]
-            'omzet_monthly' => $monthly,  // [{ month: 'YYYY-MM', amount: number }, ...]
+            'omzet_daily'   => $daily,
+            'omzet_monthly' => $monthly,
             'top_services'  => $topServices,
         ];
     }
@@ -10068,7 +10155,7 @@ class UserSeeder extends Seeder
 
 ### resources\views\orders\receipt.blade.php
 
-- SHA: `e78a6cb0334c`  
+- SHA: `6c2f37f7c64e`  
 - Ukuran: 22 KB  
 - Namespace: ``
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
@@ -10526,11 +10613,17 @@ class UserSeeder extends Seeder
                     @endif
 
                     {{-- Foto Before --}}
-                    @if(!empty($order->before_photo))
+                    @php
+                        $beforePhoto = collect($order->photos ?? [])->first(function ($photo) {
+                            return strtolower((string) $photo->kind) === 'before';
+                        });
+                    @endphp
+
+                    @if($beforePhoto && !empty($beforePhoto->path))
                         <div style="margin-top:12px;">
                             <div class="muted" style="font-size:12px; margin-bottom:6px;">Foto Before</div>
 
-                            <img src="{{ asset('storage/' . $order->before_photo) }}" alt="Foto Before"
+                            <img src="{{ asset($beforePhoto->path) }}" alt="Foto Before"
                                 style="width:100%; max-width:250px; border-radius:8px; border:1px solid var(--border);">
                         </div>
                     @endif
