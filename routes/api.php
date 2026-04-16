@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WashNoteController;
 use App\Http\Controllers\Api\WhatsappTemplateController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\CashSessionController;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
@@ -140,6 +141,15 @@ Route::prefix('v1')->group(function () {
         Route::get('/whatsapp-templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'show']);
         Route::put('/whatsapp-templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'update']);
         Route::delete('/whatsapp-templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'destroy']);
+
+        // cash-sessions
+        Route::put('/cash-sessions/{cashSession}', [CashSessionController::class, 'update']);
+        Route::get('/cash-sessions/today', [CashSessionController::class, 'today']);
+        Route::get('/cash-sessions', [CashSessionController::class, 'index']);
+        Route::post('/cash-sessions/open', [CashSessionController::class, 'open']);
+        Route::get('/cash-sessions/{cashSession}', [CashSessionController::class, 'show']);
+        Route::post('/cash-sessions/{cashSession}/close', [CashSessionController::class, 'close']);
+        Route::post('/cash-sessions/{cashSession}/withdrawals', [CashSessionController::class, 'withdraw']);
 
         // Tambahkan route lain di sini sesuai kebutuhan
     });

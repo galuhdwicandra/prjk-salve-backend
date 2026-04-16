@@ -12,15 +12,14 @@ class Expense extends Model
     use HasUuids;
 
     public $incrementing = false;
-
     protected $keyType = 'string';
-
     protected $table = 'expenses';
 
     protected $fillable = [
         'branch_id',
         'category',
         'amount',
+        'payment_source',
         'note',
         'proof_path',
     ];

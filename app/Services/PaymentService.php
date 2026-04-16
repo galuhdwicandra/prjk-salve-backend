@@ -2,53 +2,63 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use App\Models\Order;
+use App\Models\Payment;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class PaymentService
 {
-    public function apply(Order $order, string $method, float $amount, ?string $paidAt = null, ?string $note = null): array
-    {
+    public function __construct(
+        private CashLedgerService $cashLedger,
+    ) {}
+
+    public function apply(
+        Order $order,
+        string $method,
+        float $amount,
+        string|Carbon|null $paidAt = null,
+        ?string $note = null
+    ): array {
         return DB::transaction(function () use ($order, $method, $amount, $paidAt, $note) {
-            $orderId = (string) $order->getKey();
+            $order = Order::query()->lockForUpdate()->findOrFail($order->id);
+            $orderId = (string) $order->id;
 
-            // [BARU] Normalisasi paid_at ke format SQL (YYYY-mm-dd HH:ii:ss)
-            $paidAtDb = $paidAt ? Carbon::parse($paidAt)->format('Y-m-d H:i:s') : null;
+            $paidAtDb = $paidAt
+                ? ($paidAt instanceof Carbon ? $paidAt : Carbon::parse($paidAt))
+                : now();
 
-            // 1) Idempotency check (kombinasi unik)
-            $exists = DB::table('payments')->where([
-                'order_id' => $orderId,
-                'method' => $method,
-                'amount' => $amount,
-            ])
-                // ganti $paidAt -> $paidAtDb
-                ->when($paidAtDb, fn($q) => $q->where('paid_at', $paidAtDb))
-                ->exists();
+            // idempotency sederhana: payment identik sudah ada
+            $exists = Payment::query()
+                ->where('order_id', $orderId)
+                ->where('method', $method)
+                ->where('amount', $amount)
+                ->where('paid_at', $paidAtDb)
+                ->where('note', $note)
+                ->first();
 
             if ($exists) {
-                return ['ok' => true, 'order' => $order->fresh(), 'payment' => null, 'idempotent' => true];
+                return [
+                    'ok' => true,
+                    'order' => $order->fresh(['items']),
+                    'payment' => $exists,
+                    'idempotent' => true,
+                ];
             }
 
-            // 2) Create payment row
-            $paymentId = (string) Str::uuid();
-            DB::table('payments')->insert([
-                'id' => $paymentId,
+            $payment = Payment::query()->create([
+                'id' => (string) Str::uuid(),
                 'order_id' => $orderId,
                 'method' => $method,
                 'amount' => $amount,
-                // ganti $paidAt -> $paidAtDb
                 'paid_at' => $paidAtDb,
                 'note' => $note,
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
-            // 3) Update order payment aggregates
-            $paidAmount = (float) $order->getAttribute('paid_amount') + $amount;
-            $grand = (float) $order->getAttribute('grand_total');
+            $paidAmount = (float) $order->paid_amount + $amount;
+            $grand = (float) $order->grand_total;
 
             $paymentStatus = 'PENDING';
             if ($method === 'DP' || $paidAmount < $grand) {
@@ -58,7 +68,7 @@ class PaymentService
                 $paymentStatus = 'PAID';
             }
 
-            $newDp = (float) $order->getAttribute('dp_amount');
+            $newDp = (float) $order->dp_amount;
             if ($method === 'DP') {
                 $newDp += $amount;
             }
@@ -67,18 +77,17 @@ class PaymentService
                 'paid_amount' => $paidAmount,
                 'dp_amount' => $newDp,
                 'payment_status' => $paymentStatus,
-                // ganti $paidAt -> $paidAtDb
-                'paid_at' => ($paymentStatus === 'PAID' && !$order->getAttribute('paid_at'))
+                'paid_at' => ($paymentStatus === 'PAID' && !$order->paid_at)
                     ? ($paidAtDb ?: now())
-                    : $order->getAttribute('paid_at'),
+                    : $order->paid_at,
                 'due_amount' => max($grand - $paidAmount, 0),
             ])->save();
 
-            // 4) Receivables upsert (tetap sama) ...
-            // (biarkan bagian receivables apa adanya)
             $remaining = max($grand - $paidAmount, 0);
+
             if (Schema::hasTable('receivables')) {
                 $row = DB::table('receivables')->where('order_id', $orderId)->first();
+
                 if (!$row && $remaining > 0) {
                     DB::table('receivables')->insert([
                         'id' => (string) Str::uuid(),
@@ -88,18 +97,27 @@ class PaymentService
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-                } else {
+                } elseif ($row) {
                     DB::table('receivables')->where('order_id', $orderId)->update([
                         'remaining_amount' => $remaining,
-                        'status' => $remaining > 0 ? 'PARTIAL' : 'SETTLED',
+                        'status' => $remaining > 0
+                            ? ((float) $paidAmount > 0 ? 'PARTIAL' : 'OPEN')
+                            : 'SETTLED',
                         'updated_at' => now(),
                     ]);
                 }
             }
 
-            $payment = DB::table('payments')->where('id', $paymentId)->first();
+            if ($method === 'CASH') {
+                $this->cashLedger->syncPayment($payment);
+            }
 
-            return ['ok' => true, 'order' => $order->fresh(['items']), 'payment' => $payment, 'idempotent' => false];
+            return [
+                'ok' => true,
+                'order' => $order->fresh(['items']),
+                'payment' => $payment->fresh(),
+                'idempotent' => false,
+            ];
         });
     }
 }

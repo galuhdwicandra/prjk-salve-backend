@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-16 15:20:03_  
+_Dihasilkan otomatis: 2026-04-16 18:34:33_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -9,6 +9,7 @@ _Dihasilkan otomatis: 2026-04-16 15:20:03_
 - [Controllers (app/Http/Controllers/Api)](#controllers-apphttpcontrollersapi)
   - [app\Http\Controllers\Api\AuthController.php](#file-apphttpcontrollersapiauthcontrollerphp)
   - [app\Http\Controllers\Api\BranchController.php](#file-apphttpcontrollersapibranchcontrollerphp)
+  - [app\Http\Controllers\Api\CashSessionController.php](#file-apphttpcontrollersapicashsessioncontrollerphp)
   - [app\Http\Controllers\Api\CategoryController.php](#file-apphttpcontrollersapicategorycontrollerphp)
   - [app\Http\Controllers\Api\CustomerController.php](#file-apphttpcontrollersapicustomercontrollerphp)
   - [app\Http\Controllers\Api\DashboardController.php](#file-apphttpcontrollersapidashboardcontrollerphp)
@@ -30,6 +31,8 @@ _Dihasilkan otomatis: 2026-04-16 15:20:03_
 
 - [Models (app/Models)](#models-appmodels)
   - [app\Models\Branch.php](#file-appmodelsbranchphp)
+  - [app\Models\CashMutation.php](#file-appmodelscashmutationphp)
+  - [app\Models\CashSession.php](#file-appmodelscashsessionphp)
   - [app\Models\Customer.php](#file-appmodelscustomerphp)
   - [app\Models\Delivery.php](#file-appmodelsdeliveryphp)
   - [app\Models\DeliveryEvent.php](#file-appmodelsdeliveryeventphp)
@@ -71,6 +74,9 @@ _Dihasilkan otomatis: 2026-04-16 15:20:03_
   - [app\Http\Requests\Auth\LoginRequest.php](#file-apphttprequestsauthloginrequestphp)
   - [app\Http\Requests\BranchStoreRequest.php](#file-apphttprequestsbranchstorerequestphp)
   - [app\Http\Requests\BranchUpdateRequest.php](#file-apphttprequestsbranchupdaterequestphp)
+  - [app\Http\Requests\CashSessionCloseRequest.php](#file-apphttprequestscashsessioncloserequestphp)
+  - [app\Http\Requests\CashSessionOpenRequest.php](#file-apphttprequestscashsessionopenrequestphp)
+  - [app\Http\Requests\CashWithdrawalRequest.php](#file-apphttprequestscashwithdrawalrequestphp)
   - [app\Http\Requests\CategoryStoreRequest.php](#file-apphttprequestscategorystorerequestphp)
   - [app\Http\Requests\CategoryUpdateRequest.php](#file-apphttprequestscategoryupdaterequestphp)
   - [app\Http\Requests\CustomerSearchWARequest.php](#file-apphttprequestscustomersearchwarequestphp)
@@ -108,6 +114,7 @@ _Dihasilkan otomatis: 2026-04-16 15:20:03_
 
 - [Services (app/Services)](#services-appservices)
   - [app\Services\AuthService.php](#file-appservicesauthservicephp)
+  - [app\Services\CashLedgerService.php](#file-appservicescashledgerservicephp)
   - [app\Services\DashboardService.php](#file-appservicesdashboardservicephp)
   - [app\Services\DeliveryService.php](#file-appservicesdeliveryservicephp)
   - [app\Services\InvoiceNumberService.php](#file-appservicesinvoicenumberservicephp)
@@ -340,6 +347,304 @@ class BranchController extends Controller
     }
 }
 
+```
+</details>
+
+### app\Http\Controllers\Api\CashSessionController.php
+
+- SHA: `66fe205c54c3`  
+- Ukuran: 8 KB  
+- Namespace: `App\Http\Controllers\Api`
+
+**Class `CashSessionController` extends `Controller`**
+
+Metode Publik:
+- **__construct**(private CashLedgerService $cash)
+- **index**(Request $request)
+- **show**(CashSession $cashSession)
+- **today**(Request $request)
+- **open**(CashSessionOpenRequest $request)
+- **close**(CashSessionCloseRequest $request, CashSession $cashSession)
+- **withdraw**(CashWithdrawalRequest $request, CashSession $cashSession)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\CashSessionCloseRequest;
+use App\Http\Requests\CashSessionOpenRequest;
+use App\Http\Requests\CashWithdrawalRequest;
+use App\Models\CashSession;
+use App\Services\CashLedgerService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+
+class CashSessionController extends Controller
+{
+    public function __construct(private CashLedgerService $cash)
+    {
+        $this->middleware('auth:sanctum');
+    }
+
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        $this->authorizeManager($user);
+
+        $q = CashSession::query()
+            ->with(['branch:id,name', 'opener:id,name', 'closer:id,name'])
+            ->orderByDesc('business_date')
+            ->orderByDesc('created_at');
+
+        if ($user->hasRole('Superadmin')) {
+            if ($branchId = $request->query('branch_id')) {
+                $q->where('branch_id', $branchId);
+            }
+        } else {
+            $q->where('branch_id', $user->branch_id);
+        }
+
+        if ($status = $request->query('status')) {
+            $q->where('status', $status);
+        }
+
+        if ($from = $request->query('date_from')) {
+            $q->whereDate('business_date', '>=', $from);
+        }
+        if ($to = $request->query('date_to')) {
+            $q->whereDate('business_date', '<=', $to);
+        }
+
+        $items = $q->paginate((int) $request->query('per_page', 20));
+
+        return response()->json([
+            'data' => $items->items(),
+            'meta' => [
+                'current_page' => $items->currentPage(),
+                'per_page' => $items->perPage(),
+                'total' => $items->total(),
+                'last_page' => $items->lastPage(),
+            ],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
+    public function show(CashSession $cashSession)
+    {
+        $this->authorizeSession($cashSession);
+
+        $cashSession->load([
+            'branch:id,name',
+            'opener:id,name',
+            'closer:id,name',
+            'mutations' => fn ($q) => $q->orderByDesc('effective_at')->orderByDesc('created_at'),
+            'mutations.creator:id,name',
+        ]);
+
+        return response()->json([
+            'data' => $cashSession,
+            'meta' => [
+                'system_closing' => $this->cash->computeSystemClosing($cashSession->id),
+            ],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
+    public function today(Request $request)
+    {
+        $user = $request->user();
+        $this->authorizeCashTodayViewer($user);
+
+        $q = CashSession::query()
+            ->with([
+                'branch:id,name',
+                'opener:id,name',
+                'closer:id,name',
+                'mutations' => fn ($mq) => $mq->orderByDesc('effective_at')->orderByDesc('created_at'),
+                'mutations.creator:id,name',
+            ])
+            ->orderByDesc('business_date')
+            ->orderByDesc('created_at');
+
+        if ($user->hasRole('Superadmin')) {
+            if ($branchId = $request->query('branch_id')) {
+                $q->where('branch_id', $branchId);
+            }
+        } else {
+            if (!$user->branch_id) {
+                return response()->json([
+                    'data' => null,
+                    'meta' => [
+                        'system_closing' => 0,
+                        'cash_in_total' => 0,
+                        'cash_out_total' => 0,
+                        'withdrawal_total' => 0,
+                        'has_open_session' => false,
+                    ],
+                    'message' => 'User belum terikat ke cabang.',
+                    'errors' => null,
+                ], 200);
+            }
+
+            $q->where('branch_id', $user->branch_id);
+        }
+
+        $businessDate = $request->query('business_date')
+            ? Carbon::parse((string) $request->query('business_date'))->toDateString()
+            : now('Asia/Jakarta')->toDateString();
+
+        $session = $q->whereDate('business_date', $businessDate)->first();
+
+        if (!$session) {
+            return response()->json([
+                'data' => null,
+                'meta' => [
+                    'system_closing' => 0,
+                    'cash_in_total' => 0,
+                    'cash_out_total' => 0,
+                    'withdrawal_total' => 0,
+                    'has_open_session' => false,
+                    'business_date' => $businessDate,
+                ],
+                'message' => 'Belum ada sesi kas untuk tanggal ini.',
+                'errors' => null,
+            ]);
+        }
+
+        $systemClosing = (float) $this->cash->computeSystemClosing($session->id);
+
+        $mutations = $session->mutations ?? collect();
+
+        $cashInTotal = (float) $mutations
+            ->where('direction', 'IN')
+            ->sum('amount');
+
+        $cashOutTotal = (float) $mutations
+            ->where('direction', 'OUT')
+            ->sum('amount');
+
+        $withdrawalTotal = (float) $mutations
+            ->where('type', 'WITHDRAWAL')
+            ->sum('amount');
+
+        return response()->json([
+            'data' => $session,
+            'meta' => [
+                'system_closing' => $systemClosing,
+                'cash_in_total' => $cashInTotal,
+                'cash_out_total' => $cashOutTotal,
+                'withdrawal_total' => $withdrawalTotal,
+                'has_open_session' => (string) $session->status === 'OPEN',
+                'business_date' => $businessDate,
+            ],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
+    public function open(CashSessionOpenRequest $request)
+    {
+        $user = $request->user();
+        $this->authorizeManager($user);
+
+        $branchId = $user->hasRole('Superadmin')
+            ? (string) $request->validated('branch_id')
+            : (string) $user->branch_id;
+
+        $businessDate = Carbon::parse($request->validated('business_date'))->startOfDay();
+
+        $session = $this->cash->openSession(
+            $branchId,
+            $businessDate,
+            (float) $request->validated('opening_cash'),
+            $user,
+            $request->validated('notes')
+        );
+
+        return response()->json([
+            'data' => $session,
+            'meta' => null,
+            'message' => 'Cash session opened',
+            'errors' => null,
+        ], 201);
+    }
+
+    public function close(CashSessionCloseRequest $request, CashSession $cashSession)
+    {
+        $this->authorizeSession($cashSession);
+
+        $session = $this->cash->closeSession(
+            $cashSession,
+            (float) $request->validated('closing_cash_counted'),
+            $request->user(),
+            $request->validated('notes')
+        );
+
+        return response()->json([
+            'data' => $session,
+            'meta' => null,
+            'message' => 'Cash session closed',
+            'errors' => null,
+        ]);
+    }
+
+    public function withdraw(CashWithdrawalRequest $request, CashSession $cashSession)
+    {
+        $this->authorizeSession($cashSession);
+
+        $mutation = $this->cash->createWithdrawal(
+            $cashSession,
+            (float) $request->validated('amount'),
+            $request->user(),
+            $request->filled('effective_at') ? Carbon::parse($request->validated('effective_at')) : null,
+            $request->validated('note')
+        );
+
+        return response()->json([
+            'data' => $mutation,
+            'meta' => null,
+            'message' => 'Withdrawal recorded',
+            'errors' => null,
+        ], 201);
+    }
+
+    private function authorizeManager($user): void
+    {
+        if (!$user->hasRole('Superadmin') && !$user->hasRole('Admin Cabang')) {
+            abort(403, 'Anda tidak memiliki izin untuk mengelola cash box.');
+        }
+    }
+
+    private function authorizeCashTodayViewer($user): void
+    {
+        if (
+            !$user->hasRole('Superadmin')
+            && !$user->hasRole('Admin Cabang')
+            && !$user->hasRole('Kasir')
+        ) {
+            abort(403, 'Anda tidak memiliki izin untuk melihat ringkasan kas hari ini.');
+        }
+    }
+
+    private function authorizeSession(CashSession $cashSession): void
+    {
+        $user = request()->user();
+        $this->authorizeManager($user);
+
+        if ($user->hasRole('Superadmin')) {
+            return;
+        }
+
+        if ((string) $cashSession->branch_id !== (string) $user->branch_id) {
+            abort(403, 'Anda tidak memiliki akses ke sesi kas cabang ini.');
+        }
+    }
+}
 ```
 </details>
 
@@ -898,13 +1203,14 @@ class DeliveryController extends Controller
 
 ### app\Http\Controllers\Api\ExpenseController.php
 
-- SHA: `3f7933189b3b`  
+- SHA: `eb5b8c353b44`  
 - Ukuran: 4 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `ExpenseController` extends `Controller`**
 
 Metode Publik:
+- **__construct**(private CashLedgerService $cashLedger,)
 - **index**(Request $request)
 - **store**(ExpenseStoreRequest $request)
 - **show**(Expense $expense)
@@ -921,11 +1227,17 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Expenses\ExpenseStoreRequest;
 use App\Http\Requests\Expenses\ExpenseUpdateRequest;
 use App\Models\Expense;
+use App\Services\CashLedgerService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class ExpenseController extends Controller
 {
+    public function __construct(
+        private CashLedgerService $cashLedger,
+    ) {}
+
     public function index(Request $request)
     {
         $this->authorize('viewAny', Expense::class);
@@ -936,9 +1248,6 @@ class ExpenseController extends Controller
             ->with('branch')
             ->orderByDesc('created_at');
 
-        // Scope per cabang:
-        // - Superadmin: boleh lihat semua, bisa filter branch_id
-        // - Admin Cabang: hanya cabangnya sendiri
         if ($user->hasRole('Superadmin')) {
             if ($branchId = $request->query('branch_id')) {
                 $query->where('branch_id', $branchId);
@@ -949,7 +1258,6 @@ class ExpenseController extends Controller
             }
         }
 
-        // Optional filter tanggal (kalau nanti dipakai di F11)
         if ($dateFrom = $request->query('date_from')) {
             $query->whereDate('created_at', '>=', $dateFrom);
         }
@@ -967,42 +1275,38 @@ class ExpenseController extends Controller
         $this->authorize('create', Expense::class);
 
         $user = $request->user();
-
         $branchId = null;
 
         if ($user->hasRole('Superadmin')) {
             $branchId = $request->input('branch_id');
 
             if (!$branchId) {
-                return response()->json([
-                    'message' => 'branch_id wajib diisi untuk Superadmin.',
-                ], 422);
+                return response()->json(['message' => 'branch_id wajib diisi untuk Superadmin.'], 422);
             }
         } else {
             $branchId = $user->branch_id;
 
             if (!$branchId) {
-                return response()->json([
-                    'message' => 'User tidak memiliki cabang yang terasosiasi.',
-                ], 422);
+                return response()->json(['message' => 'User tidak memiliki cabang yang terasosiasi.'], 422);
             }
         }
 
-        $data = $request->validated();
+        $expense = DB::transaction(function () use ($request, $branchId, $user) {
+            $data = $request->validated();
+            $data['branch_id'] = $branchId;
+            $data['payment_source'] = $data['payment_source'] ?? 'NON_CASH';
 
-        $data['branch_id'] = $branchId;
+            if ($request->hasFile('proof')) {
+                $storedPath = $request->file('proof')->store('uploads/expenses', 'public');
+                $data['proof_path'] = 'storage/' . $storedPath;
+            }
 
-        // Handle upload bukti
-        if ($request->hasFile('proof')) {
-            $storedPath = $request
-                ->file('proof')
-                ->store('uploads/expenses', 'public');
+            $expense = Expense::create($data);
 
-            // Sesuai pola order_photos: path yang disimpan "storage/..."
-            $data['proof_path'] = 'storage/' . $storedPath;
-        }
+            $this->cashLedger->syncExpense($expense, $user);
 
-        $expense = Expense::create($data);
+            return $expense;
+        });
 
         return response()->json([
             'data' => $expense->load('branch'),
@@ -1022,28 +1326,27 @@ class ExpenseController extends Controller
     {
         $this->authorize('update', $expense);
 
-        $data = $request->validated();
+        $expense = DB::transaction(function () use ($request, $expense) {
+            $data = $request->validated();
+            unset($data['branch_id']);
 
-        // branch_id tidak boleh diubah lewat update
-        unset($data['branch_id']);
+            if ($request->hasFile('proof')) {
+                if ($expense->proof_path) {
+                    $this->deleteProofFile($expense->proof_path);
+                }
 
-        // Jika ada file baru, hapus file lama
-        if ($request->hasFile('proof')) {
-            if ($expense->proof_path) {
-                $this->deleteProofFile($expense->proof_path);
+                $storedPath = $request->file('proof')->store('uploads/expenses', 'public');
+                $data['proof_path'] = 'storage/' . $storedPath;
             }
 
-            $storedPath = $request
-                ->file('proof')
-                ->store('uploads/expenses', 'public');
+            $expense->update($data);
+            $this->cashLedger->syncExpense($expense->fresh(), $request->user());
 
-            $data['proof_path'] = 'storage/' . $storedPath;
-        }
-
-        $expense->update($data);
+            return $expense->fresh();
+        });
 
         return response()->json([
-            'data' => $expense->fresh()->load('branch'),
+            'data' => $expense->load('branch'),
         ]);
     }
 
@@ -1051,25 +1354,24 @@ class ExpenseController extends Controller
     {
         $this->authorize('delete', $expense);
 
-        if ($expense->proof_path) {
-            $this->deleteProofFile($expense->proof_path);
-        }
+        DB::transaction(function () use ($expense) {
+            if ($expense->proof_path) {
+                $this->deleteProofFile($expense->proof_path);
+            }
 
-        $expense->delete();
+            $this->cashLedger->deleteExpenseMutation($expense->id);
+            $expense->delete();
+        });
 
         return response()->json([], 204);
     }
 
     private function deleteProofFile(string $storedPath): void
     {
-        // storedPath berbentuk "storage/uploads/expenses/xxx.ext"
-        // Disk 'public' menyimpan di "app/public/..."
         $relativePath = preg_replace('#^storage/#', '', $storedPath);
-
         Storage::disk('public')->delete($relativePath);
     }
 }
-
 ```
 </details>
 
@@ -1960,8 +2262,8 @@ class ReceivableController extends Controller
 
 ### app\Http\Controllers\Api\ReportController.php
 
-- SHA: `7e25a653af98`  
-- Ukuran: 4 KB  
+- SHA: `db55710e6bcb`  
+- Ukuran: 5 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `ReportController` extends `Controller`**
@@ -1974,7 +2276,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -1984,7 +2285,8 @@ use Illuminate\Http\JsonResponse;
 
 class ReportController extends Controller
 {
-    public function __construct(private ReportService $svc) {}
+    public function __construct(private ReportService $svc)
+    {}
 
     /** GET /reports/{kind} – preview JSON (paginated) */
     public function preview(string $kind, ReportFilterRequest $req): JsonResponse
@@ -1992,11 +2294,11 @@ class ReportController extends Controller
         [$q, $columns] = $this->resolveQuery($kind, $req);
 
         $perPage = (int) max(1, min(100, (int) $req->input('per_page', 20)));
-        $page = $this->svc->paginate($q, $perPage);
+        $page    = $this->svc->paginate($q, $perPage);
 
         return response()->json([
-            'data' => $page->items(),
-            'meta' => [
+            'data'    => $page->items(),
+            'meta'    => [
                 'current_page' => $page->currentPage(),
                 'per_page'     => $page->perPage(),
                 'total'        => $page->total(),
@@ -2027,9 +2329,9 @@ class ReportController extends Controller
         );
 
         $delimiterKey = $req->input('delimiter', 'semicolon');
-        $delimiter = match ($delimiterKey) {
+        $delimiter    = match ($delimiterKey) {
             'comma' => ',',
-            'tab' => "\t",
+            'tab'   => "\t",
             default => ';',
         };
 
@@ -2046,7 +2348,7 @@ class ReportController extends Controller
         switch ($kind) {
             case 'sales':
             case 'payments':
-                $q = $this->svc->buildSalesQuery($from, $to, $bid, $req->input('method'));
+                $q       = $this->svc->buildSalesQuery($from, $to, $bid, $req->input('method'));
                 $columns = [
                     'branch_code',
                     'branch_name',
@@ -2076,23 +2378,39 @@ class ReportController extends Controller
                 return [$q, $columns];
 
             case 'orders':
-                $q = $this->svc->buildOrdersQuery($from, $to, $bid, $req->input('status'));
+                $q       = $this->svc->buildOrdersQuery($from, $to, $bid, $req->input('status'));
                 $columns = ['branch', 'created_at', 'number', 'invoice_no', 'customer', 'status', 'services', 'qty', 'grand_total', 'paid_amount', 'payment_status'];
                 return [$q, $columns];
 
             case 'receivables':
-                $q = $this->svc->buildReceivablesQuery($from, $to, $bid, $req->input('status'));
+                $q       = $this->svc->buildReceivablesQuery($from, $to, $bid, $req->input('status'));
                 $columns = ['branch', 'date', 'invoice', 'remaining_amount', 'status'];
                 return [$q, $columns];
 
             case 'expenses':
-                $q = $this->svc->buildExpensesQuery($from, $to, $bid);
+                $q       = $this->svc->buildExpensesQuery($from, $to, $bid);
                 $columns = ['branch', 'created_at', 'category', 'amount', 'note'];
                 return [$q, $columns];
 
             case 'services':
-                $q = $this->svc->buildServiceItemsQuery($from, $to, $bid);
+                $q       = $this->svc->buildServiceItemsQuery($from, $to, $bid);
                 $columns = ['branch', 'service', 'unit', 'qty', 'amount'];
+                return [$q, $columns];
+
+            case 'cash':
+                $q       = $this->svc->buildCashQuery($from, $to, $bid);
+                $columns = [
+                    'branch_code',
+                    'branch_name',
+                    'business_date',
+                    'effective_at',
+                    'type',
+                    'direction',
+                    'amount',
+                    'reference_no',
+                    'note',
+                    'actor',
+                ];
                 return [$q, $columns];
         }
 
@@ -3414,6 +3732,154 @@ class Branch extends Model
 ```
 </details>
 
+### app\Models\CashMutation.php
+
+- SHA: `56e2282fb24c`  
+- Ukuran: 1 KB  
+- Namespace: `App\Models`
+
+**Class `CashMutation` extends `Model`**
+
+Metode Publik:
+- **session**()
+- **branch**()
+- **creator**()
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+class CashMutation extends Model
+{
+    use HasFactory, HasUuids;
+
+    public $incrementing = false;
+    protected $keyType = 'string';
+    protected $table = 'cash_mutations';
+
+    protected $fillable = [
+        'cash_session_id',
+        'branch_id',
+        'type',
+        'direction',
+        'amount',
+        'source_type',
+        'source_id',
+        'reference_no',
+        'note',
+        'created_by',
+        'effective_at',
+    ];
+
+    protected $casts = [
+        'amount' => 'decimal:2',
+        'effective_at' => 'datetime',
+    ];
+
+    public function session()
+    {
+        return $this->belongsTo(CashSession::class, 'cash_session_id', 'id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id', 'id');
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by', 'id');
+    }
+}
+```
+</details>
+
+### app\Models\CashSession.php
+
+- SHA: `5c54fe26d4ec`  
+- Ukuran: 1 KB  
+- Namespace: `App\Models`
+
+**Class `CashSession` extends `Model`**
+
+Metode Publik:
+- **branch**()
+- **opener**()
+- **closer**()
+- **mutations**()
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+class CashSession extends Model
+{
+    use HasFactory, HasUuids;
+
+    public $incrementing = false;
+    protected $keyType = 'string';
+    protected $table = 'cash_sessions';
+
+    protected $fillable = [
+        'branch_id',
+        'business_date',
+        'status',
+        'opened_by',
+        'opened_at',
+        'opening_cash',
+        'closed_by',
+        'closed_at',
+        'closing_cash_system',
+        'closing_cash_counted',
+        'difference_amount',
+        'notes',
+    ];
+
+    protected $casts = [
+        'business_date' => 'date',
+        'opened_at' => 'datetime',
+        'closed_at' => 'datetime',
+        'opening_cash' => 'decimal:2',
+        'closing_cash_system' => 'decimal:2',
+        'closing_cash_counted' => 'decimal:2',
+        'difference_amount' => 'decimal:2',
+    ];
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id', 'id');
+    }
+
+    public function opener()
+    {
+        return $this->belongsTo(User::class, 'opened_by', 'id');
+    }
+
+    public function closer()
+    {
+        return $this->belongsTo(User::class, 'closed_by', 'id');
+    }
+
+    public function mutations()
+    {
+        return $this->hasMany(CashMutation::class, 'cash_session_id', 'id');
+    }
+}
+```
+</details>
+
 ### app\Models\Customer.php
 
 - SHA: `ca86feab4325`  
@@ -3573,8 +4039,8 @@ class DeliveryEvent extends Model
 
 ### app\Models\Expense.php
 
-- SHA: `3fb0d1d88867`  
-- Ukuran: 644 B  
+- SHA: `880877826207`  
+- Ukuran: 667 B  
 - Namespace: `App\Models`
 
 **Class `Expense` extends `Model`**
@@ -3598,15 +4064,14 @@ class Expense extends Model
     use HasUuids;
 
     public $incrementing = false;
-
     protected $keyType = 'string';
-
     protected $table = 'expenses';
 
     protected $fillable = [
         'branch_id',
         'category',
         'amount',
+        'payment_source',
         'note',
         'proof_path',
     ];
@@ -3620,7 +4085,6 @@ class Expense extends Model
         return $this->belongsTo(Branch::class);
     }
 }
-
 ```
 </details>
 
@@ -5815,6 +6279,123 @@ class BranchUpdateRequest extends FormRequest
 ```
 </details>
 
+### app\Http\Requests\CashSessionCloseRequest.php
+
+- SHA: `df59e1ca3a00`  
+- Ukuran: 401 B  
+- Namespace: `App\Http\Requests`
+
+**Class `CashSessionCloseRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class CashSessionCloseRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'closing_cash_counted' => ['required', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string'],
+        ];
+    }
+}
+```
+</details>
+
+### app\Http\Requests\CashSessionOpenRequest.php
+
+- SHA: `e63e3136c2dc`  
+- Ukuran: 518 B  
+- Namespace: `App\Http\Requests`
+
+**Class `CashSessionOpenRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class CashSessionOpenRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'branch_id' => ['nullable', 'string', 'exists:branches,id'],
+            'business_date' => ['required', 'date'],
+            'opening_cash' => ['required', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string'],
+        ];
+    }
+}
+```
+</details>
+
+### app\Http\Requests\CashWithdrawalRequest.php
+
+- SHA: `2b482324de81`  
+- Ukuran: 446 B  
+- Namespace: `App\Http\Requests`
+
+**Class `CashWithdrawalRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class CashWithdrawalRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'effective_at' => ['nullable', 'date'],
+            'note' => ['nullable', 'string', 'max:200'],
+        ];
+    }
+}
+```
+</details>
+
 ### app\Http\Requests\CategoryStoreRequest.php
 
 - SHA: `0d7a9632ab19`  
@@ -6335,8 +6916,8 @@ class DeliveryStoreRequest extends FormRequest
 
 ### app\Http\Requests\Expenses\ExpenseStoreRequest.php
 
-- SHA: `5c7bf55f4b7b`  
-- Ukuran: 610 B  
+- SHA: `aa207174c9b2`  
+- Ukuran: 677 B  
 - Namespace: `App\Http\Requests\Expenses`
 
 **Class `ExpenseStoreRequest` extends `FormRequest`**
@@ -6351,41 +6932,41 @@ Metode Publik:
 
 namespace App\Http\Requests\Expenses;
 
-use App\Models\Expense;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ExpenseStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', Expense::class) ?? false;
+        return true;
     }
 
     public function rules(): array
     {
         return [
+            'branch_id' => ['nullable', 'string', 'exists:branches,id'],
             'category' => ['required', 'string', 'max:100'],
-            'amount' => ['required', 'numeric', 'min:0'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'payment_source' => ['nullable', 'in:NON_CASH,CASH_BOX'],
             'note' => ['nullable', 'string'],
-            'proof' => ['nullable', 'file', 'max:4096', 'mimes:jpg,jpeg,png,pdf'],
+            'proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
         ];
     }
 }
-
 ```
 </details>
 
 ### app\Http\Requests\Expenses\ExpenseUpdateRequest.php
 
-- SHA: `1c565a8f575d`  
-- Ukuran: 699 B  
+- SHA: `2af346269263`  
+- Ukuran: 605 B  
 - Namespace: `App\Http\Requests\Expenses`
 
 **Class `ExpenseUpdateRequest` extends `FormRequest`**
 
 Metode Publik:
 - **authorize**() : *bool*
-- **rules**() : *array* — @var \App\Models\Expense $expense
+- **rules**() : *array*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -6393,30 +6974,26 @@ Metode Publik:
 
 namespace App\Http\Requests\Expenses;
 
-use App\Models\Expense;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ExpenseUpdateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        /** @var \App\Models\Expense $expense */
-        $expense = $this->route('expense');
-
-        return $this->user()?->can('update', $expense) ?? false;
+        return true;
     }
 
     public function rules(): array
     {
         return [
             'category' => ['required', 'string', 'max:100'],
-            'amount' => ['required', 'numeric', 'min:0'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'payment_source' => ['nullable', 'in:NON_CASH,CASH_BOX'],
             'note' => ['nullable', 'string'],
-            'proof' => ['nullable', 'file', 'max:4096', 'mimes:jpg,jpeg,png,pdf'],
+            'proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
         ];
     }
 }
-
 ```
 </details>
 
@@ -6640,7 +7217,7 @@ class OrderStatusRequest extends FormRequest
 
 ### app\Http\Requests\OrderStoreRequest.php
 
-- SHA: `cc1faa755d53`  
+- SHA: `92ff57bbae1c`  
 - Ukuran: 3 KB  
 - Namespace: `App\Http\Requests`
 
@@ -6648,8 +7225,8 @@ class OrderStatusRequest extends FormRequest
 
 Metode Publik:
 - **authorize**() : *bool*
-- **rules**() : *array* — Normalisasi waktu lokal "naif" ke 'Y-m-d H:i:s' tanpa konversi zona waktu.
-- **messages**() : *array* — Normalisasi waktu lokal "naif" ke 'Y-m-d H:i:s' tanpa konversi zona waktu.
+- **rules**() : *array* — Normalisasi input tanggal/datetime lokal ke format DB:
+- **messages**() : *array* — Normalisasi input tanggal/datetime lokal ke format DB:
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -6668,20 +7245,30 @@ class OrderStoreRequest extends FormRequest
     }
 
     /**
-     * Normalisasi waktu lokal "naif" ke 'Y-m-d H:i:s' tanpa konversi zona waktu.
+     * Normalisasi input tanggal/datetime lokal ke format DB:
+     * - YYYY-MM-DD           -> YYYY-MM-DD 00:00:00
+     * - YYYY-MM-DDTHH:mm     -> YYYY-MM-DD HH:mm:00
+     * - YYYY-MM-DD HH:mm     -> YYYY-MM-DD HH:mm:00
+     * - YYYY-MM-DD HH:mm:ss  -> tetap
      */
     protected function normalizeLocal(?string $dt): ?string
     {
         if (!$dt) return null;
+
         $s = str_replace('T', ' ', trim($dt));
-        $s = preg_replace('/Z$/', '', $s); // buang Z bila ada
-        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
-            $s .= ':00';
+        $s = preg_replace('/Z$/', '', $s);
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
+            return $s . ' 00:00:00';
         }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
+            return $s . ':00';
+        }
+
         try {
-            return \Carbon\CarbonImmutable::createFromFormat('Y-m-d H:i:s', $s)->format('Y-m-d H:i:s');
+            return \Carbon\CarbonImmutable::parse($s)->format('Y-m-d H:i:s');
         } catch (\Throwable) {
-            // Jika format tak cocok, biarkan apa adanya agar validator 'date' menangkapnya.
             return $s;
         }
     }
@@ -6689,19 +7276,23 @@ class OrderStoreRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $data = [];
+
         if ($this->has('customer_id')) {
             $data['customer_id'] = trim((string) $this->input('customer_id'));
         }
+
         if ($this->has('notes')) {
             $data['notes'] = ($this->input('notes') === null) ? null : trim((string) $this->input('notes'));
         }
-        // Normalisasi datetime lokal (tanpa konversi TZ) untuk kolom TIMESTAMP WITHOUT TIME ZONE
+
         if ($this->has('received_at')) {
             $data['received_at'] = $this->normalizeLocal($this->input('received_at'));
         }
+
         if ($this->has('ready_at')) {
             $data['ready_at'] = $this->normalizeLocal($this->input('ready_at'));
         }
+
         if ($data !== []) {
             $this->merge($data);
         }
@@ -6723,9 +7314,9 @@ class OrderStoreRequest extends FormRequest
             'items' => ['required', 'array', 'min:1'],
             'items.*.service_id' => ['required', 'uuid', 'exists:services,id'],
             'items.*.qty' => ['required', 'numeric', 'gt:0'],
-            'received_at' => ['nullable', 'date'],
-            'ready_at'    => ['nullable', 'date', 'after_or_equal:received_at'],
-            // price dari klien diabaikan; server akan hitung pakai PricingService
+
+            'received_at' => ['required', 'date'],
+            'ready_at'    => ['required', 'date', 'after_or_equal:received_at'],
         ];
     }
 
@@ -6735,16 +7326,22 @@ class OrderStoreRequest extends FormRequest
             'customer_id.required' => 'Pelanggan wajib dipilih.',
             'customer_id.uuid' => 'Pelanggan tidak valid.',
             'customer_id.exists' => 'Pelanggan tidak ditemukan di cabang Anda.',
+
+            'received_at.required' => 'Tanggal masuk wajib diisi.',
+            'received_at.date' => 'Tanggal masuk tidak valid.',
+
+            'ready_at.required' => 'Tanggal selesai wajib diisi.',
+            'ready_at.date' => 'Tanggal selesai tidak valid.',
+            'ready_at.after_or_equal' => 'Tanggal selesai harus sama dengan atau setelah tanggal masuk.',
         ];
     }
 }
-
 ```
 </details>
 
 ### app\Http\Requests\OrderUpdateRequest.php
 
-- SHA: `848783099280`  
+- SHA: `79d8d7e1b0a8`  
 - Ukuran: 3 KB  
 - Namespace: `App\Http\Requests`
 
@@ -6752,7 +7349,8 @@ class OrderStoreRequest extends FormRequest
 
 Metode Publik:
 - **authorize**() : *bool*
-- **rules**() : *array* — Normalisasi waktu lokal "naif" ke 'Y-m-d H:i:s' tanpa konversi zona waktu.
+- **rules**() : *array*
+- **messages**() : *array*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -6769,21 +7367,24 @@ class OrderUpdateRequest extends FormRequest
         return true;
     }
 
-    /**
-     * Normalisasi waktu lokal "naif" ke 'Y-m-d H:i:s' tanpa konversi zona waktu.
-     */
     protected function normalizeLocal(?string $dt): ?string
     {
         if (!$dt) return null;
+
         $s = str_replace('T', ' ', trim($dt));
-        $s = preg_replace('/Z$/', '', $s); // buang Z bila ada
-        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
-            $s .= ':00';
+        $s = preg_replace('/Z$/', '', $s);
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
+            return $s . ' 00:00:00';
         }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
+            return $s . ':00';
+        }
+
         try {
-            return \Carbon\CarbonImmutable::createFromFormat('Y-m-d H:i:s', $s)->format('Y-m-d H:i:s');
+            return \Carbon\CarbonImmutable::parse($s)->format('Y-m-d H:i:s');
         } catch (\Throwable) {
-            // Jika format tak cocok, biarkan apa adanya agar validator 'date' menangkapnya.
             return $s;
         }
     }
@@ -6800,24 +7401,28 @@ class OrderUpdateRequest extends FormRequest
             'items.*.service_id' => ['required_with:items', 'uuid', 'exists:services,id', 'distinct'],
             'items.*.qty'        => ['required_with:items', 'integer', 'min:1'],
             'items.*.note'       => ['sometimes', 'nullable', 'string', 'max:300'],
-            'received_at' => ['nullable', 'date'],
-            'ready_at'    => ['nullable', 'date', 'after_or_equal:received_at'],
+
+            'received_at'        => ['sometimes', 'required', 'date'],
+            'ready_at'           => ['sometimes', 'required', 'date', 'after_or_equal:received_at'],
         ];
     }
 
     protected function prepareForValidation(): void
     {
         $data = $this->all();
-        // Trim field sederhana bila dikirim
+
         if (array_key_exists('customer_id', $data) && $data['customer_id'] !== null) {
             $data['customer_id'] = trim((string) $data['customer_id']);
         }
+
         if (array_key_exists('notes', $data)) {
             $data['notes'] = $data['notes'] === null ? null : trim((string) $data['notes']);
         }
+
         if (isset($data['discount']) && $data['discount'] !== null) {
             $data['discount'] = is_numeric($data['discount']) ? (float) $data['discount'] : $data['discount'];
         }
+
         if (isset($data['items']) && is_array($data['items'])) {
             foreach ($data['items'] as $k => $row) {
                 if (isset($row['qty'])) {
@@ -6825,17 +7430,30 @@ class OrderUpdateRequest extends FormRequest
                 }
             }
         }
-        // Normalisasi datetime lokal (tanpa konversi TZ) untuk kolom TIMESTAMP WITHOUT TIME ZONE
+
         if (array_key_exists('received_at', $data)) {
             $data['received_at'] = $this->normalizeLocal($data['received_at']);
         }
+
         if (array_key_exists('ready_at', $data)) {
             $data['ready_at'] = $this->normalizeLocal($data['ready_at']);
         }
+
         $this->replace($data);
     }
-}
 
+    public function messages(): array
+    {
+        return [
+            'received_at.required' => 'Tanggal masuk wajib diisi.',
+            'received_at.date' => 'Tanggal masuk tidak valid.',
+
+            'ready_at.required' => 'Tanggal selesai wajib diisi.',
+            'ready_at.date' => 'Tanggal selesai tidak valid.',
+            'ready_at.after_or_equal' => 'Tanggal selesai harus sama dengan atau setelah tanggal masuk.',
+        ];
+    }
+}
 ```
 </details>
 
@@ -7953,10 +8571,265 @@ class AuthService
 ```
 </details>
 
+### app\Services\CashLedgerService.php
+
+- SHA: `ec112a3d9169`  
+- Ukuran: 8 KB  
+- Namespace: `App\Services`
+
+**Class `CashLedgerService`**
+
+Metode Publik:
+- **findOpenSession**(string $branchId, Carbon $businessDate) : *?CashSession*
+- **requireOpenSession**(string $branchId, Carbon $businessDate) : *CashSession*
+- **openSession**(string $branchId, Carbon $businessDate, float $openingCash, User $user, ?string $notes = null) : *CashSession*
+- **closeSession**(CashSession $session, float $countedCash, User $user, ?string $notes = null) : *CashSession*
+- **createWithdrawal**(CashSession $session, float $amount, User $user, ?Carbon $effectiveAt = null, ?string $note = null) : *CashMutation*
+- **syncPayment**(Payment $payment, ?User $actor = null) : *void*
+- **syncExpense**(Expense $expense, ?User $actor = null) : *void* — @var Order|null $order
+- **deleteExpenseMutation**(string $expenseId) : *void* — @var Order|null $order
+- **computeSystemClosing**(string $cashSessionId) : *float* — @var Order|null $order
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Services;
+
+use App\Models\CashMutation;
+use App\Models\CashSession;
+use App\Models\Expense;
+use App\Models\Order;
+use App\Models\Payment;
+use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class CashLedgerService
+{
+    public function findOpenSession(string $branchId, Carbon $businessDate): ?CashSession
+    {
+        return CashSession::query()
+            ->where('branch_id', $branchId)
+            ->whereDate('business_date', $businessDate->toDateString())
+            ->where('status', 'OPEN')
+            ->first();
+    }
+
+    public function requireOpenSession(string $branchId, Carbon $businessDate): CashSession
+    {
+        $session = $this->findOpenSession($branchId, $businessDate);
+
+        if (!$session) {
+            abort(422, 'Sesi kas belum dibuka untuk cabang dan tanggal ini.');
+        }
+
+        return $session;
+    }
+
+    public function openSession(string $branchId, Carbon $businessDate, float $openingCash, User $user, ?string $notes = null): CashSession
+    {
+        return DB::transaction(function () use ($branchId, $businessDate, $openingCash, $user, $notes) {
+            $existing = CashSession::query()
+                ->where('branch_id', $branchId)
+                ->whereDate('business_date', $businessDate->toDateString())
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                abort(422, 'Sesi kas untuk cabang dan tanggal tersebut sudah ada.');
+            }
+
+            $session = CashSession::query()->create([
+                'id' => (string) Str::uuid(),
+                'branch_id' => $branchId,
+                'business_date' => $businessDate->toDateString(),
+                'status' => 'OPEN',
+                'opened_by' => $user->id,
+                'opened_at' => now(),
+                'opening_cash' => $openingCash,
+                'notes' => $notes,
+            ]);
+
+            CashMutation::query()->create([
+                'id' => (string) Str::uuid(),
+                'cash_session_id' => $session->id,
+                'branch_id' => $branchId,
+                'type' => 'OPENING_FLOAT',
+                'direction' => 'IN',
+                'amount' => $openingCash,
+                'source_type' => 'cash_session',
+                'source_id' => $session->id,
+                'reference_no' => null,
+                'note' => 'Modal awal kas',
+                'created_by' => $user->id,
+                'effective_at' => now(),
+            ]);
+
+            return $session->load(['branch', 'opener']);
+        });
+    }
+
+    public function closeSession(CashSession $session, float $countedCash, User $user, ?string $notes = null): CashSession
+    {
+        return DB::transaction(function () use ($session, $countedCash, $user, $notes) {
+            $session->refresh();
+
+            if ($session->status !== 'OPEN') {
+                abort(422, 'Sesi kas sudah ditutup.');
+            }
+
+            $system = $this->computeSystemClosing($session->id);
+            $difference = $countedCash - $system;
+
+            $session->forceFill([
+                'status' => 'CLOSED',
+                'closed_by' => $user->id,
+                'closed_at' => now(),
+                'closing_cash_system' => $system,
+                'closing_cash_counted' => $countedCash,
+                'difference_amount' => $difference,
+                'notes' => $notes ?: $session->notes,
+            ])->save();
+
+            return $session->fresh(['branch', 'opener', 'closer']);
+        });
+    }
+
+    public function createWithdrawal(CashSession $session, float $amount, User $user, ?Carbon $effectiveAt = null, ?string $note = null): CashMutation
+    {
+        return DB::transaction(function () use ($session, $amount, $user, $effectiveAt, $note) {
+            $session->refresh();
+
+            if ($session->status !== 'OPEN') {
+                abort(422, 'Tidak bisa melakukan penarikan karena sesi kas sudah ditutup.');
+            }
+
+            return CashMutation::query()->create([
+                'id' => (string) Str::uuid(),
+                'cash_session_id' => $session->id,
+                'branch_id' => $session->branch_id,
+                'type' => 'WITHDRAWAL',
+                'direction' => 'OUT',
+                'amount' => $amount,
+                'source_type' => 'withdrawal',
+                'source_id' => (string) Str::uuid(),
+                'reference_no' => null,
+                'note' => $note ?: 'Penarikan kas harian',
+                'created_by' => $user->id,
+                'effective_at' => $effectiveAt ?: now(),
+            ]);
+        });
+    }
+
+    public function syncPayment(Payment $payment, ?User $actor = null): void
+    {
+        if ($payment->method !== 'CASH') {
+            return;
+        }
+
+        $payment->loadMissing('order');
+        /** @var Order|null $order */
+        $order = $payment->order;
+
+        if (!$order || !$order->branch_id) {
+            return;
+        }
+
+        $paidAt = $payment->paid_at ? Carbon::parse($payment->paid_at) : now();
+        $session = $this->requireOpenSession((string) $order->branch_id, $paidAt->copy()->startOfDay());
+
+        $isReceivableSettlement = ((float) $order->paid_amount > (float) $payment->amount);
+
+        CashMutation::query()->updateOrCreate(
+            [
+                'source_type' => 'payment',
+                'source_id' => $payment->id,
+                'type' => $isReceivableSettlement ? 'RECEIVABLE_CASH_SETTLEMENT' : 'SALE_CASH',
+            ],
+            [
+                'cash_session_id' => $session->id,
+                'branch_id' => $order->branch_id,
+                'direction' => 'IN',
+                'amount' => $payment->amount,
+                'reference_no' => $order->invoice_no ?: $order->number,
+                'note' => $isReceivableSettlement
+                    ? 'Pelunasan piutang tunai'
+                    : 'Pembayaran order tunai',
+                'created_by' => $actor?->id ?: $order->created_by,
+                'effective_at' => $paidAt,
+            ]
+        );
+    }
+
+    public function syncExpense(Expense $expense, ?User $actor = null): void
+    {
+        if (($expense->payment_source ?? 'NON_CASH') !== 'CASH_BOX') {
+            CashMutation::query()
+                ->where('source_type', 'expense')
+                ->where('source_id', $expense->id)
+                ->where('type', 'EXPENSE_CASH')
+                ->delete();
+            return;
+        }
+
+        $effectiveAt = $expense->created_at
+            ? Carbon::parse($expense->created_at)
+            : now();
+
+        $session = $this->requireOpenSession((string) $expense->branch_id, $effectiveAt->copy()->startOfDay());
+
+        CashMutation::query()->updateOrCreate(
+            [
+                'source_type' => 'expense',
+                'source_id' => $expense->id,
+                'type' => 'EXPENSE_CASH',
+            ],
+            [
+                'cash_session_id' => $session->id,
+                'branch_id' => $expense->branch_id,
+                'direction' => 'OUT',
+                'amount' => $expense->amount,
+                'reference_no' => null,
+                'note' => $expense->note ?: ('Expense: ' . $expense->category),
+                'created_by' => $actor?->id,
+                'effective_at' => $effectiveAt,
+            ]
+        );
+    }
+
+    public function deleteExpenseMutation(string $expenseId): void
+    {
+        CashMutation::query()
+            ->where('source_type', 'expense')
+            ->where('source_id', $expenseId)
+            ->where('type', 'EXPENSE_CASH')
+            ->delete();
+    }
+
+    public function computeSystemClosing(string $cashSessionId): float
+    {
+        $in = (float) CashMutation::query()
+            ->where('cash_session_id', $cashSessionId)
+            ->where('direction', 'IN')
+            ->sum('amount');
+
+        $out = (float) CashMutation::query()
+            ->where('cash_session_id', $cashSessionId)
+            ->where('direction', 'OUT')
+            ->sum('amount');
+
+        return $in - $out;
+    }
+}
+```
+</details>
+
 ### app\Services\DashboardService.php
 
-- SHA: `a6e83cf46dbe`  
-- Ukuran: 11 KB  
+- SHA: `7b0882762358`  
+- Ukuran: 12 KB  
 - Namespace: `App\Services`
 
 **Class `DashboardService`**
@@ -7967,7 +8840,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Services;
 
 use Illuminate\Support\Carbon;
@@ -8012,7 +8884,7 @@ class DashboardService
                          COALESCE(SUM(order_vouchers.applied_amount),0) AS used_amount')
             ->first();
 
-        $vouchersUsedCount  = (int) ($voucherAgg->used_count  ?? 0);
+        $vouchersUsedCount  = (int) ($voucherAgg->used_count ?? 0);
         $vouchersUsedAmount = (float) ($voucherAgg->used_amount ?? 0);
 
         // === PIUTANG BELUM LUNAS ===
@@ -8048,7 +8920,7 @@ class DashboardService
         $dpOutstandingAmount = (float) ($overdueAgg->overdue_amount ?? 0);
 
         // === PIUTANG (outstanding & overdue) ===
-        $now = now();
+        $now  = now();
         $recv = DB::table('receivables')
             ->join('orders', 'orders.id', '=', 'receivables.order_id')
             ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
@@ -8062,9 +8934,9 @@ class DashboardService
             ->first();
 
         $receivablesOpenAmount = (float) ($recv->remaining_amount ?? 0);
-        $receivablesOpenCount  = (int)   ($recv->open_count       ?? 0);
-        $overdueAmount         = (float) ($recv->overdue_amount   ?? 0);
-        $overdueCount          = (int)   ($recv->overdue_count    ?? 0);
+        $receivablesOpenCount  = (int) ($recv->open_count ?? 0);
+        $overdueAmount         = (float) ($recv->overdue_amount ?? 0);
+        $overdueCount          = (int) ($recv->overdue_count ?? 0);
 
         // === DP Outstanding (diletakkan di root KPI) ===
         $dp = DB::table('receivables')
@@ -8074,7 +8946,7 @@ class DashboardService
             ->selectRaw('COUNT(*) AS cnt, COALESCE(SUM(receivables.remaining_amount),0) AS amt')
             ->first();
 
-        $dpOutstandingCount  = (int)   ($dp->cnt ?? 0);
+        $dpOutstandingCount  = (int) ($dp->cnt ?? 0);
         $dpOutstandingAmount = (float) ($dp->amt ?? 0);
 
         // === TOTAL PEMBAYARAN PER METODE ===
@@ -8144,7 +9016,7 @@ class DashboardService
             ->orderBy('d', 'asc')
             ->get()
             ->map(fn($r) => [
-                'date' => (string) $r->d,
+                'date'   => (string) $r->d,
                 'amount' => (float) $r->sum,
             ])
             ->all();
@@ -8160,35 +9032,75 @@ class DashboardService
             ->orderBy('m', 'asc')
             ->get()
             ->map(fn($r) => [
-                'month' => (string) $r->m,
+                'month'  => (string) $r->m,
                 'amount' => (float) $r->sum,
             ])
             ->all();
 
+        // === CASH BOX ===
+        $cashMutationBase = DB::table('cash_mutations')
+            ->join('cash_sessions', 'cash_sessions.id', '=', 'cash_mutations.cash_session_id')
+            ->when($branchId, fn($q) => $q->where('cash_mutations.branch_id', $branchId))
+            ->whereBetween('cash_mutations.effective_at', [$from, $to]);
+
+        $cashIn = (clone $cashMutationBase)
+            ->where('cash_mutations.direction', 'IN')
+            ->sum('cash_mutations.amount');
+
+        $cashOut = (clone $cashMutationBase)
+            ->where('cash_mutations.direction', 'OUT')
+            ->sum('cash_mutations.amount');
+
+        $cashWithdrawals = (clone $cashMutationBase)
+            ->where('cash_mutations.type', 'WITHDRAWAL')
+            ->sum('cash_mutations.amount');
+
+        $cashOnHandNow = (float) DB::table('cash_mutations')
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN direction = 'IN' THEN amount ELSE 0 END),0)
+                - COALESCE(SUM(CASE WHEN direction = 'OUT' THEN amount ELSE 0 END),0)
+                AS balance
+            ")
+            ->value('balance');
+
+        $lastClosedDifference = (float) DB::table('cash_sessions')
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->where('status', 'CLOSED')
+            ->orderByDesc('business_date')
+            ->orderByDesc('closed_at')
+            ->value('difference_amount');
+
         // === Payload yang DIHARAPKAN Frontend (flatten + time-series) ===
         return [
-            'omzet_total' => $omzetTotal,
-            'orders_count' => $ordersCount,
+            'omzet_total'                 => $omzetTotal,
+            'orders_count'                => $ordersCount,
 
-            'payment_method_totals' => $paymentMethodTotals,
-            'payment_status_totals' => $paymentStatusTotals,
+            'payment_method_totals'       => $paymentMethodTotals,
+            'payment_status_totals'       => $paymentStatusTotals,
 
-            'delivery_shipping_fee' => $shippingFee,
+            'delivery_shipping_fee'       => $shippingFee,
 
-            'vouchers_used_count'  => $vouchersUsedCount,
-            'vouchers_used_amount' => $vouchersUsedAmount,
+            'vouchers_used_count'         => $vouchersUsedCount,
+            'vouchers_used_amount'        => $vouchersUsedAmount,
 
-            'receivables_open_count'  => $receivablesOpenCount,
-            'receivables_open_amount' => $receivablesOpenAmount,
-            'overdue_count'           => $overdueCount,
-            'overdue_amount'          => $overdueAmount,
+            'receivables_open_count'      => $receivablesOpenCount,
+            'receivables_open_amount'     => $receivablesOpenAmount,
+            'overdue_count'               => $overdueCount,
+            'overdue_amount'              => $overdueAmount,
 
-            'dp_outstanding_count'  => $dpOutstandingCount,
-            'dp_outstanding_amount' => $dpOutstandingAmount,
+            'dp_outstanding_count'        => $dpOutstandingCount,
+            'dp_outstanding_amount'       => $dpOutstandingAmount,
 
-            'omzet_daily'   => $daily,
-            'omzet_monthly' => $monthly,
-            'top_services'  => $topServices,
+            'omzet_daily'                 => $daily,
+            'omzet_monthly'               => $monthly,
+            'top_services'                => $topServices,
+
+            'cash_in_total'               => (float) $cashIn,
+            'cash_out_total'              => (float) $cashOut,
+            'cash_withdrawal_total'       => (float) $cashWithdrawals,
+            'cash_on_hand_now'            => (float) $cashOnHandNow,
+            'cash_difference_last_closed' => (float) $lastClosedDifference,
         ];
     }
 }
@@ -9069,14 +9981,15 @@ class OrderService
 
 ### app\Services\PaymentService.php
 
-- SHA: `4c5ee7cba903`  
+- SHA: `8654f54234d5`  
 - Ukuran: 4 KB  
 - Namespace: `App\Services`
 
 **Class `PaymentService`**
 
 Metode Publik:
-- **apply**(Order $order, string $method, float $amount, ?string $paidAt = null, ?string $note = null) : *array*
+- **__construct**(private CashLedgerService $cashLedger,)
+- **apply**(Order $order, string $method, float $amount, string|Carbon|null $paidAt = null, ?string $note = null) : *array*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -9084,53 +9997,63 @@ Metode Publik:
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use App\Models\Order;
+use App\Models\Payment;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class PaymentService
 {
-    public function apply(Order $order, string $method, float $amount, ?string $paidAt = null, ?string $note = null): array
-    {
+    public function __construct(
+        private CashLedgerService $cashLedger,
+    ) {}
+
+    public function apply(
+        Order $order,
+        string $method,
+        float $amount,
+        string|Carbon|null $paidAt = null,
+        ?string $note = null
+    ): array {
         return DB::transaction(function () use ($order, $method, $amount, $paidAt, $note) {
-            $orderId = (string) $order->getKey();
+            $order = Order::query()->lockForUpdate()->findOrFail($order->id);
+            $orderId = (string) $order->id;
 
-            // [BARU] Normalisasi paid_at ke format SQL (YYYY-mm-dd HH:ii:ss)
-            $paidAtDb = $paidAt ? Carbon::parse($paidAt)->format('Y-m-d H:i:s') : null;
+            $paidAtDb = $paidAt
+                ? ($paidAt instanceof Carbon ? $paidAt : Carbon::parse($paidAt))
+                : now();
 
-            // 1) Idempotency check (kombinasi unik)
-            $exists = DB::table('payments')->where([
-                'order_id' => $orderId,
-                'method' => $method,
-                'amount' => $amount,
-            ])
-                // ganti $paidAt -> $paidAtDb
-                ->when($paidAtDb, fn($q) => $q->where('paid_at', $paidAtDb))
-                ->exists();
+            // idempotency sederhana: payment identik sudah ada
+            $exists = Payment::query()
+                ->where('order_id', $orderId)
+                ->where('method', $method)
+                ->where('amount', $amount)
+                ->where('paid_at', $paidAtDb)
+                ->where('note', $note)
+                ->first();
 
             if ($exists) {
-                return ['ok' => true, 'order' => $order->fresh(), 'payment' => null, 'idempotent' => true];
+                return [
+                    'ok' => true,
+                    'order' => $order->fresh(['items']),
+                    'payment' => $exists,
+                    'idempotent' => true,
+                ];
             }
 
-            // 2) Create payment row
-            $paymentId = (string) Str::uuid();
-            DB::table('payments')->insert([
-                'id' => $paymentId,
+            $payment = Payment::query()->create([
+                'id' => (string) Str::uuid(),
                 'order_id' => $orderId,
                 'method' => $method,
                 'amount' => $amount,
-                // ganti $paidAt -> $paidAtDb
                 'paid_at' => $paidAtDb,
                 'note' => $note,
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
-            // 3) Update order payment aggregates
-            $paidAmount = (float) $order->getAttribute('paid_amount') + $amount;
-            $grand = (float) $order->getAttribute('grand_total');
+            $paidAmount = (float) $order->paid_amount + $amount;
+            $grand = (float) $order->grand_total;
 
             $paymentStatus = 'PENDING';
             if ($method === 'DP' || $paidAmount < $grand) {
@@ -9140,7 +10063,7 @@ class PaymentService
                 $paymentStatus = 'PAID';
             }
 
-            $newDp = (float) $order->getAttribute('dp_amount');
+            $newDp = (float) $order->dp_amount;
             if ($method === 'DP') {
                 $newDp += $amount;
             }
@@ -9149,18 +10072,17 @@ class PaymentService
                 'paid_amount' => $paidAmount,
                 'dp_amount' => $newDp,
                 'payment_status' => $paymentStatus,
-                // ganti $paidAt -> $paidAtDb
-                'paid_at' => ($paymentStatus === 'PAID' && !$order->getAttribute('paid_at'))
+                'paid_at' => ($paymentStatus === 'PAID' && !$order->paid_at)
                     ? ($paidAtDb ?: now())
-                    : $order->getAttribute('paid_at'),
+                    : $order->paid_at,
                 'due_amount' => max($grand - $paidAmount, 0),
             ])->save();
 
-            // 4) Receivables upsert (tetap sama) ...
-            // (biarkan bagian receivables apa adanya)
             $remaining = max($grand - $paidAmount, 0);
+
             if (Schema::hasTable('receivables')) {
                 $row = DB::table('receivables')->where('order_id', $orderId)->first();
+
                 if (!$row && $remaining > 0) {
                     DB::table('receivables')->insert([
                         'id' => (string) Str::uuid(),
@@ -9170,22 +10092,30 @@ class PaymentService
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-                } else {
+                } elseif ($row) {
                     DB::table('receivables')->where('order_id', $orderId)->update([
                         'remaining_amount' => $remaining,
-                        'status' => $remaining > 0 ? 'PARTIAL' : 'SETTLED',
+                        'status' => $remaining > 0
+                            ? ((float) $paidAmount > 0 ? 'PARTIAL' : 'OPEN')
+                            : 'SETTLED',
                         'updated_at' => now(),
                     ]);
                 }
             }
 
-            $payment = DB::table('payments')->where('id', $paymentId)->first();
+            if ($method === 'CASH') {
+                $this->cashLedger->syncPayment($payment);
+            }
 
-            return ['ok' => true, 'order' => $order->fresh(['items']), 'payment' => $payment, 'idempotent' => false];
+            return [
+                'ok' => true,
+                'order' => $order->fresh(['items']),
+                'payment' => $payment->fresh(),
+                'idempotent' => false,
+            ];
         });
     }
 }
-
 ```
 </details>
 
@@ -9301,8 +10231,8 @@ class ReceivableService
 
 ### app\Services\ReportService.php
 
-- SHA: `dc8a22efad61`  
-- Ukuran: 8 KB  
+- SHA: `988292590bdc`  
+- Ukuran: 9 KB  
 - Namespace: `App\Services`
 
 **Class `ReportService`**
@@ -9315,15 +10245,15 @@ Metode Publik:
 - **buildExpensesQuery**(Carbon $from, Carbon $to, ?string $branchId) — SALES (basis kas) – window: payments.paid_at
 - **paginate**($builder, int $perPage = 20) : *LengthAwarePaginator* — SALES (basis kas) – window: payments.paid_at
 - **streamCsv**($builder, array $headers, string $filename, string $delimiter = ';') — SALES (basis kas) – window: payments.paid_at
+- **buildCashQuery**(Carbon $from, Carbon $to, ?string $branchId) — SALES (basis kas) – window: payments.paid_at
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
 <?php
-
 namespace App\Services;
 
-use Illuminate\Support\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ReportService
@@ -9503,7 +10433,7 @@ class ReportService
             foreach ($builder->cursor() as $row) {
                 $line = [];
                 foreach ($headers as $h) {
-                    $key = $this->normalizeKey($h);
+                    $key    = $this->normalizeKey($h);
                     $line[] = $row->{$key} ?? null;
                 }
                 fputcsv($out, $line, $delimiter);
@@ -9513,6 +10443,29 @@ class ReportService
         }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
+    }
+
+    public function buildCashQuery(Carbon $from, Carbon $to, ?string $branchId)
+    {
+        return DB::table('cash_mutations')
+            ->join('cash_sessions', 'cash_sessions.id', '=', 'cash_mutations.cash_session_id')
+            ->join('branches', 'branches.id', '=', 'cash_mutations.branch_id')
+            ->leftJoin('users', 'users.id', '=', 'cash_mutations.created_by')
+            ->when($branchId, fn($q) => $q->where('cash_mutations.branch_id', $branchId))
+            ->whereBetween('cash_mutations.effective_at', [$from, $to])
+            ->orderByDesc('cash_mutations.effective_at')
+            ->select([
+                'branches.code as branch_code',
+                'branches.name as branch_name',
+                'cash_sessions.business_date',
+                'cash_mutations.effective_at',
+                'cash_mutations.type',
+                'cash_mutations.direction',
+                'cash_mutations.amount',
+                'cash_mutations.reference_no',
+                'cash_mutations.note',
+                'users.name as actor',
+            ]);
     }
 
     private function normalizeKey(string $header): string
@@ -10158,7 +11111,7 @@ class UserSeeder extends Seeder
 
 ### resources\views\orders\receipt.blade.php
 
-- SHA: `6c2f37f7c64e`  
+- SHA: `4a19db1949b3`  
 - Ukuran: 22 KB  
 - Namespace: ``
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
@@ -10563,13 +11516,13 @@ class UserSeeder extends Seeder
                     <div>
                         <dt>Tgl Masuk</dt>
                         <dd>
-                            {{ $order->received_at ? \Illuminate\Support\Carbon::parse($order->received_at)->format('d/m/Y H:i') : '—' }}
+                            {{ $order->received_at ? \Illuminate\Support\Carbon::parse($order->received_at)->format('d/m/Y') : '—' }}
                         </dd>
                     </div>
                     <div>
                         <dt>Tgl Selesai</dt>
                         <dd>
-                            {{ $order->ready_at ? \Illuminate\Support\Carbon::parse($order->ready_at)->format('d/m/Y H:i') : '—' }}
+                            {{ $order->ready_at ? \Illuminate\Support\Carbon::parse($order->ready_at)->format('d/m/Y') : '—' }}
                         </dd>
                     </div>
                 </dl>
@@ -10805,7 +11758,6 @@ class UserSeeder extends Seeder
 </body>
 
 </html>
-
 ```
 </details>
 
@@ -10813,8 +11765,8 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `bb1186cd0971`  
-- Ukuran: 8 KB
+- SHA: `dcd6fa9eb139`  
+- Ukuran: 9 KB
 
 **Ringkasan Routes (deteksi heuristik):**
 
@@ -10894,6 +11846,12 @@ class UserSeeder extends Seeder
 | GET | `/whatsapp-templates/{whatsappTemplate}` | `WhatsappTemplateController` | `show` |
 | PUT | `/whatsapp-templates/{whatsappTemplate}` | `WhatsappTemplateController` | `update` |
 | DELETE | `/whatsapp-templates/{whatsappTemplate}` | `WhatsappTemplateController` | `destroy` |
+| GET | `/cash-sessions/today` | `CashSessionController` | `today` |
+| GET | `/cash-sessions` | `CashSessionController` | `index` |
+| POST | `/cash-sessions/open` | `CashSessionController` | `open` |
+| GET | `/cash-sessions/{cashSession}` | `CashSessionController` | `show` |
+| POST | `/cash-sessions/{cashSession}/close` | `CashSessionController` | `close` |
+| POST | `/cash-sessions/{cashSession}/withdrawals` | `CashSessionController` | `withdraw` |
 
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -10920,6 +11878,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WashNoteController;
 use App\Http\Controllers\Api\WhatsappTemplateController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\CashSessionController;
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
@@ -11040,6 +11999,14 @@ Route::prefix('v1')->group(function () {
         Route::get('/whatsapp-templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'show']);
         Route::put('/whatsapp-templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'update']);
         Route::delete('/whatsapp-templates/{whatsappTemplate}', [WhatsappTemplateController::class, 'destroy']);
+
+        // cash-sessions
+        Route::get('/cash-sessions/today', [CashSessionController::class, 'today']);
+        Route::get('/cash-sessions', [CashSessionController::class, 'index']);
+        Route::post('/cash-sessions/open', [CashSessionController::class, 'open']);
+        Route::get('/cash-sessions/{cashSession}', [CashSessionController::class, 'show']);
+        Route::post('/cash-sessions/{cashSession}/close', [CashSessionController::class, 'close']);
+        Route::post('/cash-sessions/{cashSession}/withdrawals', [CashSessionController::class, 'withdraw']);
 
         // Tambahkan route lain di sini sesuai kebutuhan
     });

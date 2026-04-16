@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Services;
 
 use Illuminate\Support\Carbon;
@@ -44,7 +43,7 @@ class DashboardService
                          COALESCE(SUM(order_vouchers.applied_amount),0) AS used_amount')
             ->first();
 
-        $vouchersUsedCount  = (int) ($voucherAgg->used_count  ?? 0);
+        $vouchersUsedCount  = (int) ($voucherAgg->used_count ?? 0);
         $vouchersUsedAmount = (float) ($voucherAgg->used_amount ?? 0);
 
         // === PIUTANG BELUM LUNAS ===
@@ -80,7 +79,7 @@ class DashboardService
         $dpOutstandingAmount = (float) ($overdueAgg->overdue_amount ?? 0);
 
         // === PIUTANG (outstanding & overdue) ===
-        $now = now();
+        $now  = now();
         $recv = DB::table('receivables')
             ->join('orders', 'orders.id', '=', 'receivables.order_id')
             ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
@@ -94,9 +93,9 @@ class DashboardService
             ->first();
 
         $receivablesOpenAmount = (float) ($recv->remaining_amount ?? 0);
-        $receivablesOpenCount  = (int)   ($recv->open_count       ?? 0);
-        $overdueAmount         = (float) ($recv->overdue_amount   ?? 0);
-        $overdueCount          = (int)   ($recv->overdue_count    ?? 0);
+        $receivablesOpenCount  = (int) ($recv->open_count ?? 0);
+        $overdueAmount         = (float) ($recv->overdue_amount ?? 0);
+        $overdueCount          = (int) ($recv->overdue_count ?? 0);
 
         // === DP Outstanding (diletakkan di root KPI) ===
         $dp = DB::table('receivables')
@@ -106,7 +105,7 @@ class DashboardService
             ->selectRaw('COUNT(*) AS cnt, COALESCE(SUM(receivables.remaining_amount),0) AS amt')
             ->first();
 
-        $dpOutstandingCount  = (int)   ($dp->cnt ?? 0);
+        $dpOutstandingCount  = (int) ($dp->cnt ?? 0);
         $dpOutstandingAmount = (float) ($dp->amt ?? 0);
 
         // === TOTAL PEMBAYARAN PER METODE ===
@@ -176,7 +175,7 @@ class DashboardService
             ->orderBy('d', 'asc')
             ->get()
             ->map(fn($r) => [
-                'date' => (string) $r->d,
+                'date'   => (string) $r->d,
                 'amount' => (float) $r->sum,
             ])
             ->all();
@@ -192,35 +191,75 @@ class DashboardService
             ->orderBy('m', 'asc')
             ->get()
             ->map(fn($r) => [
-                'month' => (string) $r->m,
+                'month'  => (string) $r->m,
                 'amount' => (float) $r->sum,
             ])
             ->all();
 
+        // === CASH BOX ===
+        $cashMutationBase = DB::table('cash_mutations')
+            ->join('cash_sessions', 'cash_sessions.id', '=', 'cash_mutations.cash_session_id')
+            ->when($branchId, fn($q) => $q->where('cash_mutations.branch_id', $branchId))
+            ->whereBetween('cash_mutations.effective_at', [$from, $to]);
+
+        $cashIn = (clone $cashMutationBase)
+            ->where('cash_mutations.direction', 'IN')
+            ->sum('cash_mutations.amount');
+
+        $cashOut = (clone $cashMutationBase)
+            ->where('cash_mutations.direction', 'OUT')
+            ->sum('cash_mutations.amount');
+
+        $cashWithdrawals = (clone $cashMutationBase)
+            ->where('cash_mutations.type', 'WITHDRAWAL')
+            ->sum('cash_mutations.amount');
+
+        $cashOnHandNow = (float) DB::table('cash_mutations')
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN direction = 'IN' THEN amount ELSE 0 END),0)
+                - COALESCE(SUM(CASE WHEN direction = 'OUT' THEN amount ELSE 0 END),0)
+                AS balance
+            ")
+            ->value('balance');
+
+        $lastClosedDifference = (float) DB::table('cash_sessions')
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->where('status', 'CLOSED')
+            ->orderByDesc('business_date')
+            ->orderByDesc('closed_at')
+            ->value('difference_amount');
+
         // === Payload yang DIHARAPKAN Frontend (flatten + time-series) ===
         return [
-            'omzet_total' => $omzetTotal,
-            'orders_count' => $ordersCount,
+            'omzet_total'                 => $omzetTotal,
+            'orders_count'                => $ordersCount,
 
-            'payment_method_totals' => $paymentMethodTotals,
-            'payment_status_totals' => $paymentStatusTotals,
+            'payment_method_totals'       => $paymentMethodTotals,
+            'payment_status_totals'       => $paymentStatusTotals,
 
-            'delivery_shipping_fee' => $shippingFee,
+            'delivery_shipping_fee'       => $shippingFee,
 
-            'vouchers_used_count'  => $vouchersUsedCount,
-            'vouchers_used_amount' => $vouchersUsedAmount,
+            'vouchers_used_count'         => $vouchersUsedCount,
+            'vouchers_used_amount'        => $vouchersUsedAmount,
 
-            'receivables_open_count'  => $receivablesOpenCount,
-            'receivables_open_amount' => $receivablesOpenAmount,
-            'overdue_count'           => $overdueCount,
-            'overdue_amount'          => $overdueAmount,
+            'receivables_open_count'      => $receivablesOpenCount,
+            'receivables_open_amount'     => $receivablesOpenAmount,
+            'overdue_count'               => $overdueCount,
+            'overdue_amount'              => $overdueAmount,
 
-            'dp_outstanding_count'  => $dpOutstandingCount,
-            'dp_outstanding_amount' => $dpOutstandingAmount,
+            'dp_outstanding_count'        => $dpOutstandingCount,
+            'dp_outstanding_amount'       => $dpOutstandingAmount,
 
-            'omzet_daily'   => $daily,
-            'omzet_monthly' => $monthly,
-            'top_services'  => $topServices,
+            'omzet_daily'                 => $daily,
+            'omzet_monthly'               => $monthly,
+            'top_services'                => $topServices,
+
+            'cash_in_total'               => (float) $cashIn,
+            'cash_out_total'              => (float) $cashOut,
+            'cash_withdrawal_total'       => (float) $cashWithdrawals,
+            'cash_on_hand_now'            => (float) $cashOnHandNow,
+            'cash_difference_last_closed' => (float) $lastClosedDifference,
         ];
     }
 }

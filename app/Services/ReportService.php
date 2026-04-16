@@ -1,9 +1,8 @@
 <?php
-
 namespace App\Services;
 
-use Illuminate\Support\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ReportService
@@ -183,7 +182,7 @@ class ReportService
             foreach ($builder->cursor() as $row) {
                 $line = [];
                 foreach ($headers as $h) {
-                    $key = $this->normalizeKey($h);
+                    $key    = $this->normalizeKey($h);
                     $line[] = $row->{$key} ?? null;
                 }
                 fputcsv($out, $line, $delimiter);
@@ -193,6 +192,29 @@ class ReportService
         }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
+    }
+
+    public function buildCashQuery(Carbon $from, Carbon $to, ?string $branchId)
+    {
+        return DB::table('cash_mutations')
+            ->join('cash_sessions', 'cash_sessions.id', '=', 'cash_mutations.cash_session_id')
+            ->join('branches', 'branches.id', '=', 'cash_mutations.branch_id')
+            ->leftJoin('users', 'users.id', '=', 'cash_mutations.created_by')
+            ->when($branchId, fn($q) => $q->where('cash_mutations.branch_id', $branchId))
+            ->whereBetween('cash_mutations.effective_at', [$from, $to])
+            ->orderByDesc('cash_mutations.effective_at')
+            ->select([
+                'branches.code as branch_code',
+                'branches.name as branch_name',
+                'cash_sessions.business_date',
+                'cash_mutations.effective_at',
+                'cash_mutations.type',
+                'cash_mutations.direction',
+                'cash_mutations.amount',
+                'cash_mutations.reference_no',
+                'cash_mutations.note',
+                'users.name as actor',
+            ]);
     }
 
     private function normalizeKey(string $header): string

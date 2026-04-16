@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -9,7 +8,8 @@ use Illuminate\Http\JsonResponse;
 
 class ReportController extends Controller
 {
-    public function __construct(private ReportService $svc) {}
+    public function __construct(private ReportService $svc)
+    {}
 
     /** GET /reports/{kind} – preview JSON (paginated) */
     public function preview(string $kind, ReportFilterRequest $req): JsonResponse
@@ -17,11 +17,11 @@ class ReportController extends Controller
         [$q, $columns] = $this->resolveQuery($kind, $req);
 
         $perPage = (int) max(1, min(100, (int) $req->input('per_page', 20)));
-        $page = $this->svc->paginate($q, $perPage);
+        $page    = $this->svc->paginate($q, $perPage);
 
         return response()->json([
-            'data' => $page->items(),
-            'meta' => [
+            'data'    => $page->items(),
+            'meta'    => [
                 'current_page' => $page->currentPage(),
                 'per_page'     => $page->perPage(),
                 'total'        => $page->total(),
@@ -52,9 +52,9 @@ class ReportController extends Controller
         );
 
         $delimiterKey = $req->input('delimiter', 'semicolon');
-        $delimiter = match ($delimiterKey) {
+        $delimiter    = match ($delimiterKey) {
             'comma' => ',',
-            'tab' => "\t",
+            'tab'   => "\t",
             default => ';',
         };
 
@@ -71,7 +71,7 @@ class ReportController extends Controller
         switch ($kind) {
             case 'sales':
             case 'payments':
-                $q = $this->svc->buildSalesQuery($from, $to, $bid, $req->input('method'));
+                $q       = $this->svc->buildSalesQuery($from, $to, $bid, $req->input('method'));
                 $columns = [
                     'branch_code',
                     'branch_name',
@@ -101,23 +101,39 @@ class ReportController extends Controller
                 return [$q, $columns];
 
             case 'orders':
-                $q = $this->svc->buildOrdersQuery($from, $to, $bid, $req->input('status'));
+                $q       = $this->svc->buildOrdersQuery($from, $to, $bid, $req->input('status'));
                 $columns = ['branch', 'created_at', 'number', 'invoice_no', 'customer', 'status', 'services', 'qty', 'grand_total', 'paid_amount', 'payment_status'];
                 return [$q, $columns];
 
             case 'receivables':
-                $q = $this->svc->buildReceivablesQuery($from, $to, $bid, $req->input('status'));
+                $q       = $this->svc->buildReceivablesQuery($from, $to, $bid, $req->input('status'));
                 $columns = ['branch', 'date', 'invoice', 'remaining_amount', 'status'];
                 return [$q, $columns];
 
             case 'expenses':
-                $q = $this->svc->buildExpensesQuery($from, $to, $bid);
+                $q       = $this->svc->buildExpensesQuery($from, $to, $bid);
                 $columns = ['branch', 'created_at', 'category', 'amount', 'note'];
                 return [$q, $columns];
 
             case 'services':
-                $q = $this->svc->buildServiceItemsQuery($from, $to, $bid);
+                $q       = $this->svc->buildServiceItemsQuery($from, $to, $bid);
                 $columns = ['branch', 'service', 'unit', 'qty', 'amount'];
+                return [$q, $columns];
+
+            case 'cash':
+                $q       = $this->svc->buildCashQuery($from, $to, $bid);
+                $columns = [
+                    'branch_code',
+                    'branch_name',
+                    'business_date',
+                    'effective_at',
+                    'type',
+                    'direction',
+                    'amount',
+                    'reference_no',
+                    'note',
+                    'actor',
+                ];
                 return [$q, $columns];
         }
 
