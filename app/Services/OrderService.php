@@ -1,16 +1,15 @@
 <?php
-
 namespace App\Services;
 
+use App\Models\Delivery;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderPhoto;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use App\Models\Delivery;
 use App\Services\DeliveryService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class OrderService
 {
@@ -37,44 +36,44 @@ class OrderService
 
         return DB::transaction(function () use ($data, $actor, $branchId) {
             // Generate dua nomor sekaligus (number & invoice_no)
-            $ids = $this->invoice->generatePair($branchId);
+            $ids    = $this->invoice->generatePair($branchId);
             $number = $ids['number'];
 
             $order = new Order([
-                'id' => (string) Str::uuid(),
-                'branch_id' => $branchId,
+                'id'          => (string) Str::uuid(),
+                'branch_id'   => $branchId,
                 'customer_id' => $data['customer_id'] ?? null,
-                'number' => $ids['number'],
-                'invoice_no' => $ids['invoice_no'],
-                'status' => 'QUEUE',
-                'subtotal' => $this->dec(0),
-                'discount' => $this->dec(0),
+                'number'      => $ids['number'],
+                'invoice_no'  => $ids['invoice_no'],
+                'status'      => 'QUEUE',
+                'subtotal'    => $this->dec(0),
+                'discount'    => $this->dec(0),
                 'grand_total' => $this->dec(0),
                 'paid_amount' => $this->dec(0),
-                'due_amount' => $this->dec(0),
-                'notes' => $data['notes'] ?? null,
-                'created_by' => $actor->id,
+                'due_amount'  => $this->dec(0),
+                'notes'       => $data['notes'] ?? null,
+                'created_by'  => $actor->id,
             ]);
             $order->received_at = $data['received_at'] ?? now(); // default: sekarang
-            $order->ready_at    = $data['ready_at']    ?? null;
+            $order->ready_at    = $data['ready_at'] ?? null;
             $order->save();
 
             $subtotal = 0.0;
 
             foreach ($data['items'] as $row) {
-                $price = (float) $this->pricing->getPrice($row['service_id'], $branchId);
-                $qty = (float) $row['qty'];
-                $line = $price * $qty;
+                $price     = (float) $this->pricing->getPrice($row['service_id'], $branchId);
+                $qty       = (float) $row['qty'];
+                $line      = $price * $qty;
                 $subtotal += $line;
 
                 OrderItem::query()->create([
-                    'id' => (string) Str::uuid(),
-                    'order_id' => $order->id,
+                    'id'         => (string) Str::uuid(),
+                    'order_id'   => $order->id,
                     'service_id' => $row['service_id'],
-                    'qty' => $this->dec($qty),
-                    'price' => $this->dec($price),
-                    'total' => $this->dec($line),
-                    'note' => $row['note'] ?? null,
+                    'qty'        => $this->dec($qty),
+                    'price'      => $this->dec($price),
+                    'total'      => $this->dec($line),
+                    'note'       => $row['note'] ?? null,
                 ]);
             }
 
@@ -92,14 +91,14 @@ class OrderService
                         ->where('order_id', (string) $order->getKey())
                         ->first();
 
-                    if (!$existing) {
+                    if (! $existing) {
                         DB::table('receivables')->insert([
-                            'id' => (string) Str::uuid(),
-                            'order_id' => (string) $order->getKey(),
+                            'id'               => (string) Str::uuid(),
+                            'order_id'         => (string) $order->getKey(),
                             'remaining_amount' => $grand,
-                            'status' => 'OPEN',
-                            'created_at' => now(),
-                            'updated_at' => now(),
+                            'status'           => 'OPEN',
+                            'created_at'       => now(),
+                            'updated_at'       => now(),
                         ]);
                     }
                 }
@@ -118,10 +117,10 @@ class OrderService
         DB::transaction(function () use ($order, $photos) {
             foreach ($photos as $p) {
                 OrderPhoto::query()->create([
-                    'id' => (string) Str::uuid(),
+                    'id'       => (string) Str::uuid(),
                     'order_id' => $order->id,
-                    'kind' => $p['kind'],
-                    'path' => $p['path'],
+                    'kind'     => $p['kind'],
+                    'path'     => $p['path'],
                 ]);
             }
             // TODO: audit('ORDER_ATTACH_PHOTO', ['order_id' => $order->id, 'count' => count($photos)]);
@@ -135,16 +134,38 @@ class OrderService
      */
     public function transition(Order $order, string $next, User $actor): Order
     {
-        $allowed = $this->allowedNext($order->status);
-        if (!in_array($next, $allowed, true)) {
-            abort(422, 'Invalid status transition');
+        $validStatuses = [
+            'QUEUE',
+            'WASHING',
+            'DRYING',
+            'IRONING',
+            'READY',
+            'DELIVERING',
+            'PICKED_UP',
+            'CANCELED',
+        ];
+
+        if (! in_array($next, $validStatuses, true)) {
+            abort(422, 'Invalid order status');
+        }
+
+        if ($order->status === $next) {
+            return $order;
+        }
+
+        if ($order->status === 'PICKED_UP') {
+            abort(422, 'Order yang sudah diambil tidak boleh diubah lagi.');
+        }
+
+        if ($order->status === 'CANCELED') {
+            abort(422, 'Order yang dibatalkan tidak boleh diubah lagi.');
         }
 
         DB::transaction(function () use ($order, $next, $actor) {
-            $from = $order->status;
+            $from          = $order->status;
             $order->status = $next;
             // ===== Tambahan: set otomatis tgl selesai ketika READY =====
-            if ($next === 'READY' && !$order->ready_at) {
+            if ($next === 'READY' && ! $order->ready_at) {
                 $order->ready_at = now();
             }
             // ===========================================================
@@ -155,13 +176,13 @@ class OrderService
                     ->where('order_id', $order->id)
                     ->exists();
 
-                if (!$exists) {
+                if (! $exists) {
                     app(DeliveryService::class)->create(
                         $order,
                         [
-                            'type' => 'delivery',
+                            'type'    => 'delivery',
                             'zone_id' => null,
-                            'fee' => 0,
+                            'fee'     => 0,
                         ],
                         $actor
                     );
@@ -216,27 +237,26 @@ class OrderService
             }
             // =====================================================
 
-
             $recalcSubtotal = null;
-            if (!empty($data['items'])) {
+            if (! empty($data['items'])) {
                 // strategi sederhana: hapus & tulis ulang
                 $order->items()->delete();
 
                 $subtotal = 0.0;
                 foreach ($data['items'] as $row) {
-                    $price = (float) $this->pricing->getPrice($row['service_id'], $order->branch_id);
-                    $qty   = (float) $row['qty'];
-                    $line  = $price * $qty;
+                    $price     = (float) $this->pricing->getPrice($row['service_id'], $order->branch_id);
+                    $qty       = (float) $row['qty'];
+                    $line      = $price * $qty;
                     $subtotal += $line;
 
                     OrderItem::query()->create([
-                        'id'        => (string) Str::uuid(),
-                        'order_id'  => $order->id,
+                        'id'         => (string) Str::uuid(),
+                        'order_id'   => $order->id,
                         'service_id' => $row['service_id'],
-                        'qty'       => $this->dec($qty),
-                        'price'     => $this->dec($price),
-                        'total'     => $this->dec($line),
-                        'note'      => $row['note'] ?? null,
+                        'qty'        => $this->dec($qty),
+                        'price'      => $this->dec($price),
+                        'total'      => $this->dec($line),
+                        'note'       => $row['note'] ?? null,
                     ]);
                 }
                 $recalcSubtotal = $subtotal;
@@ -246,10 +266,10 @@ class OrderService
             $baseDiscount      = (float) max(0, (float) $order->discount);
 
             // Re-preview loyalti berdasarkan subtotal terbaru
-            $preview = $this->loyalty->previewReward($order->customer_id, (string) $order->branch_id, $effectiveSubtotal);
-            $order->loyalty_reward   = $preview['reward'];
-            $order->loyalty_discount = $this->dec($preview['discount']);
-            $effectiveDiscount       = $baseDiscount + (float) $preview['discount'];
+            $preview                  = $this->loyalty->previewReward($order->customer_id, (string) $order->branch_id, $effectiveSubtotal);
+            $order->loyalty_reward    = $preview['reward'];
+            $order->loyalty_discount  = $this->dec($preview['discount']);
+            $effectiveDiscount        = $baseDiscount + (float) $preview['discount'];
 
             $grand = max(0, $effectiveSubtotal - $effectiveDiscount);
             $due   = max(0, $grand - (float) $order->paid_amount);
@@ -272,8 +292,8 @@ class OrderService
                             ->where('id', $existing->id)
                             ->update([
                                 'remaining_amount' => 0,
-                                'status' => 'SETTLED',
-                                'updated_at' => now(),
+                                'status'           => 'SETTLED',
+                                'updated_at'       => now(),
                             ]);
                     }
                 } else {
@@ -282,18 +302,18 @@ class OrderService
                             ->where('id', $existing->id)
                             ->update([
                                 'remaining_amount' => $due,
-                                'status' => $due <= 0 ? 'SETTLED' : ($due < $grand ? 'PARTIAL' : 'OPEN'),
-                                'updated_at' => now(),
+                                'status'           => $due <= 0 ? 'SETTLED' : ($due < $grand ? 'PARTIAL' : 'OPEN'),
+                                'updated_at'       => now(),
                             ]);
                     } else {
                         // jika sebelumnya belum ada, buat baru saat kini grand_total > 0
                         DB::table('receivables')->insert([
-                            'id' => (string) Str::uuid(),
-                            'order_id' => (string) $order->getKey(),
+                            'id'               => (string) Str::uuid(),
+                            'order_id'         => (string) $order->getKey(),
                             'remaining_amount' => $due,
-                            'status' => $due <= 0 ? 'SETTLED' : 'OPEN',
-                            'created_at' => now(),
-                            'updated_at' => now(),
+                            'status'           => $due <= 0 ? 'SETTLED' : 'OPEN',
+                            'created_at'       => now(),
+                            'updated_at'       => now(),
                         ]);
                     }
                 }
@@ -308,26 +328,9 @@ class OrderService
     /**
      * Format angka menjadi string desimal dengan presisi tetap (default 2).
      */
-    private function dec(float|int|string|null $n, int $scale = 2): string
+    private function dec(float | int | string | null $n, int $scale = 2): string
     {
         $v = is_numeric($n) ? (float) $n : 0.0;
         return number_format($v, $scale, '.', '');
-    }
-
-    /**
-     * State machine sederhana.
-     * @return array<int,string>
-     */
-    private function allowedNext(string $current): array
-    {
-        return match ($current) {
-            'QUEUE' => ['WASHING', 'CANCELED'],
-            'WASHING' => ['DRYING', 'CANCELED'],
-            'DRYING' => ['IRONING', 'READY', 'CANCELED'],
-            'IRONING' => ['READY', 'CANCELED'],
-            'READY' => ['DELIVERING', 'PICKED_UP', 'CANCELED'],
-            'DELIVERING' => ['PICKED_UP', 'CANCELED'],
-            default => [],
-        };
     }
 }
