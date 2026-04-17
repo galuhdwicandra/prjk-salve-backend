@@ -5,10 +5,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Deliveries\DeliveryAssignRequest;
 use App\Http\Requests\Deliveries\DeliveryStatusRequest;
 use App\Http\Requests\Deliveries\DeliveryStoreRequest;
-use App\Services\DeliveryService;
-
 use App\Models\Delivery;
 use App\Models\Order;
+use App\Services\DeliveryService;
 use Illuminate\Http\Request;
 
 class DeliveryController extends Controller
@@ -24,7 +23,11 @@ class DeliveryController extends Controller
 
         $user = $request->user();
         $q    = Delivery::query()
-            ->with(['courier:id,name', 'order:id,branch_id,number,invoice_no'])
+            ->with([
+                'courier:id,name',
+                'order:id,branch_id,customer_id,number,invoice_no',
+                'order.customer:id,name,whatsapp,address',
+            ])
             ->latest('created_at');
 
         // Filter umum
@@ -60,19 +63,28 @@ class DeliveryController extends Controller
         $page = $q->paginate($per);
 
         $items = collect($page->items())->map(function (Delivery $d) {
-            return [
-                'id'               => $d->id,
-                'order_id'         => $d->order_id,
-                'order_invoice_no' => $d->order?->invoice_no,
-                'order_number'     => $d->order?->number,
-                'type'             => $d->type,
-                'fee'              => $d->fee,
-                'assigned_to'      => $d->assigned_to,
-                'status'           => $d->status,
-                'created_at'       => $d->created_at,
-                // opsional: info kurir ringkas
-                'courier'          => $d->courier ? ['id' => $d->courier->id, 'name' => $d->courier->name] : null,
-            ];
+        return [
+            'id'               => $d->id,
+            'order_id'         => $d->order_id,
+            'order_invoice_no' => $d->order?->invoice_no,
+            'order_number'     => $d->order?->number,
+            'type'             => $d->type,
+            'fee'              => $d->fee,
+            'assigned_to'      => $d->assigned_to,
+            'status'           => $d->status,
+            'created_at'       => $d->created_at,
+            'courier'          => $d->courier
+                ? ['id' => $d->courier->id, 'name' => $d->courier->name]
+                : null,
+            'customer'         => $d->order?->customer
+                ? [
+                    'id'       => $d->order->customer->id,
+                    'name'     => $d->order->customer->name,
+                    'whatsapp' => $d->order->customer->whatsapp,
+                    'address'  => $d->order->customer->address,
+                ]
+                : null,
+        ];
         })->all();
 
         return response()->json([
