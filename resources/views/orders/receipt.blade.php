@@ -13,10 +13,7 @@
         $docTitle = $isLunas ? 'KUITANSI PEMBAYARAN' : 'TAGIHAN / INVOICE';
 
         $payments = collect($order->payments ?? [])
-            ->sortBy([
-                ['paid_at', 'asc'],
-                ['created_at', 'asc'],
-            ])
+            ->sortBy([['paid_at', 'asc'], ['created_at', 'asc']])
             ->values();
 
         $lastPayment = $payments->last();
@@ -29,9 +26,7 @@
             'TRANSFER' => 'Transfer',
         ];
 
-        $lastPaymentMethod = $lastPayment?->method
-            ? ($methodLabels[$lastPayment->method] ?? $lastPayment->method)
-            : '—';
+        $lastPaymentMethod = $lastPayment?->method ? $methodLabels[$lastPayment->method] ?? $lastPayment->method : '—';
 
         $lastPaymentAt = $lastPayment?->paid_at
             ? \Illuminate\Support\Carbon::parse($lastPayment->paid_at)->format('d/m/Y H:i')
@@ -426,7 +421,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($order->items as $it)
+                                @foreach ($order->items as $it)
                                     <tr>
                                         <td>
                                             <div class="bold">{{ $it->service->name ?? 'Layanan' }}</div>
@@ -439,13 +434,57 @@
                         </table>
                     </div>
 
-                    @if(!empty(trim((string) $order->notes)))
+                    @php
+                        $consumerGoodsNotes = collect(preg_split('/\r\n|\r|\n/', trim((string) $order->notes)))
+                            ->map(fn($line) => trim((string) $line))
+                            ->filter(fn($line) => $line !== '')
+                            ->values();
+
+                        $normalizedConsumerGoodsNotes = $consumerGoodsNotes->map(function ($line) {
+                            return preg_replace('/^\d+[\.\)]\s*/', '', $line) ?: $line;
+                        });
+                    @endphp
+
+                    @if ($normalizedConsumerGoodsNotes->isNotEmpty())
                         <div
-                            style="margin-top:12px; padding:12px; border:1px solid var(--border); border-radius:var(--radius-md); background:#fff;">
-                            <div class="muted" style="font-size:12px; margin-bottom:6px;">Catatan</div>
-                            <div style="font-size:14px; line-height:1.5;">
-                                {!! nl2br(e($order->notes)) !!}
+                            style="
+            margin-top:12px;
+            padding:12px;
+            border:1px solid var(--border);
+            border-radius:var(--radius-md);
+            background:#fff;
+        ">
+                            <div class="muted"
+                                style="
+                font-size:12px;
+                margin-bottom:8px;
+                font-weight:700;
+                letter-spacing:.02em;
+                text-transform:uppercase;
+            ">
+                                Catatan Barang Konsumen
                             </div>
+
+                            @if ($normalizedConsumerGoodsNotes->count() === 1)
+                                <div style="font-size:14px; line-height:1.6; color:var(--text);">
+                                    {{ $normalizedConsumerGoodsNotes->first() }}
+                                </div>
+                            @else
+                                <ol
+                                    style="
+                    margin:0;
+                    padding-left:18px;
+                    font-size:14px;
+                    line-height:1.6;
+                    color:var(--text);
+                    display:grid;
+                    gap:4px;
+                ">
+                                    @foreach ($normalizedConsumerGoodsNotes as $noteLine)
+                                        <li>{{ $noteLine }}</li>
+                                    @endforeach
+                                </ol>
+                            @endif
                         </div>
                     @endif
 
@@ -456,7 +495,7 @@
                         });
                     @endphp
 
-                    @if($beforePhoto && !empty($beforePhoto->path))
+                    @if ($beforePhoto && !empty($beforePhoto->path))
                         <div style="margin-top:12px;">
                             <div class="muted" style="font-size:12px; margin-bottom:6px;">Foto Before</div>
 
@@ -499,13 +538,13 @@
                             <div class="value">{{ number_format($sisa, 0, ',', '.') }}</div>
                         </div>
 
-                        @if($hasPaymentHistory)
+                        @if ($hasPaymentHistory)
                             <div class="row">
                                 <div class="label">Metode Bayar Terakhir</div>
                                 <div class="value">{{ $lastPaymentMethod }}</div>
                             </div>
 
-                            @if($lastPayment?->method !== 'DP')
+                            @if ($lastPayment?->method !== 'DP')
                                 <div class="row">
                                     <div class="label">{{ $isLunas ? 'Pelunasan via' : 'Pembayaran via' }}</div>
                                     <div class="value">{{ $lastPaymentMethod }}</div>
@@ -515,7 +554,7 @@
                     </div>
                 </div>
 
-                @if($showPaymentHistory)
+                @if ($showPaymentHistory)
                     <div class="section">
                         <div class="muted" style="font-size:12px; margin-bottom:8px;">Riwayat Pembayaran</div>
 
@@ -529,12 +568,13 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($payments as $pay)
+                                    @foreach ($payments as $pay)
                                         <tr>
                                             <td>{{ $methodLabels[$pay->method] ?? $pay->method }}</td>
                                             <td>{{ $pay->paid_at ? \Illuminate\Support\Carbon::parse($pay->paid_at)->format('d/m/Y H:i') : '—' }}
                                             </td>
-                                            <td class="right">{{ number_format((float) $pay->amount, 0, ',', '.') }}</td>
+                                            <td class="right">{{ number_format((float) $pay->amount, 0, ',', '.') }}
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -544,7 +584,7 @@
                 @endif
 
                 {{-- === Stamp Loyalty (tampil hanya jika data tersedia dari controller) === --}}
-                @if(isset($loy) && $loy)
+                @if (isset($loy) && $loy)
                     <div class="section">
                         <div class="muted" style="font-size:12px; margin-bottom:8px;">Stamp Loyalty</div>
 
@@ -556,31 +596,34 @@
                         @php
                             $cycle = (int) ($loy['cycle'] ?? 10);
                             $stamps = (int) ($loy['stamps'] ?? 0);
-                            $filled = $cycle > 0 ? ($stamps % $cycle) : 0;
+                            $filled = $cycle > 0 ? $stamps % $cycle : 0;
                             // Jika tepat jatuh reward pada transaksi ini (mod 0), tampilkan penuh:
                             if ($filled === 0 && !empty($order->loyalty_reward)) {
                                 $filled = $cycle;
                             }
-                          @endphp
+                        @endphp
                         <div class="stamps" role="list" aria-label="Progres stamp loyalty">
                             @for ($i = 1; $i <= $cycle; $i++)
                                 @php
                                     $isFilled = $i <= $filled;
-                                    $milestone = ($i === 5 || $i === 10) ? $i : null; // penanda 5 & 10
-                                  @endphp
+                                    $milestone = $i === 5 || $i === 10 ? $i : null; // penanda 5 & 10
+                                @endphp
                                 <div role="listitem"
                                     class="stamp {{ $isFilled ? 'stamp--filled' : '' }} {{ $milestone ? 'stamp--milestone' : '' }}"
-                                    @if($milestone) data-m="{{ $milestone }}" @endif>
+                                    @if ($milestone) data-m="{{ $milestone }}" @endif>
                                 </div>
                             @endfor
                         </div>
 
-                        @if(!empty($order->loyalty_reward))
+                        @if (!empty($order->loyalty_reward))
                             <div style="font-size:12px; margin:6px 0 8px 0;">
                                 Reward diterapkan pada transaksi ini:
-                                @if($order->loyalty_reward === 'DISC25') <strong>Diskon 25%</strong>.
-                                @elseif($order->loyalty_reward === 'FREE100') <strong>Gratis 100%</strong>.
-                                @else <strong>{{ $order->loyalty_reward }}</strong>.
+                                @if ($order->loyalty_reward === 'DISC25')
+                                    <strong>Diskon 25%</strong>.
+                                @elseif($order->loyalty_reward === 'FREE100')
+                                    <strong>Gratis 100%</strong>.
+                                @else
+                                    <strong>{{ $order->loyalty_reward }}</strong>.
                                 @endif
                             </div>
                         @endif
@@ -599,9 +642,9 @@
                 @php
                     $qrisPath = 'qris.png';
                     $hasQris = \Illuminate\Support\Facades\Storage::disk('public')->exists($qrisPath);
-                  @endphp
+                @endphp
 
-                @if(!$isLunas && $hasQris)
+                @if (!$isLunas && $hasQris)
                     <div class="section qris-box">
                         <div class="qris-caption">Scan untuk bayar (QRIS)</div>
                         <img class="qris" src="{{ asset('storage/' . $qrisPath) }}" alt="QRIS">
