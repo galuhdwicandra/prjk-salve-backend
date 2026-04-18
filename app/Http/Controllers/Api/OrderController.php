@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
@@ -189,6 +190,23 @@ class OrderController extends Controller
             'data' => $order,
             'meta' => [],
             'message' => 'Updated',
+            'errors' => null,
+        ]);
+    }
+
+        // DELETE /orders/{order}
+    public function destroy(Order $order)
+    {
+        $this->authorize('delete', $order);
+
+        DB::transaction(function () use ($order) {
+            $order->delete();
+        });
+
+        return response()->json([
+            'data' => null,
+            'meta' => [],
+            'message' => 'Deleted',
             'errors' => null,
         ]);
     }

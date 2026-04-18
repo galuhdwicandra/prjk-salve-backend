@@ -110,6 +110,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/orders/{order}', [OrderController::class, 'show']);
         Route::post('/orders', [OrderController::class, 'store']);
         Route::put('/orders/{order}', [OrderController::class, 'update']);
+        Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
         Route::post('/orders/{order}/status', [OrderController::class, 'transitionStatus']);
         Route::post('/orders/{order}/photos', [OrderPhotosController::class, 'store']);
 

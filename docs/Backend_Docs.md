@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-17 11:16:38_  
+_Dihasilkan otomatis: 2026-04-18 13:23:26_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -1750,8 +1750,8 @@ class LoyaltyController extends Controller
 
 ### app\Http\Controllers\Api\OrderController.php
 
-- SHA: `0dd3d71ea78f`  
-- Ukuran: 9 KB  
+- SHA: `e8d04f070075`  
+- Ukuran: 10 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `OrderController` extends `Controller`**
@@ -1762,6 +1762,7 @@ Metode Publik:
 - **show**(Order $order)
 - **store**(OrderStoreRequest $request)
 - **update**(OrderUpdateRequest $request, Order $order)
+- **destroy**(Order $order)
 - **receipt**(Request $request, Order $order)
 - **shareLink**(Request $request, Order $order) : *JsonResponse* — @var \App\Services\LoyaltyService $loySvc
 - **transitionStatus**(OrderStatusRequest $request, Order $order) — @var \App\Services\LoyaltyService $loySvc
@@ -1783,6 +1784,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\DB;
 
 class OrderController extends Controller
 {
@@ -1959,6 +1961,23 @@ class OrderController extends Controller
             'data' => $order,
             'meta' => [],
             'message' => 'Updated',
+            'errors' => null,
+        ]);
+    }
+
+        // DELETE /orders/{order}
+    public function destroy(Order $order)
+    {
+        $this->authorize('delete', $order);
+
+        DB::transaction(function () use ($order) {
+            $order->delete();
+        });
+
+        return response()->json([
+            'data' => null,
+            'meta' => [],
+            'message' => 'Deleted',
             'errors' => null,
         ]);
     }
@@ -11944,7 +11963,7 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `31497212c418`  
+- SHA: `4ca8f2fb72eb`  
 - Ukuran: 9 KB
 
 **Ringkasan Routes (deteksi heuristik):**
@@ -12004,6 +12023,7 @@ class UserSeeder extends Seeder
 | GET | `/orders/{order}` | `OrderController` | `show` |
 | POST | `/orders` | `OrderController` | `store` |
 | PUT | `/orders/{order}` | `OrderController` | `update` |
+| DELETE | `/orders/{order}` | `OrderController` | `destroy` |
 | POST | `/orders/{order}/status` | `OrderController` | `transitionStatus` |
 | POST | `/orders/{order}/photos` | `OrderPhotosController` | `store` |
 | GET | `/deliveries` | `DeliveryController` | `index` |
@@ -12148,6 +12168,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/orders/{order}', [OrderController::class, 'show']);
         Route::post('/orders', [OrderController::class, 'store']);
         Route::put('/orders/{order}', [OrderController::class, 'update']);
+        Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
         Route::post('/orders/{order}/status', [OrderController::class, 'transitionStatus']);
         Route::post('/orders/{order}/photos', [OrderPhotosController::class, 'store']);
 
