@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-18 18:43:37_  
+_Dihasilkan otomatis: 2026-04-18 19:55:21_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -10029,8 +10029,8 @@ class OrderNumberService
 
 ### app\Services\OrderService.php
 
-- SHA: `3def71cb2643`  
-- Ukuran: 13 KB  
+- SHA: `fee2f5074903`  
+- Ukuran: 14 KB  
 - Namespace: `App\Services`
 
 **Class `OrderService`**
@@ -10053,6 +10053,7 @@ use App\Models\OrderItem;
 use App\Models\OrderPhoto;
 use App\Models\User;
 use App\Services\DeliveryService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -10143,6 +10144,9 @@ class OrderService
                             'order_id'         => (string) $order->getKey(),
                             'remaining_amount' => $grand,
                             'status'           => 'OPEN',
+                            'due_date'         => $order->ready_at
+                                ? Carbon::parse($order->ready_at)->toDateString()
+                                : null,
                             'created_at'       => now(),
                             'updated_at'       => now(),
                         ]);
@@ -10216,6 +10220,17 @@ class OrderService
             }
             // ===========================================================
             $order->save();
+
+            if (Schema::hasTable('receivables')) {
+                DB::table('receivables')
+                    ->where('order_id', (string) $order->getKey())
+                    ->update([
+                        'due_date'   => $order->ready_at
+                            ? Carbon::parse($order->ready_at)->toDateString()
+                            : null,
+                        'updated_at' => now(),
+                    ]);
+            }
 
             if ($next === 'DELIVERING') {
                 $exists = Delivery::query()
@@ -10332,13 +10347,18 @@ class OrderService
                     ->where('order_id', (string) $order->getKey())
                     ->first();
 
-                if ($grand <= 0.0) {
+                $dueDate = $order->ready_at
+                    ? \Illuminate\Support\Carbon::parse($order->ready_at)->toDateString()
+                    : null;
+
+                if ($grand <= 0) {
                     if ($existing) {
                         DB::table('receivables')
                             ->where('id', $existing->id)
                             ->update([
                                 'remaining_amount' => 0,
                                 'status'           => 'SETTLED',
+                                'due_date'         => $dueDate,
                                 'updated_at'       => now(),
                             ]);
                     }
@@ -10349,15 +10369,16 @@ class OrderService
                             ->update([
                                 'remaining_amount' => $due,
                                 'status'           => $due <= 0 ? 'SETTLED' : ($due < $grand ? 'PARTIAL' : 'OPEN'),
+                                'due_date'         => $dueDate,
                                 'updated_at'       => now(),
                             ]);
                     } else {
-                        // jika sebelumnya belum ada, buat baru saat kini grand_total > 0
                         DB::table('receivables')->insert([
                             'id'               => (string) Str::uuid(),
                             'order_id'         => (string) $order->getKey(),
                             'remaining_amount' => $due,
                             'status'           => $due <= 0 ? 'SETTLED' : 'OPEN',
+                            'due_date'         => $dueDate,
                             'created_at'       => now(),
                             'updated_at'       => now(),
                         ]);
@@ -10386,7 +10407,7 @@ class OrderService
 
 ### app\Services\PaymentService.php
 
-- SHA: `8654f54234d5`  
+- SHA: `932233e1868c`  
 - Ukuran: 4 KB  
 - Namespace: `App\Services`
 
@@ -10394,12 +10415,11 @@ class OrderService
 
 Metode Publik:
 - **__construct**(private CashLedgerService $cashLedger,)
-- **apply**(Order $order, string $method, float $amount, string|Carbon|null $paidAt = null, ?string $note = null) : *array*
+- **apply**(Order $order, string $method, float $amount, string | Carbon | null $paidAt = null, ?string $note = null) : *array*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
 <?php
-
 namespace App\Services;
 
 use App\Models\Order;
@@ -10419,11 +10439,11 @@ class PaymentService
         Order $order,
         string $method,
         float $amount,
-        string|Carbon|null $paidAt = null,
+        string | Carbon | null $paidAt = null,
         ?string $note = null
     ): array {
         return DB::transaction(function () use ($order, $method, $amount, $paidAt, $note) {
-            $order = Order::query()->lockForUpdate()->findOrFail($order->id);
+            $order   = Order::query()->lockForUpdate()->findOrFail($order->id);
             $orderId = (string) $order->id;
 
             $paidAtDb = $paidAt
@@ -10441,24 +10461,24 @@ class PaymentService
 
             if ($exists) {
                 return [
-                    'ok' => true,
-                    'order' => $order->fresh(['items']),
-                    'payment' => $exists,
+                    'ok'         => true,
+                    'order'      => $order->fresh(['items']),
+                    'payment'    => $exists,
                     'idempotent' => true,
                 ];
             }
 
             $payment = Payment::query()->create([
-                'id' => (string) Str::uuid(),
+                'id'       => (string) Str::uuid(),
                 'order_id' => $orderId,
-                'method' => $method,
-                'amount' => $amount,
-                'paid_at' => $paidAtDb,
-                'note' => $note,
+                'method'   => $method,
+                'amount'   => $amount,
+                'paid_at'  => $paidAtDb,
+                'note'     => $note,
             ]);
 
             $paidAmount = (float) $order->paid_amount + $amount;
-            $grand = (float) $order->grand_total;
+            $grand      = (float) $order->grand_total;
 
             $paymentStatus = 'PENDING';
             if ($method === 'DP' || $paidAmount < $grand) {
@@ -10474,13 +10494,13 @@ class PaymentService
             }
 
             $order->forceFill([
-                'paid_amount' => $paidAmount,
-                'dp_amount' => $newDp,
+                'paid_amount'    => $paidAmount,
+                'dp_amount'      => $newDp,
                 'payment_status' => $paymentStatus,
-                'paid_at' => ($paymentStatus === 'PAID' && !$order->paid_at)
+                'paid_at'        => ($paymentStatus === 'PAID' && ! $order->paid_at)
                     ? ($paidAtDb ?: now())
                     : $order->paid_at,
-                'due_amount' => max($grand - $paidAmount, 0),
+                'due_amount'     => max($grand - $paidAmount, 0),
             ])->save();
 
             $remaining = max($grand - $paidAmount, 0);
@@ -10488,22 +10508,28 @@ class PaymentService
             if (Schema::hasTable('receivables')) {
                 $row = DB::table('receivables')->where('order_id', $orderId)->first();
 
-                if (!$row && $remaining > 0) {
+                $dueDate = $order->ready_at
+                    ? Carbon::parse($order->ready_at)->toDateString()
+                    : null;
+
+                if (! $row && $remaining > 0) {
                     DB::table('receivables')->insert([
-                        'id' => (string) Str::uuid(),
-                        'order_id' => $orderId,
+                        'id'               => (string) Str::uuid(),
+                        'order_id'         => $orderId,
                         'remaining_amount' => $remaining,
-                        'status' => $remaining >= $grand ? 'OPEN' : 'PARTIAL',
-                        'created_at' => now(),
-                        'updated_at' => now(),
+                        'status'           => $remaining >= $grand ? 'OPEN' : 'PARTIAL',
+                        'due_date'         => $dueDate,
+                        'created_at'       => now(),
+                        'updated_at'       => now(),
                     ]);
                 } elseif ($row) {
                     DB::table('receivables')->where('order_id', $orderId)->update([
                         'remaining_amount' => $remaining,
-                        'status' => $remaining > 0
+                        'status'           => $remaining > 0
                             ? ((float) $paidAmount > 0 ? 'PARTIAL' : 'OPEN')
                             : 'SETTLED',
-                        'updated_at' => now(),
+                        'due_date'         => $dueDate,
+                        'updated_at'       => now(),
                     ]);
                 }
             }
@@ -10513,14 +10539,15 @@ class PaymentService
             }
 
             return [
-                'ok' => true,
-                'order' => $order->fresh(['items']),
-                'payment' => $payment->fresh(),
+                'ok'         => true,
+                'order'      => $order->fresh(['items']),
+                'payment'    => $payment->fresh(),
                 'idempotent' => false,
             ];
         });
     }
 }
+
 ```
 </details>
 
@@ -10572,50 +10599,45 @@ class PricingService
 
 ### app\Services\ReceivableService.php
 
-- SHA: `082890134330`  
+- SHA: `a74754d06ee8`  
 - Ukuran: 2 KB  
 - Namespace: `App\Services`
 
 **Class `ReceivableService`**
 
 Metode Publik:
-- **createForDP**(Order $order, ?Carbon $dueDate = null) : *Receivable* — Dipanggil saat DP dibuat.
-- **settle**(Order $order, string $method, float $amount, ?Carbon $paidAt = null, ?string $note = null) : *array* — Dipanggil saat DP dibuat.
+- **createForDP**(Order $order, ?Carbon $dueDate = null) : *Receivable*
+- **settle**(Order $order, string $method, float $amount, ?Carbon $paidAt = null, ?string $note = null) : *array*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
 <?php
-
 namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Receivable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ReceivableService
 {
-    /**
-     * Dipanggil saat DP dibuat.
-     * Jika belum ada receivable, buat; jika sudah, sinkron sisa dari order.
-     */
     public function createForDP(Order $order, ?Carbon $dueDate = null): Receivable
     {
         return DB::transaction(function () use ($order, $dueDate) {
-            $rcv = Receivable::query()->firstOrNew(['order_id' => $order->id]);
-            $rcv->due_date = $dueDate;
+            $effectiveDueDate = $dueDate ?? ($order->ready_at ? Carbon::parse($order->ready_at) : null);
+
+            $rcv                   = Receivable::query()->firstOrNew(['order_id' => $order->id]);
+            $rcv->due_date         = $effectiveDueDate;
             $rcv->remaining_amount = (float) $order->grand_total - (float) $order->paid_amount;
-            $rcv->status = $rcv->remaining_amount <= 0.000001 ? 'SETTLED' : ($rcv->remaining_amount < (float) $order->grand_total ? 'PARTIAL' : 'OPEN');
+            $rcv->status           = $rcv->remaining_amount <= 0.000001
+                ? 'SETTLED'
+                : ($rcv->remaining_amount < (float) $order->grand_total ? 'PARTIAL' : 'OPEN');
             $rcv->save();
 
             return $rcv->refresh();
         });
     }
 
-    /**
-     * Pelunasan: delegasikan ke PaymentService agar audit & idempoten seragam.
-     * PaymentService sudah meng-update order & upsert receivable sesuai sisa.
-     */
     public function settle(Order $order, string $method, float $amount, ?Carbon $paidAt = null, ?string $note = null): array
     {
         return DB::transaction(function () use ($order, $method, $amount, $paidAt, $note) {
@@ -11516,8 +11538,8 @@ class UserSeeder extends Seeder
 
 ### resources\views\orders\receipt.blade.php
 
-- SHA: `552e599cbac8`  
-- Ukuran: 25 KB  
+- SHA: `49bbfa027639`  
+- Ukuran: 30 KB  
 - Namespace: ``
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -11867,6 +11889,85 @@ class UserSeeder extends Seeder
                 grid-template-columns: 1.2fr .8fr;
             }
         }
+
+        /* ========= Receipt image lightbox ========= */
+        .receipt-lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, .78);
+            backdrop-filter: blur(2px);
+        }
+
+        .receipt-lightbox.is-open {
+            display: flex;
+        }
+
+        .receipt-lightbox__dialog {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .receipt-lightbox__close {
+            position: absolute;
+            top: -42px;
+            right: 0;
+            border: none;
+            background: transparent;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .receipt-lightbox__card {
+            background: #fff;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, .35);
+        }
+
+        .receipt-lightbox__image-wrap {
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .receipt-lightbox__image {
+            width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            display: block;
+        }
+
+        .receipt-lightbox__meta {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .receipt-lightbox__title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .receipt-lightbox__hint {
+            margin-top: 4px;
+            font-size: 12px;
+            color: #667085;
+        }
+
+        @media print {
+            .receipt-lightbox {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 
@@ -12045,8 +12146,27 @@ class UserSeeder extends Seeder
                         <div style="margin-top:12px;">
                             <div class="muted" style="font-size:12px; margin-bottom:6px;">Foto Before</div>
 
-                            <img src="{{ $beforePhotoUrl }}" alt="Foto Before"
-                                style="width:100%; max-width:250px; border-radius:8px; border:1px solid var(--border);">
+                            <button type="button" onclick="openReceiptImage('{{ $beforePhotoUrl }}', 'Foto Before')"
+                                style="
+                padding:0;
+                border:none;
+                background:transparent;
+                cursor:pointer;
+                display:inline-block;
+            "
+                                aria-label="Lihat Foto Before" title="Klik untuk memperbesar foto">
+                                <img src="{{ $beforePhotoUrl }}" alt="Foto Before"
+                                    style="
+                    width:100%;
+                    max-width:250px;
+                    border-radius:8px;
+                    border:1px solid var(--border);
+                    display:block;
+                    transition:transform .18s ease, box-shadow .18s ease;
+                "
+                                    onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 10px 24px rgba(0,0,0,.12)'"
+                                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">
+                            </button>
                         </div>
                     @endif
 
@@ -12225,6 +12345,61 @@ class UserSeeder extends Seeder
             </div>
         </section>
     </main>
+
+    <div id="receipt-lightbox" class="receipt-lightbox" onclick="closeReceiptImage()">
+        <div class="receipt-lightbox__dialog" onclick="event.stopPropagation()">
+            <button type="button" class="receipt-lightbox__close" onclick="closeReceiptImage()"
+                aria-label="Tutup preview foto">
+                ✕ Close
+            </button>
+
+            <div class="receipt-lightbox__card">
+                <div class="receipt-lightbox__image-wrap">
+                    <img id="receipt-lightbox-image" class="receipt-lightbox__image" src=""
+                        alt="Preview Foto">
+                </div>
+
+                <div class="receipt-lightbox__meta">
+                    <div id="receipt-lightbox-title" class="receipt-lightbox__title">Preview Foto</div>
+                    <div class="receipt-lightbox__hint">Tekan ESC atau klik area gelap untuk menutup</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openReceiptImage(src, title) {
+            var lightbox = document.getElementById('receipt-lightbox');
+            var image = document.getElementById('receipt-lightbox-image');
+            var caption = document.getElementById('receipt-lightbox-title');
+
+            if (!lightbox || !image || !caption) return;
+
+            image.src = src;
+            image.alt = title || 'Preview Foto';
+            caption.textContent = title || 'Preview Foto';
+
+            lightbox.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeReceiptImage() {
+            var lightbox = document.getElementById('receipt-lightbox');
+            var image = document.getElementById('receipt-lightbox-image');
+            var caption = document.getElementById('receipt-lightbox-title');
+
+            if (!lightbox || !image) return;
+
+            lightbox.classList.remove('is-open');
+            image.src = '';
+            image.alt = 'Preview Foto';
+            if (caption) {
+                caption.textContent = 'Preview Foto';
+            }
+            document.body.style.overflow = '';
+        }
+    </script>
+
 </body>
 
 </html>

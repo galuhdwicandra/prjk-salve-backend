@@ -7,6 +7,7 @@ use App\Models\OrderItem;
 use App\Models\OrderPhoto;
 use App\Models\User;
 use App\Services\DeliveryService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -97,6 +98,9 @@ class OrderService
                             'order_id'         => (string) $order->getKey(),
                             'remaining_amount' => $grand,
                             'status'           => 'OPEN',
+                            'due_date'         => $order->ready_at
+                                ? Carbon::parse($order->ready_at)->toDateString()
+                                : null,
                             'created_at'       => now(),
                             'updated_at'       => now(),
                         ]);
@@ -170,6 +174,17 @@ class OrderService
             }
             // ===========================================================
             $order->save();
+
+            if (Schema::hasTable('receivables')) {
+                DB::table('receivables')
+                    ->where('order_id', (string) $order->getKey())
+                    ->update([
+                        'due_date'   => $order->ready_at
+                            ? Carbon::parse($order->ready_at)->toDateString()
+                            : null,
+                        'updated_at' => now(),
+                    ]);
+            }
 
             if ($next === 'DELIVERING') {
                 $exists = Delivery::query()
@@ -286,13 +301,18 @@ class OrderService
                     ->where('order_id', (string) $order->getKey())
                     ->first();
 
-                if ($grand <= 0.0) {
+                $dueDate = $order->ready_at
+                    ? \Illuminate\Support\Carbon::parse($order->ready_at)->toDateString()
+                    : null;
+
+                if ($grand <= 0) {
                     if ($existing) {
                         DB::table('receivables')
                             ->where('id', $existing->id)
                             ->update([
                                 'remaining_amount' => 0,
                                 'status'           => 'SETTLED',
+                                'due_date'         => $dueDate,
                                 'updated_at'       => now(),
                             ]);
                     }
@@ -303,15 +323,16 @@ class OrderService
                             ->update([
                                 'remaining_amount' => $due,
                                 'status'           => $due <= 0 ? 'SETTLED' : ($due < $grand ? 'PARTIAL' : 'OPEN'),
+                                'due_date'         => $dueDate,
                                 'updated_at'       => now(),
                             ]);
                     } else {
-                        // jika sebelumnya belum ada, buat baru saat kini grand_total > 0
                         DB::table('receivables')->insert([
                             'id'               => (string) Str::uuid(),
                             'order_id'         => (string) $order->getKey(),
                             'remaining_amount' => $due,
                             'status'           => $due <= 0 ? 'SETTLED' : 'OPEN',
+                            'due_date'         => $dueDate,
                             'created_at'       => now(),
                             'updated_at'       => now(),
                         ]);

@@ -1,35 +1,30 @@
 <?php
-
 namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Receivable;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ReceivableService
 {
-    /**
-     * Dipanggil saat DP dibuat.
-     * Jika belum ada receivable, buat; jika sudah, sinkron sisa dari order.
-     */
     public function createForDP(Order $order, ?Carbon $dueDate = null): Receivable
     {
         return DB::transaction(function () use ($order, $dueDate) {
-            $rcv = Receivable::query()->firstOrNew(['order_id' => $order->id]);
-            $rcv->due_date = $dueDate;
+            $effectiveDueDate = $dueDate ?? ($order->ready_at ? Carbon::parse($order->ready_at) : null);
+
+            $rcv                   = Receivable::query()->firstOrNew(['order_id' => $order->id]);
+            $rcv->due_date         = $effectiveDueDate;
             $rcv->remaining_amount = (float) $order->grand_total - (float) $order->paid_amount;
-            $rcv->status = $rcv->remaining_amount <= 0.000001 ? 'SETTLED' : ($rcv->remaining_amount < (float) $order->grand_total ? 'PARTIAL' : 'OPEN');
+            $rcv->status           = $rcv->remaining_amount <= 0.000001
+                ? 'SETTLED'
+                : ($rcv->remaining_amount < (float) $order->grand_total ? 'PARTIAL' : 'OPEN');
             $rcv->save();
 
             return $rcv->refresh();
         });
     }
 
-    /**
-     * Pelunasan: delegasikan ke PaymentService agar audit & idempoten seragam.
-     * PaymentService sudah meng-update order & upsert receivable sesuai sisa.
-     */
     public function settle(Order $order, string $method, float $amount, ?Carbon $paidAt = null, ?string $note = null): array
     {
         return DB::transaction(function () use ($order, $method, $amount, $paidAt, $note) {

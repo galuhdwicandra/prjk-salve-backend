@@ -1,19 +1,18 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\OrderStatusRequest;
 use App\Http\Requests\OrderStoreRequest;
 use App\Http\Requests\OrderUpdateRequest;
-use App\Http\Requests\OrderStatusRequest;
 use App\Models\Order;
-use App\Services\OrderService;
 use App\Services\LoyaltyService;
+use App\Services\OrderService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 
 class OrderController extends Controller
 {
@@ -28,7 +27,7 @@ class OrderController extends Controller
         $this->authorize('viewAny', Order::class);
 
         $me = $request->user();
-        $q = Order::query()
+        $q  = Order::query()
             ->with(['customer', 'items.service', 'receivable'])
             ->withCount('payments')
             ->addSelect([
@@ -111,12 +110,15 @@ class OrderController extends Controller
             $q->whereDate('ready_at', '<=', $yt);
         }
 
-        $per = (int) max(1, min(100, (int) $request->query('per_page', 10)));
+        $allowedPerPages  = [10, 100, 200, 500];
+        $requestedPerPage = (int) $request->query('per_page', 10);
+        $per              = in_array($requestedPerPage, $allowedPerPages, true) ? $requestedPerPage : 10;
+
         $page = $q->paginate($per);
 
         return response()->json([
-            'data' => $page->items(),
-            'meta' => [
+            'data'    => $page->items(),
+            'meta'    => [
                 'current_page' => $page->currentPage(),
                 'per_page'     => $page->perPage(),
                 'total'        => $page->total(),
@@ -133,10 +135,10 @@ class OrderController extends Controller
         $this->authorize('view', $order);
 
         return response()->json([
-            'data' => $order->load(['customer', 'items.service', 'photos', 'receivable']),
-            'meta' => [],
+            'data'    => $order->load(['customer', 'items.service', 'photos', 'receivable']),
+            'meta'    => [],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -145,7 +147,7 @@ class OrderController extends Controller
     {
         $this->authorize('create', Order::class);
         $payload = $request->validated();
-        $me = $request->user();
+        $me      = $request->user();
         // Non-Superadmin SELALU dipaksa ke cabang user (abaikan branch_id dari FE)
         if (! $me->hasRole('Superadmin')) {
             if (! $me->branch_id) {
@@ -158,7 +160,7 @@ class OrderController extends Controller
         if (! empty($payload['customer_id'])) {
             $customerId = (string) ($payload['customer_id'] ?? '');
             $branchId   = (string) $payload['branch_id'];
-            $custOk = \App\Models\Customer::query()
+            $custOk     = \App\Models\Customer::query()
                 ->whereKey($customerId)
                 ->where('branch_id', $branchId)
                 ->exists();
@@ -167,15 +169,14 @@ class OrderController extends Controller
             }
         }
 
-
         $order = $this->svc->createDraft($payload, $request->user())
             ->load(['customer', 'items.service']); // optional: konsisten dengan show()
 
         return response()->json([
-            'data' => $order,
-            'meta' => [],
+            'data'    => $order,
+            'meta'    => [],
             'message' => 'Created',
-            'errors' => null,
+            'errors'  => null,
         ], 201);
     }
 
@@ -187,14 +188,14 @@ class OrderController extends Controller
         $order = $this->svc->update($order, $request->validated(), $request->user());
 
         return response()->json([
-            'data' => $order,
-            'meta' => [],
+            'data'    => $order,
+            'meta'    => [],
             'message' => 'Updated',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
-        // DELETE /orders/{order}
+    // DELETE /orders/{order}
     public function destroy(Order $order)
     {
         $this->authorize('delete', $order);
@@ -204,16 +205,16 @@ class OrderController extends Controller
         });
 
         return response()->json([
-            'data' => null,
-            'meta' => [],
+            'data'    => null,
+            'meta'    => [],
             'message' => 'Deleted',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
     public function receipt(Request $request, Order $order)
     {
-        if (!$request->hasValidSignature()) {
+        if (! $request->hasValidSignature()) {
             $this->authorize('view', $order);
         }
 
@@ -232,15 +233,15 @@ class OrderController extends Controller
                 (string) $order->customer_id,
                 (string) $order->branch_id
             );
-            $cycle   = LoyaltyService::CYCLE;
-            $stamps  = (int) $acc->stamps;
-            $next    = ($stamps % $cycle) + 1;
+            $cycle     = LoyaltyService::CYCLE;
+            $stamps    = (int) $acc->stamps;
+            $next      = ($stamps % $cycle) + 1;
             $target25  = 5;
             $target100 = 10;
             // sisa transaksi (0 artinya reward terjadi pada transaksi ini)
-            $sisa25   = ($target25  - $next + $cycle) % $cycle;
-            $sisa100  = ($target100 - $next + $cycle) % $cycle;
-            $loy = [
+            $sisa25  = ($target25 - $next + $cycle) % $cycle;
+            $sisa100 = ($target100 - $next + $cycle) % $cycle;
+            $loy     = [
                 'stamps'  => $stamps,
                 'cycle'   => $cycle,
                 'next'    => $next,
@@ -273,13 +274,13 @@ class OrderController extends Controller
         );
 
         return response()->json([
-            'data' => [
-                'share_url' => $shareUrl,
+            'data'    => [
+                'share_url'          => $shareUrl,
                 'expires_in_minutes' => 120,
             ],
-            'meta' => (object)[],
+            'meta'    => (object) [],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -290,13 +291,13 @@ class OrderController extends Controller
         $order = $this->svc->transition($order, $request->validated()['next'], $request->user());
 
         return response()->json([
-            'data' => [
-                'id' => (string) $order->getKey(),
+            'data'    => [
+                'id'     => (string) $order->getKey(),
                 'status' => (string) $order->getAttribute('status'),
             ],
-            'meta' => [],
+            'meta'    => [],
             'message' => 'Status updated',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 }

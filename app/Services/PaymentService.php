@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Services;
 
 use App\Models\Order;
@@ -19,11 +18,11 @@ class PaymentService
         Order $order,
         string $method,
         float $amount,
-        string|Carbon|null $paidAt = null,
+        string | Carbon | null $paidAt = null,
         ?string $note = null
     ): array {
         return DB::transaction(function () use ($order, $method, $amount, $paidAt, $note) {
-            $order = Order::query()->lockForUpdate()->findOrFail($order->id);
+            $order   = Order::query()->lockForUpdate()->findOrFail($order->id);
             $orderId = (string) $order->id;
 
             $paidAtDb = $paidAt
@@ -41,24 +40,24 @@ class PaymentService
 
             if ($exists) {
                 return [
-                    'ok' => true,
-                    'order' => $order->fresh(['items']),
-                    'payment' => $exists,
+                    'ok'         => true,
+                    'order'      => $order->fresh(['items']),
+                    'payment'    => $exists,
                     'idempotent' => true,
                 ];
             }
 
             $payment = Payment::query()->create([
-                'id' => (string) Str::uuid(),
+                'id'       => (string) Str::uuid(),
                 'order_id' => $orderId,
-                'method' => $method,
-                'amount' => $amount,
-                'paid_at' => $paidAtDb,
-                'note' => $note,
+                'method'   => $method,
+                'amount'   => $amount,
+                'paid_at'  => $paidAtDb,
+                'note'     => $note,
             ]);
 
             $paidAmount = (float) $order->paid_amount + $amount;
-            $grand = (float) $order->grand_total;
+            $grand      = (float) $order->grand_total;
 
             $paymentStatus = 'PENDING';
             if ($method === 'DP' || $paidAmount < $grand) {
@@ -74,13 +73,13 @@ class PaymentService
             }
 
             $order->forceFill([
-                'paid_amount' => $paidAmount,
-                'dp_amount' => $newDp,
+                'paid_amount'    => $paidAmount,
+                'dp_amount'      => $newDp,
                 'payment_status' => $paymentStatus,
-                'paid_at' => ($paymentStatus === 'PAID' && !$order->paid_at)
+                'paid_at'        => ($paymentStatus === 'PAID' && ! $order->paid_at)
                     ? ($paidAtDb ?: now())
                     : $order->paid_at,
-                'due_amount' => max($grand - $paidAmount, 0),
+                'due_amount'     => max($grand - $paidAmount, 0),
             ])->save();
 
             $remaining = max($grand - $paidAmount, 0);
@@ -88,22 +87,28 @@ class PaymentService
             if (Schema::hasTable('receivables')) {
                 $row = DB::table('receivables')->where('order_id', $orderId)->first();
 
-                if (!$row && $remaining > 0) {
+                $dueDate = $order->ready_at
+                    ? Carbon::parse($order->ready_at)->toDateString()
+                    : null;
+
+                if (! $row && $remaining > 0) {
                     DB::table('receivables')->insert([
-                        'id' => (string) Str::uuid(),
-                        'order_id' => $orderId,
+                        'id'               => (string) Str::uuid(),
+                        'order_id'         => $orderId,
                         'remaining_amount' => $remaining,
-                        'status' => $remaining >= $grand ? 'OPEN' : 'PARTIAL',
-                        'created_at' => now(),
-                        'updated_at' => now(),
+                        'status'           => $remaining >= $grand ? 'OPEN' : 'PARTIAL',
+                        'due_date'         => $dueDate,
+                        'created_at'       => now(),
+                        'updated_at'       => now(),
                     ]);
                 } elseif ($row) {
                     DB::table('receivables')->where('order_id', $orderId)->update([
                         'remaining_amount' => $remaining,
-                        'status' => $remaining > 0
+                        'status'           => $remaining > 0
                             ? ((float) $paidAmount > 0 ? 'PARTIAL' : 'OPEN')
                             : 'SETTLED',
-                        'updated_at' => now(),
+                        'due_date'         => $dueDate,
+                        'updated_at'       => now(),
                     ]);
                 }
             }
@@ -113,9 +118,9 @@ class PaymentService
             }
 
             return [
-                'ok' => true,
-                'order' => $order->fresh(['items']),
-                'payment' => $payment->fresh(),
+                'ok'         => true,
+                'order'      => $order->fresh(['items']),
+                'payment'    => $payment->fresh(),
                 'idempotent' => false,
             ];
         });
