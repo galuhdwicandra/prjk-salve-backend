@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-18 16:48:00_  
+_Dihasilkan otomatis: 2026-04-18 18:11:25_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -91,6 +91,7 @@ _Dihasilkan otomatis: 2026-04-18 16:48:00_
   - [app\Http\Requests\Expenses\ExpenseUpdateRequest.php](#file-apphttprequestsexpensesexpenseupdaterequestphp)
   - [app\Http\Requests\InvoiceCounterStoreRequest.php](#file-apphttprequestsinvoicecounterstorerequestphp)
   - [app\Http\Requests\InvoiceCounterUpdateRequest.php](#file-apphttprequestsinvoicecounterupdaterequestphp)
+  - [app\Http\Requests\LoyaltyManualAdjustRequest.php](#file-apphttprequestsloyaltymanualadjustrequestphp)
   - [app\Http\Requests\Orders\OrderApplyVoucherRequest.php](#file-apphttprequestsordersorderapplyvoucherrequestphp)
   - [app\Http\Requests\Orders\OrderPhotosRequest.php](#file-apphttprequestsordersorderphotosrequestphp)
   - [app\Http\Requests\OrderStatusRequest.php](#file-apphttprequestsorderstatusrequestphp)
@@ -1725,16 +1726,17 @@ class InvoiceCounterController extends Controller
 
 ### app\Http\Controllers\Api\LoyaltyController.php
 
-- SHA: `5d35fd551cef`  
-- Ukuran: 2 KB  
+- SHA: `ce862bba5d69`  
+- Ukuran: 3 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `LoyaltyController` extends `Controller`**
 
 Metode Publik:
 - **__construct**(private LoyaltyService $svc)
-- **summary**(Request $req, Customer $customer)
-- **history**(Request $req, Customer $customer)
+- **summary**(Request $req, Customer $customer) : *JsonResponse*
+- **history**(Request $req, Customer $customer) : *JsonResponse*
+- **adjustManual**(LoyaltyManualAdjustRequest $request, Customer $customer) : *JsonResponse*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -1743,16 +1745,18 @@ Metode Publik:
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LoyaltyManualAdjustRequest;
 use App\Models\Customer;
 use App\Models\LoyaltyLog;
 use App\Services\LoyaltyService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class LoyaltyController extends Controller
 {
     public function __construct(private LoyaltyService $svc) {}
 
-    public function summary(Request $req, Customer $customer)
+    public function summary(Request $req, Customer $customer): JsonResponse
     {
         $this->authorize('viewLoyalty', $customer);
 
@@ -1762,8 +1766,8 @@ class LoyaltyController extends Controller
         return response()->json([
             'data' => [
                 'stamps' => (int) $acc->stamps,
-                'cycle'  => 10,
-                'next'   => (($acc->stamps % 10) + 1),
+                'cycle'  => LoyaltyService::CYCLE,
+                'next'   => (($acc->stamps % LoyaltyService::CYCLE) + 1),
             ],
             'meta' => [],
             'message' => 'OK',
@@ -1771,11 +1775,12 @@ class LoyaltyController extends Controller
         ]);
     }
 
-    public function history(Request $req, Customer $customer)
+    public function history(Request $req, Customer $customer): JsonResponse
     {
         $this->authorize('viewLoyalty', $customer);
 
         $branchId = (string) ($req->query('branch_id') ?: $req->user()->branch_id ?: $customer->branch_id);
+
         $logs = LoyaltyLog::query()
             ->where('customer_id', (string) $customer->getKey())
             ->where('branch_id', $branchId)
@@ -1784,13 +1789,56 @@ class LoyaltyController extends Controller
 
         return response()->json([
             'data' => $logs->items(),
-            'meta' => ['current_page' => $logs->currentPage(), 'last_page' => $logs->lastPage()],
+            'meta' => [
+                'current_page' => $logs->currentPage(),
+                'last_page' => $logs->lastPage(),
+            ],
             'message' => 'OK',
             'errors' => null,
         ]);
     }
-}
 
+    public function adjustManual(LoyaltyManualAdjustRequest $request, Customer $customer): JsonResponse
+    {
+        $this->authorize('manageManual', $customer);
+
+        $user = $request->user();
+
+        $branchId = $user->hasRole('Superadmin')
+            ? (string) ($request->validated('branch_id') ?: $customer->branch_id)
+            : (string) $user->branch_id;
+
+        if ((string) $customer->branch_id !== (string) $branchId) {
+            return response()->json([
+                'data' => null,
+                'meta' => null,
+                'message' => 'Customer tidak berada di cabang yang dipilih.',
+                'errors' => [
+                    'branch_id' => ['Customer tidak berada di cabang yang dipilih.'],
+                ],
+            ], 422);
+        }
+
+        $acc = $this->svc->adjustManual(
+            (string) $customer->getKey(),
+            $branchId,
+            (string) $request->validated('type'),
+            (int) $request->validated('amount'),
+            $request->validated('note')
+        );
+
+        return response()->json([
+            'data' => [
+                'stamps' => (int) $acc->stamps,
+                'cycle'  => LoyaltyService::CYCLE,
+                'next'   => (($acc->stamps % LoyaltyService::CYCLE) + 1),
+            ],
+            'meta' => [],
+            'message' => 'Loyalty stamp berhasil diubah secara manual.',
+            'errors' => null,
+        ]);
+    }
+}
 ```
 </details>
 
@@ -4279,8 +4327,8 @@ class LoyaltyAccount extends Model
 
 ### app\Models\LoyaltyLog.php
 
-- SHA: `7da979e5c9a6`  
-- Ukuran: 342 B  
+- SHA: `31a9331a643c`  
+- Ukuran: 357 B  
 - Namespace: `App\Models`
 
 **Class `LoyaltyLog` extends `Model`**
@@ -4292,16 +4340,23 @@ class LoyaltyAccount extends Model
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class LoyaltyLog extends Model
 {
-    use HasUuids;
     public $incrementing = false;
     protected $keyType = 'string';
-    protected $fillable = ['order_id', 'customer_id', 'branch_id', 'action', 'before', 'after'];
-}
 
+    protected $fillable = [
+        'id',
+        'order_id',
+        'customer_id',
+        'branch_id',
+        'action',
+        'note',
+        'before',
+        'after',
+    ];
+}
 ```
 </details>
 
@@ -5529,8 +5584,8 @@ class ExpensePolicy
 
 ### app\Policies\LoyaltyPolicy.php
 
-- SHA: `1792a12c3762`  
-- Ukuran: 382 B  
+- SHA: `dc388d404aa4`  
+- Ukuran: 888 B  
 - Namespace: `App\Policies`
 
 **Class `LoyaltyPolicy`**
@@ -5538,6 +5593,7 @@ class ExpensePolicy
 Metode Publik:
 - **before**(User $actor, string $ability) : *bool|null*
 - **view**(User $actor, Customer $customer) : *bool*
+- **manageManual**(User $actor, Customer $customer) : *bool*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -5557,10 +5613,30 @@ class LoyaltyPolicy
 
     public function view(User $actor, Customer $customer): bool
     {
-        return $actor->hasAnyRole(['Admin Cabang', 'Kasir']);
+        if (! $actor->hasAnyRole(['Admin Cabang', 'Kasir'])) {
+            return false;
+        }
+
+        if (! $actor->branch_id) {
+            return false;
+        }
+
+        return (string) $actor->branch_id === (string) $customer->branch_id;
+    }
+
+    public function manageManual(User $actor, Customer $customer): bool
+    {
+        if (! $actor->hasRole('Admin Cabang')) {
+            return false;
+        }
+
+        if (! $actor->branch_id) {
+            return false;
+        }
+
+        return (string) $actor->branch_id === (string) $customer->branch_id;
     }
 }
-
 ```
 </details>
 
@@ -7235,6 +7311,60 @@ class InvoiceCounterUpdateRequest extends FormRequest
     }
 }
 
+```
+</details>
+
+### app\Http\Requests\LoyaltyManualAdjustRequest.php
+
+- SHA: `9fb7c8122d3f`  
+- Ukuran: 1 KB  
+- Namespace: `App\Http\Requests`
+
+**Class `LoyaltyManualAdjustRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **messages**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class LoyaltyManualAdjustRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user() !== null;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'type' => ['required', 'in:add,subtract,set'],
+            'amount' => ['required', 'integer', 'min:1', 'max:1000'],
+            'note' => ['nullable', 'string', 'max:255'],
+            'branch_id' => ['nullable', 'uuid'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'type.required' => 'Tipe adjustment wajib diisi.',
+            'type.in' => 'Tipe adjustment tidak valid.',
+            'amount.required' => 'Jumlah stamp wajib diisi.',
+            'amount.integer' => 'Jumlah stamp harus berupa angka bulat.',
+            'amount.min' => 'Jumlah stamp minimal 1.',
+            'amount.max' => 'Jumlah stamp terlalu besar.',
+            'branch_id.uuid' => 'Format branch_id tidak valid.',
+        ];
+    }
+}
 ```
 </details>
 
@@ -9612,14 +9742,13 @@ class InvoiceService
 
 ### app\Services\LoyaltyService.php
 
-- SHA: `73dcead351ef`  
-- Ukuran: 5 KB  
+- SHA: `4153b6caf8c3`  
+- Ukuran: 8 KB  
 - Namespace: `App\Services`
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
 <?php
-
 namespace App\Services;
 
 use App\Models\LoyaltyAccount;
@@ -9627,6 +9756,7 @@ use App\Models\LoyaltyLog;
 use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 final class LoyaltyService
 {
@@ -9641,30 +9771,103 @@ final class LoyaltyService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$acc) {
+            if (! $acc) {
                 $acc = LoyaltyAccount::create([
-                    'id' => (string) Str::uuid(),
+                    'id'          => (string) Str::uuid(),
                     'customer_id' => $customerId,
-                    'branch_id' => $branchId,
-                    'stamps' => 0,
-                    'lifetime' => 0,
+                    'branch_id'   => $branchId,
+                    'stamps'      => 0,
+                    'lifetime'    => 0,
                 ]);
             }
             return $acc;
         });
     }
 
+    public function adjustManual(
+        string $customerId,
+        string $branchId,
+        string $type,
+        int $amount,
+        ?string $note = null
+    ): LoyaltyAccount {
+        return DB::transaction(function () use ($customerId, $branchId, $type, $amount, $note) {
+            $acc = LoyaltyAccount::query()
+                ->where('customer_id', $customerId)
+                ->where('branch_id', $branchId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $acc) {
+                $acc = LoyaltyAccount::create([
+                    'id'          => (string) Str::uuid(),
+                    'customer_id' => $customerId,
+                    'branch_id'   => $branchId,
+                    'stamps'      => 0,
+                    'lifetime'    => 0,
+                ]);
+            }
+
+            $before = (int) $acc->stamps;
+            $after  = $before;
+            $action = 'MANUAL_ADD';
+
+            if ($type === 'add') {
+                $after         = $before + $amount;
+                $action        = 'MANUAL_ADD';
+                $acc->stamps   = $after;
+                $acc->lifetime = (int) $acc->lifetime + $amount;
+            } elseif ($type === 'subtract') {
+                $after       = max(0, $before - $amount);
+                $action      = 'MANUAL_SUB';
+                $acc->stamps = $after;
+            } elseif ($type === 'set') {
+                $after  = max(0, $amount);
+                $action = 'MANUAL_SET';
+
+                if ($after > $before) {
+                    $acc->lifetime = (int) $acc->lifetime + ($after - $before);
+                }
+
+                $acc->stamps = $after;
+            } else {
+                throw new InvalidArgumentException('Tipe adjustment loyalty tidak valid.');
+            }
+
+            $acc->save();
+
+            LoyaltyLog::query()->create([
+                'id'          => (string) Str::uuid(),
+                'order_id'    => null,
+                'customer_id' => $customerId,
+                'branch_id'   => $branchId,
+                'action'      => $action,
+                'note'        => $note,
+                'before'      => $before,
+                'after'       => $after,
+            ]);
+
+            return $acc->fresh();
+        });
+    }
+
     /** Hitung reward untuk order baru (tanpa mengubah state). */
     public function previewReward(?string $customerId, string $branchId, float $subtotal): array
     {
-        if (!$customerId || $subtotal <= 0) {
+        if (! $customerId || $subtotal <= 0) {
             return ['reward' => 'NONE', 'discount' => 0.0];
         }
-        $acc = $this->getOrCreateAccount($customerId, $branchId);
+        $acc  = $this->getOrCreateAccount($customerId, $branchId);
         $next = ($acc->stamps % self::CYCLE) + 1; // 1..10
 
-        if ($next === 5)  return ['reward' => 'DISC25',  'discount' => round($subtotal * 0.25, 2)];
-        if ($next === 10) return ['reward' => 'FREE100', 'discount' => round($subtotal, 2)];
+        if ($next === 5) {
+            return ['reward' => 'DISC25', 'discount' => round($subtotal * 0.25, 2)];
+        }
+
+        if ($next === 10) {
+            return ['reward' => 'FREE100', 'discount' => round($subtotal, 2)];
+        }
+
         return ['reward' => 'NONE', 'discount' => 0.0];
     }
 
@@ -9672,10 +9875,10 @@ final class LoyaltyService
     public function applyToOrder(Order $order, string $branchId): void
     {
         $subtotal = (float) $order->getAttribute('subtotal');
-        $p = $this->previewReward($order->customer_id, $branchId, $subtotal);
+        $p        = $this->previewReward($order->customer_id, $branchId, $subtotal);
 
-        $order->loyalty_reward   = $p['reward'];     // NONE|DISC25|FREE100
-        $order->loyalty_discount = $p['discount'];   // angka rupiah
+        $order->loyalty_reward   = $p['reward'];   // NONE|DISC25|FREE100
+        $order->loyalty_discount = $p['discount']; // angka rupiah
         $order->discount         = (float) $order->discount + $p['discount'];
         $order->grand_total      = max(0, $subtotal - (float) $order->discount);
         $order->due_amount       = max(0, (float) $order->grand_total - (float) $order->paid_amount);
@@ -9684,7 +9887,9 @@ final class LoyaltyService
     /** Earn + logging saat order dinyatakan selesai (PICKED_UP). */
     public function finalizeEarn(Order $order): void
     {
-        if (!$order->customer_id) return;
+        if (! $order->customer_id) {
+            return;
+        }
 
         DB::transaction(function () use ($order) {
             // idempotensi per order
@@ -9692,34 +9897,34 @@ final class LoyaltyService
                 return;
             }
 
-            $acc = $this->getOrCreateAccount((string) $order->customer_id, (string) $order->branch_id);
+            $acc    = $this->getOrCreateAccount((string) $order->customer_id, (string) $order->branch_id);
             $before = (int) $acc->stamps;
 
             // catat reward yang dipakai di order ini
             if ($order->loyalty_reward === 'DISC25') {
                 LoyaltyLog::create([
-                    'id' => (string) Str::uuid(),
-                    'order_id' => null,
+                    'id'          => (string) Str::uuid(),
+                    'order_id'    => null,
                     'customer_id' => (string) $order->customer_id,
-                    'branch_id' => (string) $order->branch_id,
-                    'action' => 'REWARD25',
-                    'before' => $before,
-                    'after' => $before,
+                    'branch_id'   => (string) $order->branch_id,
+                    'action'      => 'REWARD25',
+                    'before'      => $before,
+                    'after'       => $before,
                 ]);
             } elseif ($order->loyalty_reward === 'FREE100') {
                 LoyaltyLog::create([
-                    'id' => (string) Str::uuid(),
-                    'order_id' => null,
+                    'id'          => (string) Str::uuid(),
+                    'order_id'    => null,
                     'customer_id' => (string) $order->customer_id,
-                    'branch_id' => (string) $order->branch_id,
-                    'action' => 'REWARD100',
-                    'before' => $before,
-                    'after' => $before,
+                    'branch_id'   => (string) $order->branch_id,
+                    'action'      => 'REWARD100',
+                    'before'      => $before,
+                    'after'       => $before,
                 ]);
             }
 
-            // earn +1, reset jika mencapai 10
-            $afterEarn = $before + 1;     // nilai setelah earn
+                                      // earn +1, reset jika mencapai 10
+            $afterEarn = $before + 1; // nilai setelah earn
             $didReset  = $afterEarn >= self::CYCLE;
             $after     = $didReset ? 0 : $afterEarn;
 
@@ -9727,25 +9932,25 @@ final class LoyaltyService
 
             // SATU-SATUNYA log yang mengikat order_id: EARN
             LoyaltyLog::create([
-                'id' => (string) Str::uuid(),
-                'order_id' => (string) $order->getKey(),
+                'id'          => (string) Str::uuid(),
+                'order_id'    => (string) $order->getKey(),
                 'customer_id' => (string) $order->customer_id,
-                'branch_id' => (string) $order->branch_id,
-                'action' => 'EARN',
-                'before' => $before,
-                'after' => $after,
+                'branch_id'   => (string) $order->branch_id,
+                'action'      => 'EARN',
+                'before'      => $before,
+                'after'       => $after,
             ]);
 
             // Jika terjadi reset (menyentuh ke-10), catat RESET sebagai histori tambahan TANPA order_id
             if ($didReset) {
                 LoyaltyLog::create([
-                    'id' => (string) Str::uuid(),
-                    'order_id' => null,
+                    'id'          => (string) Str::uuid(),
+                    'order_id'    => null,
                     'customer_id' => (string) $order->customer_id,
-                    'branch_id' => (string) $order->branch_id,
-                    'action' => 'RESET',
-                    'before' => $afterEarn,
-                    'after' => 0,
+                    'branch_id'   => (string) $order->branch_id,
+                    'action'      => 'RESET',
+                    'before'      => $afterEarn,
+                    'after'       => 0,
                 ]);
             }
         });
@@ -12009,7 +12214,7 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `4ca8f2fb72eb`  
+- SHA: `cdca95464052`  
 - Ukuran: 9 KB
 
 **Ringkasan Routes (deteksi heuristik):**
@@ -12061,6 +12266,7 @@ class UserSeeder extends Seeder
 | GET | `/reports/{kind}/export` | `ReportController` | `export` |
 | GET | `/loyalty/{customer}` | `LoyaltyController` | `summary` |
 | GET | `/loyalty/{customer}/history` | `LoyaltyController` | `history` |
+| POST | `/loyalty/{customer}/adjust-manual` | `LoyaltyController` | `adjustManual` |
 | GET | `/orders/{order}/receipt` | `OrderController` | `receipt` |
 | POST | `/orders/{order}/share-link` | `OrderController` | `shareLink` |
 | POST | `/orders/{order}/payments` | `OrderPaymentsController` | `store` |
@@ -12198,6 +12404,7 @@ Route::prefix('v1')->group(function () {
         // Loyalty (Stamp) — butuh login & scope cabang
         Route::get('/loyalty/{customer}', [LoyaltyController::class, 'summary']);
         Route::get('/loyalty/{customer}/history', [LoyaltyController::class, 'history']);
+        Route::post('/loyalty/{customer}/adjust-manual', [LoyaltyController::class, 'adjustManual']);
 
         // Receipt (HTML)
         Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt']);

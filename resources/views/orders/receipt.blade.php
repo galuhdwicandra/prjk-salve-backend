@@ -493,13 +493,29 @@
                         $beforePhoto = collect($order->photos ?? [])->first(function ($photo) {
                             return strtolower((string) $photo->kind) === 'before';
                         });
+
+                        $filesBaseUrl = rtrim(
+                            (string) env('FILES_BASE_URL', config('app.files_base_url', url('/'))),
+                            '/',
+                        );
+                        $beforePhotoUrl = null;
+
+                        if ($beforePhoto && !empty($beforePhoto->path)) {
+                            $rawPath = ltrim((string) $beforePhoto->path, '/');
+
+                            if (preg_match('/^https?:\/\//i', $rawPath)) {
+                                $beforePhotoUrl = $rawPath;
+                            } else {
+                                $beforePhotoUrl = $filesBaseUrl . '/' . $rawPath;
+                            }
+                        }
                     @endphp
 
-                    @if ($beforePhoto && !empty($beforePhoto->path))
+                    @if ($beforePhotoUrl)
                         <div style="margin-top:12px;">
                             <div class="muted" style="font-size:12px; margin-bottom:6px;">Foto Before</div>
 
-                            <img src="{{ asset($beforePhoto->path) }}" alt="Foto Before"
+                            <img src="{{ $beforePhotoUrl }}" alt="Foto Before"
                                 style="width:100%; max-width:250px; border-radius:8px; border:1px solid var(--border);">
                         </div>
                     @endif
