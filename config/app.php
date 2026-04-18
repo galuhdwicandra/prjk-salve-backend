@@ -53,6 +53,7 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
+    'files_base_url' => env('FILES_BASE_URL', preg_replace('/\/api(?:\/v\d+)?$/', '', env('APP_URL', 'http://localhost'))),
 
     /*
     |--------------------------------------------------------------------------
