@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-18 18:11:25_  
+_Dihasilkan otomatis: 2026-04-18 18:43:37_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -11516,8 +11516,8 @@ class UserSeeder extends Seeder
 
 ### resources\views\orders\receipt.blade.php
 
-- SHA: `943f20f03b27`  
-- Ukuran: 24 KB  
+- SHA: `552e599cbac8`  
+- Ukuran: 25 KB  
 - Namespace: ``
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -12017,13 +12017,35 @@ class UserSeeder extends Seeder
                         $beforePhoto = collect($order->photos ?? [])->first(function ($photo) {
                             return strtolower((string) $photo->kind) === 'before';
                         });
-                    @endphp
 
-                    @if ($beforePhoto && !empty($beforePhoto->path))
+                        $filesBaseUrl = rtrim(
+                            (string) env('FILES_BASE_URL', config('app.files_base_url', url('/'))),
+                            '/',
+                        );
+                        $beforePhotoUrl = null;
+
+                        if ($beforePhoto && !empty($beforePhoto->path)) {
+                            $rawPath = ltrim((string) $beforePhoto->path, '/');
+
+                            if (preg_match('/^https?:\/\//i', $rawPath)) {
+                                $beforePhotoUrl = $rawPath;
+                            } else {
+                                $beforePhotoUrl = $filesBaseUrl . '/' . $rawPath;
+                            }
+                        }
+                    @endphp
+                    {{-- DEBUG SEMENTARA --}}
+                    {{-- <div style="font-size:12px; color:red; margin-top:8px;">
+                        filesBaseUrl: {{ $filesBaseUrl ?? 'null' }}<br>
+                        rawPath: {{ $rawPath ?? 'null' }}<br>
+                        beforePhotoUrl: {{ $beforePhotoUrl ?? 'null' }}
+                    </div> --}}
+
+                    @if ($beforePhotoUrl)
                         <div style="margin-top:12px;">
                             <div class="muted" style="font-size:12px; margin-bottom:6px;">Foto Before</div>
 
-                            <img src="{{ asset($beforePhoto->path) }}" alt="Foto Before"
+                            <img src="{{ $beforePhotoUrl }}" alt="Foto Before"
                                 style="width:100%; max-width:250px; border-radius:8px; border:1px solid var(--border);">
                         </div>
                     @endif

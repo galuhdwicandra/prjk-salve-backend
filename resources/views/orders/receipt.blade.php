@@ -343,6 +343,85 @@
                 grid-template-columns: 1.2fr .8fr;
             }
         }
+
+        /* ========= Receipt image lightbox ========= */
+        .receipt-lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, .78);
+            backdrop-filter: blur(2px);
+        }
+
+        .receipt-lightbox.is-open {
+            display: flex;
+        }
+
+        .receipt-lightbox__dialog {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .receipt-lightbox__close {
+            position: absolute;
+            top: -42px;
+            right: 0;
+            border: none;
+            background: transparent;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .receipt-lightbox__card {
+            background: #fff;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, .35);
+        }
+
+        .receipt-lightbox__image-wrap {
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .receipt-lightbox__image {
+            width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            display: block;
+        }
+
+        .receipt-lightbox__meta {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        .receipt-lightbox__title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .receipt-lightbox__hint {
+            margin-top: 4px;
+            font-size: 12px;
+            color: #667085;
+        }
+
+        @media print {
+            .receipt-lightbox {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 
@@ -521,8 +600,27 @@
                         <div style="margin-top:12px;">
                             <div class="muted" style="font-size:12px; margin-bottom:6px;">Foto Before</div>
 
-                            <img src="{{ $beforePhotoUrl }}" alt="Foto Before"
-                                style="width:100%; max-width:250px; border-radius:8px; border:1px solid var(--border);">
+                            <button type="button" onclick="openReceiptImage('{{ $beforePhotoUrl }}', 'Foto Before')"
+                                style="
+                padding:0;
+                border:none;
+                background:transparent;
+                cursor:pointer;
+                display:inline-block;
+            "
+                                aria-label="Lihat Foto Before" title="Klik untuk memperbesar foto">
+                                <img src="{{ $beforePhotoUrl }}" alt="Foto Before"
+                                    style="
+                    width:100%;
+                    max-width:250px;
+                    border-radius:8px;
+                    border:1px solid var(--border);
+                    display:block;
+                    transition:transform .18s ease, box-shadow .18s ease;
+                "
+                                    onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 10px 24px rgba(0,0,0,.12)'"
+                                    onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">
+                            </button>
                         </div>
                     @endif
 
@@ -701,6 +799,61 @@
             </div>
         </section>
     </main>
+
+    <div id="receipt-lightbox" class="receipt-lightbox" onclick="closeReceiptImage()">
+        <div class="receipt-lightbox__dialog" onclick="event.stopPropagation()">
+            <button type="button" class="receipt-lightbox__close" onclick="closeReceiptImage()"
+                aria-label="Tutup preview foto">
+                ✕ Close
+            </button>
+
+            <div class="receipt-lightbox__card">
+                <div class="receipt-lightbox__image-wrap">
+                    <img id="receipt-lightbox-image" class="receipt-lightbox__image" src=""
+                        alt="Preview Foto">
+                </div>
+
+                <div class="receipt-lightbox__meta">
+                    <div id="receipt-lightbox-title" class="receipt-lightbox__title">Preview Foto</div>
+                    <div class="receipt-lightbox__hint">Tekan ESC atau klik area gelap untuk menutup</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openReceiptImage(src, title) {
+            var lightbox = document.getElementById('receipt-lightbox');
+            var image = document.getElementById('receipt-lightbox-image');
+            var caption = document.getElementById('receipt-lightbox-title');
+
+            if (!lightbox || !image || !caption) return;
+
+            image.src = src;
+            image.alt = title || 'Preview Foto';
+            caption.textContent = title || 'Preview Foto';
+
+            lightbox.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeReceiptImage() {
+            var lightbox = document.getElementById('receipt-lightbox');
+            var image = document.getElementById('receipt-lightbox-image');
+            var caption = document.getElementById('receipt-lightbox-title');
+
+            if (!lightbox || !image) return;
+
+            lightbox.classList.remove('is-open');
+            image.src = '';
+            image.alt = 'Preview Foto';
+            if (caption) {
+                caption.textContent = 'Preview Foto';
+            }
+            document.body.style.overflow = '';
+        }
+    </script>
+
 </body>
 
 </html>
