@@ -14,6 +14,27 @@ class LoyaltyPolicy
 
     public function view(User $actor, Customer $customer): bool
     {
-        return $actor->hasAnyRole(['Admin Cabang', 'Kasir']);
+        if (! $actor->hasAnyRole(['Admin Cabang', 'Kasir'])) {
+            return false;
+        }
+
+        if (! $actor->branch_id) {
+            return false;
+        }
+
+        return (string) $actor->branch_id === (string) $customer->branch_id;
+    }
+
+    public function manageManual(User $actor, Customer $customer): bool
+    {
+        if (! $actor->hasRole('Admin Cabang')) {
+            return false;
+        }
+
+        if (! $actor->branch_id) {
+            return false;
+        }
+
+        return (string) $actor->branch_id === (string) $customer->branch_id;
     }
 }

@@ -94,6 +94,7 @@ Route::prefix('v1')->group(function () {
         // Loyalty (Stamp) — butuh login & scope cabang
         Route::get('/loyalty/{customer}', [LoyaltyController::class, 'summary']);
         Route::get('/loyalty/{customer}/history', [LoyaltyController::class, 'history']);
+        Route::post('/loyalty/{customer}/adjust-manual', [LoyaltyController::class, 'adjustManual']);
 
         // Receipt (HTML)
         Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt']);

@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-18 15:09:43_  
+_Dihasilkan otomatis: 2026-04-18 16:48:00_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -807,8 +807,8 @@ class CategoryController extends Controller
 
 ### app\Http\Controllers\Api\CustomerController.php
 
-- SHA: `893a657c884b`  
-- Ukuran: 5 KB  
+- SHA: `737fd61eacf4`  
+- Ukuran: 6 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `CustomerController` extends `Controller`**
@@ -831,8 +831,14 @@ use App\Http\Requests\CustomerSearchWARequest;
 use App\Http\Requests\CustomerStoreRequest;
 use App\Http\Requests\CustomerUpdateRequest;
 use App\Models\Customer;
+use App\Models\LoyaltyAccount;
+use App\Models\LoyaltyLog;
+use App\Models\Order;
+use App\Models\OrderPhoto;
+use App\Models\WashNoteItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class CustomerController extends Controller
@@ -931,21 +937,61 @@ if ($s = $request->query('q')) {
         ]);
     }
 
-    public function destroy(Request $request, Customer $customer)
-    {
-        $this->authorize('delete', $customer);
+public function destroy(Request $request, Customer $customer)
+{
+    $this->authorize('delete', $customer);
 
-        DB::transaction(function () use ($customer) {
-            $customer->delete();
-        });
+    DB::transaction(function () use ($customer) {
+        $customerId = (string) $customer->getKey();
 
-        return response()->json([
-            'data'    => null,
-            'meta'    => [],
-            'message' => 'Deleted',
-            'errors'  => null,
-        ]);
-    }
+        $orderIds = Order::query()
+            ->where('customer_id', $customerId)
+            ->pluck('id');
+
+        if ($orderIds->isNotEmpty()) {
+            $photoPaths = OrderPhoto::query()
+                ->whereIn('order_id', $orderIds)
+                ->pluck('path')
+                ->filter()
+                ->all();
+
+            foreach ($photoPaths as $storedPath) {
+                $relativePath = preg_replace('#^storage/#', '', (string) $storedPath);
+                Storage::disk('public')->delete($relativePath);
+            }
+
+            WashNoteItem::query()
+                ->whereIn('order_id', $orderIds)
+                ->delete();
+
+            LoyaltyLog::query()
+                ->whereIn('order_id', $orderIds)
+                ->delete();
+
+            Order::query()
+                ->whereIn('id', $orderIds)
+                ->delete();
+        }
+
+        // Hapus data loyalti berdasarkan customer
+        LoyaltyLog::query()
+            ->where('customer_id', $customerId)
+            ->delete();
+
+        LoyaltyAccount::query()
+            ->where('customer_id', $customerId)
+            ->delete();
+
+        $customer->delete();
+    });
+
+    return response()->json([
+        'data'    => null,
+        'meta'    => [],
+        'message' => 'Deleted',
+        'errors'  => null,
+    ]);
+}
 
     /** GET /customers/search-wa?wa=... */
     public function searchByWhatsapp(CustomerSearchWARequest $request)
