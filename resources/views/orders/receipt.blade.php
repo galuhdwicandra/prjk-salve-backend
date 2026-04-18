@@ -511,11 +511,11 @@
                         }
                     @endphp
                     {{-- DEBUG SEMENTARA --}}
-                    <div style="font-size:12px; color:red; margin-top:8px;">
+                    {{-- <div style="font-size:12px; color:red; margin-top:8px;">
                         filesBaseUrl: {{ $filesBaseUrl ?? 'null' }}<br>
                         rawPath: {{ $rawPath ?? 'null' }}<br>
                         beforePhotoUrl: {{ $beforePhotoUrl ?? 'null' }}
-                    </div>
+                    </div> --}}
 
                     @if ($beforePhotoUrl)
                         <div style="margin-top:12px;">
