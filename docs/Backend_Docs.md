@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-18 19:55:21_  
+_Dihasilkan otomatis: 2026-04-19 20:11:33_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -1844,8 +1844,8 @@ class LoyaltyController extends Controller
 
 ### app\Http\Controllers\Api\OrderController.php
 
-- SHA: `e8d04f070075`  
-- Ukuran: 10 KB  
+- SHA: `fd77b569d517`  
+- Ukuran: 12 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `OrderController` extends `Controller`**
@@ -1864,21 +1864,21 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\OrderStatusRequest;
 use App\Http\Requests\OrderStoreRequest;
 use App\Http\Requests\OrderUpdateRequest;
-use App\Http\Requests\OrderStatusRequest;
 use App\Models\Order;
-use App\Services\OrderService;
 use App\Services\LoyaltyService;
+use App\Services\OrderService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 
 class OrderController extends Controller
 {
@@ -1893,7 +1893,7 @@ class OrderController extends Controller
         $this->authorize('viewAny', Order::class);
 
         $me = $request->user();
-        $q = Order::query()
+        $q  = Order::query()
             ->with(['customer', 'items.service', 'receivable'])
             ->withCount('payments')
             ->addSelect([
@@ -1976,12 +1976,15 @@ class OrderController extends Controller
             $q->whereDate('ready_at', '<=', $yt);
         }
 
-        $per = (int) max(1, min(100, (int) $request->query('per_page', 10)));
+        $allowedPerPages  = [10, 100, 200, 500];
+        $requestedPerPage = (int) $request->query('per_page', 10);
+        $per              = in_array($requestedPerPage, $allowedPerPages, true) ? $requestedPerPage : 10;
+
         $page = $q->paginate($per);
 
         return response()->json([
-            'data' => $page->items(),
-            'meta' => [
+            'data'    => $page->items(),
+            'meta'    => [
                 'current_page' => $page->currentPage(),
                 'per_page'     => $page->perPage(),
                 'total'        => $page->total(),
@@ -1998,10 +2001,10 @@ class OrderController extends Controller
         $this->authorize('view', $order);
 
         return response()->json([
-            'data' => $order->load(['customer', 'items.service', 'photos', 'receivable']),
-            'meta' => [],
+            'data'    => $order->load(['customer', 'items.service', 'photos', 'receivable']),
+            'meta'    => [],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -2010,7 +2013,7 @@ class OrderController extends Controller
     {
         $this->authorize('create', Order::class);
         $payload = $request->validated();
-        $me = $request->user();
+        $me      = $request->user();
         // Non-Superadmin SELALU dipaksa ke cabang user (abaikan branch_id dari FE)
         if (! $me->hasRole('Superadmin')) {
             if (! $me->branch_id) {
@@ -2023,7 +2026,7 @@ class OrderController extends Controller
         if (! empty($payload['customer_id'])) {
             $customerId = (string) ($payload['customer_id'] ?? '');
             $branchId   = (string) $payload['branch_id'];
-            $custOk = \App\Models\Customer::query()
+            $custOk     = \App\Models\Customer::query()
                 ->whereKey($customerId)
                 ->where('branch_id', $branchId)
                 ->exists();
@@ -2032,15 +2035,14 @@ class OrderController extends Controller
             }
         }
 
-
         $order = $this->svc->createDraft($payload, $request->user())
             ->load(['customer', 'items.service']); // optional: konsisten dengan show()
 
         return response()->json([
-            'data' => $order,
-            'meta' => [],
+            'data'    => $order,
+            'meta'    => [],
             'message' => 'Created',
-            'errors' => null,
+            'errors'  => null,
         ], 201);
     }
 
@@ -2052,14 +2054,14 @@ class OrderController extends Controller
         $order = $this->svc->update($order, $request->validated(), $request->user());
 
         return response()->json([
-            'data' => $order,
-            'meta' => [],
+            'data'    => $order,
+            'meta'    => [],
             'message' => 'Updated',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
-        // DELETE /orders/{order}
+    // DELETE /orders/{order}
     public function destroy(Order $order)
     {
         $this->authorize('delete', $order);
@@ -2069,16 +2071,44 @@ class OrderController extends Controller
         });
 
         return response()->json([
-            'data' => null,
-            'meta' => [],
+            'data'    => null,
+            'meta'    => [],
             'message' => 'Deleted',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
     public function receipt(Request $request, Order $order)
     {
-        if (!$request->hasValidSignature()) {
+        Log::info('RECEIPT_ACCESS_DEBUG', [
+            'order_id'               => (string) $order->getKey(),
+            'full_url'               => $request->fullUrl(),
+            'url'                    => $request->url(),
+            'path'                   => $request->path(),
+            'method'                 => $request->method(),
+            'query'                  => $request->query(),
+            'expires'                => $request->query('expires'),
+            'signature'              => $request->query('signature'),
+            'has_valid_signature'    => $request->hasValidSignature(),
+            'app_url'                => config('app.url'),
+            'request_scheme'         => $request->getScheme(),
+            'request_host'           => $request->getHost(),
+            'server_https'           => $_SERVER['HTTPS'] ?? null,
+            'server_forwarded_proto' => $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null,
+            'server_forwarded_host'  => $_SERVER['HTTP_X_FORWARDED_HOST'] ?? null,
+            'server_request_uri'     => $_SERVER['REQUEST_URI'] ?? null,
+        ]);
+
+        if (! $request->hasValidSignature()) {
+            Log::warning('RECEIPT_INVALID_SIGNATURE', [
+                'order_id'       => (string) $order->getKey(),
+                'full_url'       => $request->fullUrl(),
+                'app_url'        => config('app.url'),
+                'request_scheme' => $request->getScheme(),
+                'request_host'   => $request->getHost(),
+                'query'          => $request->query(),
+            ]);
+
             $this->authorize('view', $order);
         }
 
@@ -2097,15 +2127,15 @@ class OrderController extends Controller
                 (string) $order->customer_id,
                 (string) $order->branch_id
             );
-            $cycle   = LoyaltyService::CYCLE;
-            $stamps  = (int) $acc->stamps;
-            $next    = ($stamps % $cycle) + 1;
+            $cycle     = LoyaltyService::CYCLE;
+            $stamps    = (int) $acc->stamps;
+            $next      = ($stamps % $cycle) + 1;
             $target25  = 5;
             $target100 = 10;
             // sisa transaksi (0 artinya reward terjadi pada transaksi ini)
-            $sisa25   = ($target25  - $next + $cycle) % $cycle;
-            $sisa100  = ($target100 - $next + $cycle) % $cycle;
-            $loy = [
+            $sisa25  = ($target25 - $next + $cycle) % $cycle;
+            $sisa100 = ($target100 - $next + $cycle) % $cycle;
+            $loy     = [
                 'stamps'  => $stamps,
                 'cycle'   => $cycle,
                 'next'    => $next,
@@ -2137,14 +2167,24 @@ class OrderController extends Controller
             ['order' => (string) $order->getKey()]
         );
 
+        Log::info('RECEIPT_SHARE_LINK_DEBUG', [
+            'order_id'            => (string) $order->getKey(),
+            'generated_share_url' => $shareUrl,
+            'app_url'             => config('app.url'),
+            'request_scheme'      => $request->getScheme(),
+            'request_host'        => $request->getHost(),
+            'request_uri'         => $request->getRequestUri(),
+            'full_url'            => $request->fullUrl(),
+        ]);
+
         return response()->json([
-            'data' => [
-                'share_url' => $shareUrl,
+            'data'    => [
+                'share_url'          => $shareUrl,
                 'expires_in_minutes' => 120,
             ],
-            'meta' => (object)[],
+            'meta'    => (object) [],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -2155,13 +2195,13 @@ class OrderController extends Controller
         $order = $this->svc->transition($order, $request->validated()['next'], $request->user());
 
         return response()->json([
-            'data' => [
-                'id' => (string) $order->getKey(),
+            'data'    => [
+                'id'     => (string) $order->getKey(),
                 'status' => (string) $order->getAttribute('status'),
             ],
-            'meta' => [],
+            'meta'    => [],
             'message' => 'Status updated',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 }

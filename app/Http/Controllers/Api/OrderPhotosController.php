@@ -22,15 +22,6 @@ class OrderPhotosController extends Controller
         $before = $request->file('photos.before', []);
         $after = $request->file('photos.after', []);
 
-        if ((count($before) + count($after)) === 0) {
-            return response()->json([
-                'data' => null,
-                'meta' => [],
-                'message' => 'No files uploaded',
-                'errors' => ['photos' => ['empty']],
-            ], 422);
-        }
-
         $dir = "uploads/orders/{$order->id}";
         $rows = [];
 

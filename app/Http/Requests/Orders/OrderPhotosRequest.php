@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Requests\Orders;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -15,16 +14,24 @@ class OrderPhotosRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'photos.before.*' => ['image', 'max:4096'], // ~4 MB per file
-            'photos.after.*'  => ['image', 'max:4096'],
+            'photos.before'   => ['required', 'array', 'min:1'],
+            'photos.before.*' => ['required', 'image', 'max:4096'],
+            'photos.after'    => ['nullable', 'array'],
+            'photos.after.*'  => ['nullable', 'image', 'max:4096'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'photos.before.*.image' => 'File "before" harus berupa gambar.',
-            'photos.after.*.image'  => 'File "after" harus berupa gambar.',
+            'photos.before.required'   => 'Foto before wajib diupload.',
+            'photos.before.array'      => 'Format foto before tidak valid.',
+            'photos.before.min'        => 'Minimal 1 foto before wajib diupload.',
+            'photos.before.*.required' => 'File foto before wajib diisi.',
+            'photos.before.*.image'    => 'File "before" harus berupa gambar.',
+            'photos.before.*.max'      => 'Ukuran foto before maksimal 4MB.',
+            'photos.after.*.image'     => 'File "after" harus berupa gambar.',
+            'photos.after.*.max'       => 'Ukuran foto after maksimal 4MB.',
         ];
     }
 }
