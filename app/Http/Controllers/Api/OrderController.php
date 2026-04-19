@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
 
 class OrderController extends Controller
@@ -214,7 +215,35 @@ class OrderController extends Controller
 
     public function receipt(Request $request, Order $order)
     {
+        Log::info('RECEIPT_ACCESS_DEBUG', [
+            'order_id'               => (string) $order->getKey(),
+            'full_url'               => $request->fullUrl(),
+            'url'                    => $request->url(),
+            'path'                   => $request->path(),
+            'method'                 => $request->method(),
+            'query'                  => $request->query(),
+            'expires'                => $request->query('expires'),
+            'signature'              => $request->query('signature'),
+            'has_valid_signature'    => $request->hasValidSignature(),
+            'app_url'                => config('app.url'),
+            'request_scheme'         => $request->getScheme(),
+            'request_host'           => $request->getHost(),
+            'server_https'           => $_SERVER['HTTPS'] ?? null,
+            'server_forwarded_proto' => $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null,
+            'server_forwarded_host'  => $_SERVER['HTTP_X_FORWARDED_HOST'] ?? null,
+            'server_request_uri'     => $_SERVER['REQUEST_URI'] ?? null,
+        ]);
+
         if (! $request->hasValidSignature()) {
+            Log::warning('RECEIPT_INVALID_SIGNATURE', [
+                'order_id'       => (string) $order->getKey(),
+                'full_url'       => $request->fullUrl(),
+                'app_url'        => config('app.url'),
+                'request_scheme' => $request->getScheme(),
+                'request_host'   => $request->getHost(),
+                'query'          => $request->query(),
+            ]);
+
             $this->authorize('view', $order);
         }
 
@@ -272,6 +301,16 @@ class OrderController extends Controller
             now()->addMinutes(120),
             ['order' => (string) $order->getKey()]
         );
+
+        Log::info('RECEIPT_SHARE_LINK_DEBUG', [
+            'order_id'            => (string) $order->getKey(),
+            'generated_share_url' => $shareUrl,
+            'app_url'             => config('app.url'),
+            'request_scheme'      => $request->getScheme(),
+            'request_host'        => $request->getHost(),
+            'request_uri'         => $request->getRequestUri(),
+            'full_url'            => $request->fullUrl(),
+        ]);
 
         return response()->json([
             'data'    => [
