@@ -9,7 +9,7 @@ class WhatsappTemplatePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('Superadmin') || $user->hasRole('Admin Cabang');
+        return $user->hasAnyRole(['Superadmin', 'Admin Cabang', 'Kasir']);
     }
 
     public function view(User $user, WhatsappTemplate $template): bool
@@ -18,8 +18,9 @@ class WhatsappTemplatePolicy
             return true;
         }
 
-        if ($user->hasRole('Admin Cabang')) {
-            return (string) $template->branch_id === (string) $user->branch_id;
+        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
+            return (string) $template->branch_id === (string) $user->branch_id
+                || $template->branch_id === null;
         }
 
         return false;
