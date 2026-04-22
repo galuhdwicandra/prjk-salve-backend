@@ -296,9 +296,8 @@ class OrderController extends Controller
         $this->authorize('view', $order);
 
         // Buat signed URL ke route publik: /r/receipt/{order}
-        $shareUrl = URL::temporarySignedRoute(
+        $shareUrl = URL::signedRoute(
             'public.receipts.show',
-            now()->addMinutes(120),
             ['order' => (string) $order->getKey()]
         );
 
@@ -315,7 +314,7 @@ class OrderController extends Controller
         return response()->json([
             'data'    => [
                 'share_url'          => $shareUrl,
-                'expires_in_minutes' => 120,
+                'expires_in_minutes' => null,
             ],
             'meta'    => (object) [],
             'message' => 'OK',
