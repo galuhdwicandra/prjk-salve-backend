@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-23 16:12:35_  
+_Dihasilkan otomatis: 2026-04-23 16:51:46_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -1844,8 +1844,8 @@ class LoyaltyController extends Controller
 
 ### app\Http\Controllers\Api\OrderController.php
 
-- SHA: `bef41f3845ad`  
-- Ukuran: 11 KB  
+- SHA: `a9c4cbb0dffe`  
+- Ukuran: 12 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `OrderController` extends `Controller`**
@@ -2036,8 +2036,51 @@ class OrderController extends Controller
             }
         }
 
+        $fingerprint = sha1(json_encode([
+            'user_id'     => (string) $me->id,
+            'branch_id'   => (string) ($payload['branch_id'] ?? ''),
+            'customer_id' => (string) ($payload['customer_id'] ?? ''),
+            'items'       => collect($payload['items'] ?? [])
+                ->map(fn($it) => [
+                    'service_id' => (string) ($it['service_id'] ?? ''),
+                    'qty'        => (float) ($it['qty'] ?? 0),
+                    'note'       => (string) ($it['note'] ?? ''),
+                ])
+                ->values()
+                ->all(),
+            'discount'    => (float) ($payload['discount'] ?? 0),
+            'notes'       => (string) ($payload['notes'] ?? ''),
+            'received_at' => (string) ($payload['received_at'] ?? ''),
+            'ready_at'    => (string) ($payload['ready_at'] ?? ''),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+        $cacheKey = 'order:create:' . $fingerprint;
+
+        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
+            $existingOrderId = \Illuminate\Support\Facades\Cache::get($cacheKey);
+
+            $existingOrder = Order::query()
+                ->with(['customer', 'items.service'])
+                ->find($existingOrderId);
+
+            if ($existingOrder) {
+                return response()->json([
+                    'data'    => $existingOrder,
+                    'meta'    => ['idempotent' => true],
+                    'message' => 'Created',
+                    'errors'  => null,
+                ], 201);
+            }
+        }
+
         $order = $this->svc->createDraft($payload, $request->user())
             ->load(['customer', 'items.service']); // optional: konsisten dengan show()
+
+        \Illuminate\Support\Facades\Cache::put(
+            $cacheKey,
+            (string) $order->getKey(),
+            now()->addSeconds(15)
+        );
 
         return response()->json([
             'data'    => $order,
