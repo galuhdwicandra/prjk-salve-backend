@@ -21,6 +21,21 @@ use App\Http\Controllers\Api\WashNoteController;
 use App\Http\Controllers\Api\WhatsappTemplateController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\CashSessionController;
+use Illuminate\Http\Request;
+// use Illuminate\Support\Facades\URL;
+
+Route::get('/r/receipt/{order}', [OrderController::class, 'receipt'])
+    ->name('public.receipts.show');
+
+Route::get('/receipt/{order}', function (Request $request, \App\Models\Order $order) {
+    if (! $request->hasValidSignature()) {
+        abort(403);
+    }
+
+    return redirect()->to(route('public.receipts.show', [
+        'order' => (string) $order->getKey(),
+    ]));
+})->name('public.receipts.legacy');
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {

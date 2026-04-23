@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-19 20:11:33_  
+_Dihasilkan otomatis: 2026-04-23 16:12:35_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -1844,8 +1844,8 @@ class LoyaltyController extends Controller
 
 ### app\Http\Controllers\Api\OrderController.php
 
-- SHA: `fd77b569d517`  
-- Ukuran: 12 KB  
+- SHA: `bef41f3845ad`  
+- Ukuran: 11 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `OrderController` extends `Controller`**
@@ -1878,13 +1878,14 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\URL;
+
+// use Illuminate\Support\Facades\URL;
 
 class OrderController extends Controller
 {
     public function __construct(private OrderService $svc)
     {
-        $this->middleware('auth:sanctum');
+        $this->middleware('auth:sanctum')->except(['receipt']);
     }
 
     // GET /orders
@@ -2080,37 +2081,17 @@ class OrderController extends Controller
 
     public function receipt(Request $request, Order $order)
     {
-        Log::info('RECEIPT_ACCESS_DEBUG', [
-            'order_id'               => (string) $order->getKey(),
-            'full_url'               => $request->fullUrl(),
-            'url'                    => $request->url(),
-            'path'                   => $request->path(),
-            'method'                 => $request->method(),
-            'query'                  => $request->query(),
-            'expires'                => $request->query('expires'),
-            'signature'              => $request->query('signature'),
-            'has_valid_signature'    => $request->hasValidSignature(),
-            'app_url'                => config('app.url'),
-            'request_scheme'         => $request->getScheme(),
-            'request_host'           => $request->getHost(),
-            'server_https'           => $_SERVER['HTTPS'] ?? null,
-            'server_forwarded_proto' => $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null,
-            'server_forwarded_host'  => $_SERVER['HTTP_X_FORWARDED_HOST'] ?? null,
-            'server_request_uri'     => $_SERVER['REQUEST_URI'] ?? null,
+        Log::info('RECEIPT_PUBLIC_ACCESS', [
+            'order_id' => (string) $order->getKey(),
+            'full_url' => $request->fullUrl(),
+            'url'      => $request->url(),
+            'path'     => $request->path(),
+            'method'   => $request->method(),
+            'query'    => $request->query(),
+            'app_url'  => config('app.url'),
+            'host'     => $request->getHost(),
+            'scheme'   => $request->getScheme(),
         ]);
-
-        if (! $request->hasValidSignature()) {
-            Log::warning('RECEIPT_INVALID_SIGNATURE', [
-                'order_id'       => (string) $order->getKey(),
-                'full_url'       => $request->fullUrl(),
-                'app_url'        => config('app.url'),
-                'request_scheme' => $request->getScheme(),
-                'request_host'   => $request->getHost(),
-                'query'          => $request->query(),
-            ]);
-
-            $this->authorize('view', $order);
-        }
 
         $order->load([
             'items.service:id,name',
@@ -2132,10 +2113,10 @@ class OrderController extends Controller
             $next      = ($stamps % $cycle) + 1;
             $target25  = 5;
             $target100 = 10;
-            // sisa transaksi (0 artinya reward terjadi pada transaksi ini)
-            $sisa25  = ($target25 - $next + $cycle) % $cycle;
-            $sisa100 = ($target100 - $next + $cycle) % $cycle;
-            $loy     = [
+            $sisa25    = ($target25 - $next + $cycle) % $cycle;
+            $sisa100   = ($target100 - $next + $cycle) % $cycle;
+
+            $loy = [
                 'stamps'  => $stamps,
                 'cycle'   => $cycle,
                 'next'    => $next,
@@ -2157,17 +2138,13 @@ class OrderController extends Controller
     // POST /orders/{order}/share-link
     public function shareLink(Request $request, Order $order): JsonResponse
     {
-        // Staff yang berhak melihat order juga berhak membuat link struk
         $this->authorize('view', $order);
 
-        // Buat signed URL ke route publik: /r/receipt/{order}
-        $shareUrl = URL::temporarySignedRoute(
-            'public.receipts.show',
-            now()->addMinutes(120),
-            ['order' => (string) $order->getKey()]
-        );
+        $shareUrl = route('public.receipts.show', [
+            'order' => (string) $order->getKey(),
+        ]);
 
-        Log::info('RECEIPT_SHARE_LINK_DEBUG', [
+        Log::info('RECEIPT_SHARE_LINK_PUBLIC', [
             'order_id'            => (string) $order->getKey(),
             'generated_share_url' => $shareUrl,
             'app_url'             => config('app.url'),
@@ -2180,7 +2157,7 @@ class OrderController extends Controller
         return response()->json([
             'data'    => [
                 'share_url'          => $shareUrl,
-                'expires_in_minutes' => 120,
+                'expires_in_minutes' => null,
             ],
             'meta'    => (object) [],
             'message' => 'OK',
@@ -2270,8 +2247,8 @@ class OrderPaymentsController extends Controller
 
 ### app\Http\Controllers\Api\OrderPhotosController.php
 
-- SHA: `76e4af51aca7`  
-- Ukuran: 2 KB  
+- SHA: `b29735f843b3`  
+- Ukuran: 1 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `OrderPhotosController` extends `Controller`**
@@ -2305,15 +2282,6 @@ class OrderPhotosController extends Controller
 
         $before = $request->file('photos.before', []);
         $after = $request->file('photos.after', []);
-
-        if ((count($before) + count($after)) === 0) {
-            return response()->json([
-                'data' => null,
-                'meta' => [],
-                'message' => 'No files uploaded',
-                'errors' => ['photos' => ['empty']],
-            ], 422);
-        }
 
         $dir = "uploads/orders/{$order->id}";
         $rows = [];
@@ -6243,7 +6211,7 @@ class WashNotePolicy
 
 ### app\Policies\WhatsappTemplatePolicy.php
 
-- SHA: `93f74596b860`  
+- SHA: `46962c7434f7`  
 - Ukuran: 1 KB  
 - Namespace: `App\Policies`
 
@@ -6269,7 +6237,7 @@ class WhatsappTemplatePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('Superadmin') || $user->hasRole('Admin Cabang');
+        return $user->hasAnyRole(['Superadmin', 'Admin Cabang', 'Kasir']);
     }
 
     public function view(User $user, WhatsappTemplate $template): bool
@@ -6278,8 +6246,9 @@ class WhatsappTemplatePolicy
             return true;
         }
 
-        if ($user->hasRole('Admin Cabang')) {
-            return (string) $template->branch_id === (string) $user->branch_id;
+        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
+            return (string) $template->branch_id === (string) $user->branch_id
+                || $template->branch_id === null;
         }
 
         return false;
@@ -6308,6 +6277,7 @@ class WhatsappTemplatePolicy
         return $this->update($user, $template);
     }
 }
+
 ```
 </details>
 
@@ -7449,8 +7419,8 @@ class OrderApplyVoucherRequest extends FormRequest
 
 ### app\Http\Requests\Orders\OrderPhotosRequest.php
 
-- SHA: `8f5485516bd5`  
-- Ukuran: 723 B  
+- SHA: `3f2eac499c5c`  
+- Ukuran: 1 KB  
 - Namespace: `App\Http\Requests\Orders`
 
 **Class `OrderPhotosRequest` extends `FormRequest`**
@@ -7463,7 +7433,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Requests\Orders;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -7479,16 +7448,24 @@ class OrderPhotosRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'photos.before.*' => ['image', 'max:4096'], // ~4 MB per file
-            'photos.after.*'  => ['image', 'max:4096'],
+            'photos.before'   => ['required', 'array', 'min:1'],
+            'photos.before.*' => ['required', 'image', 'max:4096'],
+            'photos.after'    => ['nullable', 'array'],
+            'photos.after.*'  => ['nullable', 'image', 'max:4096'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'photos.before.*.image' => 'File "before" harus berupa gambar.',
-            'photos.after.*.image'  => 'File "after" harus berupa gambar.',
+            'photos.before.required'   => 'Foto before wajib diupload.',
+            'photos.before.array'      => 'Format foto before tidak valid.',
+            'photos.before.min'        => 'Minimal 1 foto before wajib diupload.',
+            'photos.before.*.required' => 'File foto before wajib diisi.',
+            'photos.before.*.image'    => 'File "before" harus berupa gambar.',
+            'photos.before.*.max'      => 'Ukuran foto before maksimal 4MB.',
+            'photos.after.*.image'     => 'File "after" harus berupa gambar.',
+            'photos.after.*.max'       => 'Ukuran foto after maksimal 4MB.',
         ];
     }
 }
@@ -12451,13 +12428,15 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `cdca95464052`  
+- SHA: `d47f56cfdc15`  
 - Ukuran: 9 KB
 
 **Ringkasan Routes (deteksi heuristik):**
 
 | Method | Path | Controller | Action |
 |---|---|---|---|
+| GET | `/r/receipt/{order}` | `OrderController` | `receipt` |
+| GET | `/receipt/{order}` | `` | `` |
 | POST | `/login` | `AuthController` | `login` |
 | GET | `/me` | `AuthController` | `me` |
 | POST | `/logout` | `AuthController` | `logout` |
@@ -12568,6 +12547,21 @@ use App\Http\Controllers\Api\WashNoteController;
 use App\Http\Controllers\Api\WhatsappTemplateController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\CashSessionController;
+use Illuminate\Http\Request;
+// use Illuminate\Support\Facades\URL;
+
+Route::get('/r/receipt/{order}', [OrderController::class, 'receipt'])
+    ->name('public.receipts.show');
+
+Route::get('/receipt/{order}', function (Request $request, \App\Models\Order $order) {
+    if (! $request->hasValidSignature()) {
+        abort(403);
+    }
+
+    return redirect()->to(route('public.receipts.show', [
+        'order' => (string) $order->getKey(),
+    ]));
+})->name('public.receipts.legacy');
 
 Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {

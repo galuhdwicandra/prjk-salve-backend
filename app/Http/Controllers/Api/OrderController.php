@@ -13,13 +13,14 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\URL;
+
+// use Illuminate\Support\Facades\URL;
 
 class OrderController extends Controller
 {
     public function __construct(private OrderService $svc)
     {
-        $this->middleware('auth:sanctum');
+        $this->middleware('auth:sanctum')->except(['receipt']);
     }
 
     // GET /orders
@@ -215,37 +216,17 @@ class OrderController extends Controller
 
     public function receipt(Request $request, Order $order)
     {
-        Log::info('RECEIPT_ACCESS_DEBUG', [
-            'order_id'               => (string) $order->getKey(),
-            'full_url'               => $request->fullUrl(),
-            'url'                    => $request->url(),
-            'path'                   => $request->path(),
-            'method'                 => $request->method(),
-            'query'                  => $request->query(),
-            'expires'                => $request->query('expires'),
-            'signature'              => $request->query('signature'),
-            'has_valid_signature'    => $request->hasValidSignature(),
-            'app_url'                => config('app.url'),
-            'request_scheme'         => $request->getScheme(),
-            'request_host'           => $request->getHost(),
-            'server_https'           => $_SERVER['HTTPS'] ?? null,
-            'server_forwarded_proto' => $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? null,
-            'server_forwarded_host'  => $_SERVER['HTTP_X_FORWARDED_HOST'] ?? null,
-            'server_request_uri'     => $_SERVER['REQUEST_URI'] ?? null,
+        Log::info('RECEIPT_PUBLIC_ACCESS', [
+            'order_id' => (string) $order->getKey(),
+            'full_url' => $request->fullUrl(),
+            'url'      => $request->url(),
+            'path'     => $request->path(),
+            'method'   => $request->method(),
+            'query'    => $request->query(),
+            'app_url'  => config('app.url'),
+            'host'     => $request->getHost(),
+            'scheme'   => $request->getScheme(),
         ]);
-
-        if (! $request->hasValidSignature()) {
-            Log::warning('RECEIPT_INVALID_SIGNATURE', [
-                'order_id'       => (string) $order->getKey(),
-                'full_url'       => $request->fullUrl(),
-                'app_url'        => config('app.url'),
-                'request_scheme' => $request->getScheme(),
-                'request_host'   => $request->getHost(),
-                'query'          => $request->query(),
-            ]);
-
-            $this->authorize('view', $order);
-        }
 
         $order->load([
             'items.service:id,name',
@@ -267,10 +248,10 @@ class OrderController extends Controller
             $next      = ($stamps % $cycle) + 1;
             $target25  = 5;
             $target100 = 10;
-            // sisa transaksi (0 artinya reward terjadi pada transaksi ini)
-            $sisa25  = ($target25 - $next + $cycle) % $cycle;
-            $sisa100 = ($target100 - $next + $cycle) % $cycle;
-            $loy     = [
+            $sisa25    = ($target25 - $next + $cycle) % $cycle;
+            $sisa100   = ($target100 - $next + $cycle) % $cycle;
+
+            $loy = [
                 'stamps'  => $stamps,
                 'cycle'   => $cycle,
                 'next'    => $next,
@@ -292,16 +273,13 @@ class OrderController extends Controller
     // POST /orders/{order}/share-link
     public function shareLink(Request $request, Order $order): JsonResponse
     {
-        // Staff yang berhak melihat order juga berhak membuat link struk
         $this->authorize('view', $order);
 
-        // Buat signed URL ke route publik: /r/receipt/{order}
-        $shareUrl = URL::signedRoute(
-            'public.receipts.show',
-            ['order' => (string) $order->getKey()]
-        );
+        $shareUrl = route('public.receipts.show', [
+            'order' => (string) $order->getKey(),
+        ]);
 
-        Log::info('RECEIPT_SHARE_LINK_DEBUG', [
+        Log::info('RECEIPT_SHARE_LINK_PUBLIC', [
             'order_id'            => (string) $order->getKey(),
             'generated_share_url' => $shareUrl,
             'app_url'             => config('app.url'),
