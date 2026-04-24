@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-24 20:34:35_  
+_Dihasilkan otomatis: 2026-04-24 20:54:17_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -4434,7 +4434,7 @@ class LoyaltyLog extends Model
 
 ### app\Models\Order.php
 
-- SHA: `16ad84e636d2`  
+- SHA: `355ac0ce6417`  
 - Ukuran: 3 KB  
 - Namespace: `App\Models`
 
@@ -4450,17 +4450,16 @@ Metode Publik:
 - **payments**()
 - **vouchers**()
 - **receivable**()
-- **setMoney**(string $attr, float|int|string|null $value) : *void* — Mutator generik untuk kolom uang — menerima float|int|string.
+- **setMoney**(string $attr, float | int | string | null $value) : *void* — Mutator generik untuk kolom uang — menerima float|int|string.
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
 <?php
-
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Tipe numerik-keuangan yang disimpan sebagai string (sesuai cast decimal Laravel).
@@ -4476,8 +4475,8 @@ class Order extends Model
     use HasFactory, HasUuids;
 
     public $incrementing = false;
-    protected $keyType = 'string';
-    protected $table = 'orders';
+    protected $keyType   = 'string';
+    protected $table     = 'orders';
 
     protected $fillable = [
         'branch_id',
@@ -4501,16 +4500,16 @@ class Order extends Model
 
     // Tetap pakai decimal:2 (Laravel mengembalikan string)
     protected $casts = [
-        'subtotal' => 'decimal:2',
-        'discount' => 'decimal:2',
+        'subtotal'    => 'decimal:2',
+        'discount'    => 'decimal:2',
         'grand_total' => 'decimal:2',
-        'dp_amount' => 'decimal:2',
+        'dp_amount'   => 'decimal:2',
         'paid_amount' => 'decimal:2',
-        'due_amount' => 'decimal:2',
-        'paid_at' => 'datetime',
-        'created_by' => 'integer',
-        'received_at' => 'datetime',
-        'ready_at'    => 'datetime',
+        'due_amount'  => 'decimal:2',
+        'paid_at'     => 'datetime',
+        'created_by'  => 'integer',
+        'received_at' => 'date:Y-m-d',
+        'ready_at'    => 'date:Y-m-d',
     ];
 
     public function branch()
@@ -4549,9 +4548,9 @@ class Order extends Model
      * Agar IDE happy, panggil via $this->setMoney('subtotal', $v) dsb.
      * @param float|int|string|null $value
      */
-    public function setMoney(string $attr, float|int|string|null $value): void
+    public function setMoney(string $attr, float | int | string | null $value): void
     {
-        $v = is_numeric($value) ? (float) $value : 0.0;
+        $v                       = is_numeric($value) ? (float) $value : 0.0;
         $this->attributes[$attr] = number_format($v, 2, '.', '');
     }
 }
@@ -7697,7 +7696,7 @@ class OrderStoreRequest extends FormRequest
 
 ### app\Http\Requests\OrderUpdateRequest.php
 
-- SHA: `9c7979775920`  
+- SHA: `c5a61c36f30b`  
 - Ukuran: 3 KB  
 - Namespace: `App\Http\Requests`
 
@@ -7728,19 +7727,23 @@ class OrderUpdateRequest extends FormRequest
             return null;
         }
 
-        $s = str_replace('T', ' ', trim($dt));
-        $s = preg_replace('/Z$/', '', $s);
+        $s = trim((string) $dt);
 
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
-            return $s;
-        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}/', $s)) {
+            $date = substr($s, 0, 10);
 
-        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
-            return $s . ':00';
+            return \Carbon\CarbonImmutable::createFromFormat(
+                'Y-m-d',
+                $date,
+                'Asia/Jakarta'
+            )->startOfDay()->format('Y-m-d H:i:s');
         }
 
         try {
-            return \Carbon\CarbonImmutable::parse($s)->toDateString();
+            return \Carbon\CarbonImmutable::parse($s, 'Asia/Jakarta')
+                ->timezone('Asia/Jakarta')
+                ->startOfDay()
+                ->format('Y-m-d H:i:s');
         } catch (\Throwable) {
             return $s;
         }

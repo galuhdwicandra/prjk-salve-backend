@@ -16,19 +16,23 @@ class OrderUpdateRequest extends FormRequest
             return null;
         }
 
-        $s = str_replace('T', ' ', trim($dt));
-        $s = preg_replace('/Z$/', '', $s);
+        $s = trim((string) $dt);
 
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
-            return $s;
-        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}/', $s)) {
+            $date = substr($s, 0, 10);
 
-        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
-            return $s . ':00';
+            return \Carbon\CarbonImmutable::createFromFormat(
+                'Y-m-d',
+                $date,
+                'Asia/Jakarta'
+            )->startOfDay()->format('Y-m-d H:i:s');
         }
 
         try {
-            return \Carbon\CarbonImmutable::parse($s)->toDateString();
+            return \Carbon\CarbonImmutable::parse($s, 'Asia/Jakarta')
+                ->timezone('Asia/Jakarta')
+                ->startOfDay()
+                ->format('Y-m-d H:i:s');
         } catch (\Throwable) {
             return $s;
         }

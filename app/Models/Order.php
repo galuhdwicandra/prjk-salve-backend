@@ -1,10 +1,9 @@
 <?php
-
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Tipe numerik-keuangan yang disimpan sebagai string (sesuai cast decimal Laravel).
@@ -20,8 +19,8 @@ class Order extends Model
     use HasFactory, HasUuids;
 
     public $incrementing = false;
-    protected $keyType = 'string';
-    protected $table = 'orders';
+    protected $keyType   = 'string';
+    protected $table     = 'orders';
 
     protected $fillable = [
         'branch_id',
@@ -45,16 +44,16 @@ class Order extends Model
 
     // Tetap pakai decimal:2 (Laravel mengembalikan string)
     protected $casts = [
-        'subtotal' => 'decimal:2',
-        'discount' => 'decimal:2',
+        'subtotal'    => 'decimal:2',
+        'discount'    => 'decimal:2',
         'grand_total' => 'decimal:2',
-        'dp_amount' => 'decimal:2',
+        'dp_amount'   => 'decimal:2',
         'paid_amount' => 'decimal:2',
-        'due_amount' => 'decimal:2',
-        'paid_at' => 'datetime',
-        'created_by' => 'integer',
-        'received_at' => 'datetime',
-        'ready_at'    => 'datetime',
+        'due_amount'  => 'decimal:2',
+        'paid_at'     => 'datetime',
+        'created_by'  => 'integer',
+        'received_at' => 'date:Y-m-d',
+        'ready_at'    => 'date:Y-m-d',
     ];
 
     public function branch()
@@ -93,9 +92,9 @@ class Order extends Model
      * Agar IDE happy, panggil via $this->setMoney('subtotal', $v) dsb.
      * @param float|int|string|null $value
      */
-    public function setMoney(string $attr, float|int|string|null $value): void
+    public function setMoney(string $attr, float | int | string | null $value): void
     {
-        $v = is_numeric($value) ? (float) $value : 0.0;
+        $v                       = is_numeric($value) ? (float) $value : 0.0;
         $this->attributes[$attr] = number_format($v, 2, '.', '');
     }
 }
