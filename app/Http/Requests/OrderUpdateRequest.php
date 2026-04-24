@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -13,13 +12,15 @@ class OrderUpdateRequest extends FormRequest
 
     protected function normalizeLocal(?string $dt): ?string
     {
-        if (!$dt) return null;
+        if (! $dt) {
+            return null;
+        }
 
         $s = str_replace('T', ' ', trim($dt));
         $s = preg_replace('/Z$/', '', $s);
 
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
-            return $s . ' 00:00:00';
+            return $s;
         }
 
         if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
@@ -27,7 +28,7 @@ class OrderUpdateRequest extends FormRequest
         }
 
         try {
-            return \Carbon\CarbonImmutable::parse($s)->format('Y-m-d H:i:s');
+            return \Carbon\CarbonImmutable::parse($s)->toDateString();
         } catch (\Throwable) {
             return $s;
         }
@@ -89,11 +90,11 @@ class OrderUpdateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'received_at.required' => 'Tanggal masuk wajib diisi.',
-            'received_at.date' => 'Tanggal masuk tidak valid.',
+            'received_at.required'    => 'Tanggal masuk wajib diisi.',
+            'received_at.date'        => 'Tanggal masuk tidak valid.',
 
-            'ready_at.required' => 'Tanggal selesai wajib diisi.',
-            'ready_at.date' => 'Tanggal selesai tidak valid.',
+            'ready_at.required'       => 'Tanggal selesai wajib diisi.',
+            'ready_at.date'           => 'Tanggal selesai tidak valid.',
             'ready_at.after_or_equal' => 'Tanggal selesai harus sama dengan atau setelah tanggal masuk.',
         ];
     }

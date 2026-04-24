@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-24 13:48:32_  
+_Dihasilkan otomatis: 2026-04-24 20:34:35_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -7578,7 +7578,7 @@ class OrderStatusRequest extends FormRequest
 
 ### app\Http\Requests\OrderStoreRequest.php
 
-- SHA: `92ff57bbae1c`  
+- SHA: `4b524b00bf66`  
 - Ukuran: 3 KB  
 - Namespace: `App\Http\Requests`
 
@@ -7586,13 +7586,12 @@ class OrderStatusRequest extends FormRequest
 
 Metode Publik:
 - **authorize**() : *bool*
-- **rules**() : *array* — Normalisasi input tanggal/datetime lokal ke format DB:
-- **messages**() : *array* — Normalisasi input tanggal/datetime lokal ke format DB:
+- **rules**() : *array*
+- **messages**() : *array*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
 <?php
-
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -7605,22 +7604,17 @@ class OrderStoreRequest extends FormRequest
         return $this->user()?->can('create', \App\Models\Order::class) ?? false;
     }
 
-    /**
-     * Normalisasi input tanggal/datetime lokal ke format DB:
-     * - YYYY-MM-DD           -> YYYY-MM-DD 00:00:00
-     * - YYYY-MM-DDTHH:mm     -> YYYY-MM-DD HH:mm:00
-     * - YYYY-MM-DD HH:mm     -> YYYY-MM-DD HH:mm:00
-     * - YYYY-MM-DD HH:mm:ss  -> tetap
-     */
     protected function normalizeLocal(?string $dt): ?string
     {
-        if (!$dt) return null;
+        if (! $dt) {
+            return null;
+        }
 
         $s = str_replace('T', ' ', trim($dt));
         $s = preg_replace('/Z$/', '', $s);
 
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
-            return $s . ' 00:00:00';
+            return $s;
         }
 
         if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
@@ -7628,7 +7622,7 @@ class OrderStoreRequest extends FormRequest
         }
 
         try {
-            return \Carbon\CarbonImmutable::parse($s)->format('Y-m-d H:i:s');
+            return \Carbon\CarbonImmutable::parse($s)->toDateString();
         } catch (\Throwable) {
             return $s;
         }
@@ -7664,45 +7658,46 @@ class OrderStoreRequest extends FormRequest
         $branchId = $this->user()?->branch_id;
 
         return [
-            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
-            'customer_id' => [
+            'branch_id'          => ['nullable', 'uuid', 'exists:branches,id'],
+            'customer_id'        => [
                 'required',
                 'uuid',
                 Rule::exists('customers', 'id')->where(fn($q) => $q->where('branch_id', $branchId)),
             ],
-            'notes' => ['nullable', 'string'],
+            'notes'              => ['nullable', 'string'],
 
-            'items' => ['required', 'array', 'min:1'],
+            'items'              => ['required', 'array', 'min:1'],
             'items.*.service_id' => ['required', 'uuid', 'exists:services,id'],
-            'items.*.qty' => ['required', 'numeric', 'gt:0'],
+            'items.*.qty'        => ['required', 'numeric', 'gt:0'],
 
-            'received_at' => ['required', 'date'],
-            'ready_at'    => ['required', 'date', 'after_or_equal:received_at'],
+            'received_at'        => ['required', 'date'],
+            'ready_at'           => ['required', 'date', 'after_or_equal:received_at'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'customer_id.required' => 'Pelanggan wajib dipilih.',
-            'customer_id.uuid' => 'Pelanggan tidak valid.',
-            'customer_id.exists' => 'Pelanggan tidak ditemukan di cabang Anda.',
+            'customer_id.required'    => 'Pelanggan wajib dipilih.',
+            'customer_id.uuid'        => 'Pelanggan tidak valid.',
+            'customer_id.exists'      => 'Pelanggan tidak ditemukan di cabang Anda.',
 
-            'received_at.required' => 'Tanggal masuk wajib diisi.',
-            'received_at.date' => 'Tanggal masuk tidak valid.',
+            'received_at.required'    => 'Tanggal masuk wajib diisi.',
+            'received_at.date'        => 'Tanggal masuk tidak valid.',
 
-            'ready_at.required' => 'Tanggal selesai wajib diisi.',
-            'ready_at.date' => 'Tanggal selesai tidak valid.',
+            'ready_at.required'       => 'Tanggal selesai wajib diisi.',
+            'ready_at.date'           => 'Tanggal selesai tidak valid.',
             'ready_at.after_or_equal' => 'Tanggal selesai harus sama dengan atau setelah tanggal masuk.',
         ];
     }
 }
+
 ```
 </details>
 
 ### app\Http\Requests\OrderUpdateRequest.php
 
-- SHA: `79d8d7e1b0a8`  
+- SHA: `9c7979775920`  
 - Ukuran: 3 KB  
 - Namespace: `App\Http\Requests`
 
@@ -7716,7 +7711,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -7730,13 +7724,15 @@ class OrderUpdateRequest extends FormRequest
 
     protected function normalizeLocal(?string $dt): ?string
     {
-        if (!$dt) return null;
+        if (! $dt) {
+            return null;
+        }
 
         $s = str_replace('T', ' ', trim($dt));
         $s = preg_replace('/Z$/', '', $s);
 
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
-            return $s . ' 00:00:00';
+            return $s;
         }
 
         if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $s)) {
@@ -7744,7 +7740,7 @@ class OrderUpdateRequest extends FormRequest
         }
 
         try {
-            return \Carbon\CarbonImmutable::parse($s)->format('Y-m-d H:i:s');
+            return \Carbon\CarbonImmutable::parse($s)->toDateString();
         } catch (\Throwable) {
             return $s;
         }
@@ -7806,15 +7802,16 @@ class OrderUpdateRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'received_at.required' => 'Tanggal masuk wajib diisi.',
-            'received_at.date' => 'Tanggal masuk tidak valid.',
+            'received_at.required'    => 'Tanggal masuk wajib diisi.',
+            'received_at.date'        => 'Tanggal masuk tidak valid.',
 
-            'ready_at.required' => 'Tanggal selesai wajib diisi.',
-            'ready_at.date' => 'Tanggal selesai tidak valid.',
+            'ready_at.required'       => 'Tanggal selesai wajib diisi.',
+            'ready_at.date'           => 'Tanggal selesai tidak valid.',
             'ready_at.after_or_equal' => 'Tanggal selesai harus sama dengan atau setelah tanggal masuk.',
         ];
     }
 }
+
 ```
 </details>
 
