@@ -105,6 +105,33 @@ class ReportController extends Controller
                 $columns = ['branch', 'created_at', 'number', 'invoice_no', 'customer', 'status', 'services', 'qty', 'grand_total', 'paid_amount', 'payment_status'];
                 return [$q, $columns];
 
+            case 'ready-reminders':
+                $q = $this->svc->buildReadyReminderQuery($from, $to, $bid, $req->input('status'));
+
+                $columns = [
+                    'branch_code',
+                    'branch_name',
+                    'order_number',
+                    'invoice_no',
+                    'customer_name',
+                    'customer_whatsapp',
+                    'received_at',
+                    'ready_at',
+                    'days_late',
+                    'reminder_status',
+                    'order_status',
+                    'display_status',
+                    'payment_status',
+                    'services',
+                    'qty',
+                    'grand_total',
+                    'paid_amount',
+                    'due_amount',
+                    'notes',
+                ];
+
+                return [$q, $columns];
+
             case 'receivables':
                 $q       = $this->svc->buildReceivablesQuery($from, $to, $bid, $req->input('status'));
                 $columns = ['branch', 'date', 'invoice', 'remaining_amount', 'status'];

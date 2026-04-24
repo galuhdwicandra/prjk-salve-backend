@@ -117,6 +117,77 @@ class ReportService
         return $q;
     }
 
+    public function buildReadyReminderQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $status = null)
+    {
+        $today = now('Asia/Jakarta')->toDateString();
+
+        $q = DB::table('orders')
+            ->leftJoin('branches', 'branches.id', '=', 'orders.branch_id')
+            ->leftJoin('customers', 'customers.id', '=', 'orders.customer_id')
+            ->leftJoin('order_items as oi', 'oi.order_id', '=', 'orders.id')
+            ->leftJoin('services as s', 's.id', '=', 'oi.service_id')
+            ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
+            ->whereNotNull('orders.ready_at')
+            ->whereBetween('orders.ready_at', [$from->toDateString(), $to->toDateString()])
+            ->whereNotIn('orders.status', ['PICKED_UP', 'CANCELED'])
+            ->selectRaw("
+            branches.code AS branch_code,
+            branches.name AS branch_name,
+            orders.number AS order_number,
+            orders.invoice_no,
+            customers.name AS customer_name,
+            customers.whatsapp AS customer_whatsapp,
+            DATE_FORMAT(orders.received_at, '%Y-%m-%d') AS received_at,
+            DATE_FORMAT(orders.ready_at, '%Y-%m-%d') AS ready_at,
+            DATEDIFF(?, orders.ready_at) AS days_late,
+            CASE
+                WHEN orders.ready_at < ? THEN 'TERLAMBAT'
+                WHEN orders.ready_at = ? THEN 'SELESAI_HARI_INI'
+                ELSE 'AKAN_SELESAI'
+            END AS reminder_status,
+            orders.status AS order_status,
+            CASE
+                WHEN orders.status = 'READY' THEN 'COMPLETED / SIAP DIAMBIL'
+                ELSE orders.status
+            END AS display_status,
+            orders.payment_status,
+            GROUP_CONCAT(
+                CONCAT(s.name, ' x', CAST(oi.qty AS CHAR))
+                ORDER BY s.name
+                SEPARATOR '; '
+            ) AS services,
+            CAST(SUM(oi.qty) AS CHAR) AS qty,
+            orders.grand_total,
+            orders.paid_amount,
+            orders.due_amount,
+            orders.notes
+        ", [$today, $today, $today])
+            ->groupBy(
+                'branches.code',
+                'branches.name',
+                'orders.number',
+                'orders.invoice_no',
+                'customers.name',
+                'customers.whatsapp',
+                'orders.received_at',
+                'orders.ready_at',
+                'orders.status',
+                'orders.payment_status',
+                'orders.grand_total',
+                'orders.paid_amount',
+                'orders.due_amount',
+                'orders.notes'
+            )
+            ->orderBy('orders.ready_at', 'asc')
+            ->orderBy('orders.created_at', 'asc');
+
+        if ($status) {
+            $q->where('orders.status', $status);
+        }
+
+        return $q;
+    }
+
     /** RECEIVABLES (Piutang) – window: receivables.due_date (atau created_at bila due_date null) */
     public function buildReceivablesQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $status = null)
     {
