@@ -6,23 +6,27 @@ use App\Http\Requests\OrderStatusRequest;
 use App\Http\Requests\OrderStoreRequest;
 use App\Http\Requests\OrderUpdateRequest;
 use App\Models\Order;
+use App\Services\CashLedgerService;
 use App\Services\LoyaltyService;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 // use Illuminate\Support\Facades\URL;
 
 class OrderController extends Controller
 {
-    public function __construct(private OrderService $svc)
-    {
+    public function __construct(
+        private OrderService $svc,
+        private CashLedgerService $cash
+    ) {
         $this->middleware('auth:sanctum')->except(['receipt']);
     }
-
     // GET /orders
     public function index(Request $request)
     {
@@ -157,6 +161,20 @@ class OrderController extends Controller
             }
             $payload['branch_id'] = (string) $me->branch_id;
         }
+
+        $branchId = (string) ($payload['branch_id'] ?? '');
+
+        if ($branchId === '') {
+            throw ValidationException::withMessages([
+                'branch_id' => ['Cabang wajib tersedia sebelum membuat pesanan.'],
+            ]);
+        }
+
+        $businessDate = ! empty($payload['received_at'])
+            ? Carbon::parse((string) $payload['received_at'], 'Asia/Jakarta')->startOfDay()
+            : now('Asia/Jakarta')->startOfDay();
+
+        $this->cash->requireOpenSession($branchId, $businessDate);
 
         // (Opsional, tapi disarankan) Customer harus di cabang yang sama
         if (! empty($payload['customer_id'])) {

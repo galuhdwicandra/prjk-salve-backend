@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-24 20:54:17_  
+_Dihasilkan otomatis: 2026-04-24 21:36:10_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -1865,14 +1865,14 @@ class LoyaltyController extends Controller
 
 ### app\Http\Controllers\Api\OrderController.php
 
-- SHA: `a9c4cbb0dffe`  
-- Ukuran: 12 KB  
+- SHA: `9ed7db22ce1b`  
+- Ukuran: 13 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `OrderController` extends `Controller`**
 
 Metode Publik:
-- **__construct**(private OrderService $svc)
+- **__construct**(private OrderService $svc, private CashLedgerService $cash)
 - **index**(Request $request)
 - **show**(Order $order)
 - **store**(OrderStoreRequest $request)
@@ -1892,23 +1892,27 @@ use App\Http\Requests\OrderStatusRequest;
 use App\Http\Requests\OrderStoreRequest;
 use App\Http\Requests\OrderUpdateRequest;
 use App\Models\Order;
+use App\Services\CashLedgerService;
 use App\Services\LoyaltyService;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 // use Illuminate\Support\Facades\URL;
 
 class OrderController extends Controller
 {
-    public function __construct(private OrderService $svc)
-    {
+    public function __construct(
+        private OrderService $svc,
+        private CashLedgerService $cash
+    ) {
         $this->middleware('auth:sanctum')->except(['receipt']);
     }
-
     // GET /orders
     public function index(Request $request)
     {
@@ -2043,6 +2047,20 @@ class OrderController extends Controller
             }
             $payload['branch_id'] = (string) $me->branch_id;
         }
+
+        $branchId = (string) ($payload['branch_id'] ?? '');
+
+        if ($branchId === '') {
+            throw ValidationException::withMessages([
+                'branch_id' => ['Cabang wajib tersedia sebelum membuat pesanan.'],
+            ]);
+        }
+
+        $businessDate = ! empty($payload['received_at'])
+            ? Carbon::parse((string) $payload['received_at'], 'Asia/Jakarta')->startOfDay()
+            : now('Asia/Jakarta')->startOfDay();
+
+        $this->cash->requireOpenSession($branchId, $businessDate);
 
         // (Opsional, tapi disarankan) Customer harus di cabang yang sama
         if (! empty($payload['customer_id'])) {
