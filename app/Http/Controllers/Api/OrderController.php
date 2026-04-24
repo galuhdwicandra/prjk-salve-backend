@@ -92,28 +92,13 @@ class OrderController extends Controller
             });
         }
 
-        // ===== (7) Filter tanggal order dibuat =====
-        if ($from = $request->query('from')) {
-            $q->whereDate('created_at', '>=', $from);
-        }
-        if ($to = $request->query('to')) {
-            $q->whereDate('created_at', '<=', $to);
+        // ===== (7) Filter tanggal masuk sampai tanggal selesai =====
+        if ($dateFrom = $request->query('date_from')) {
+            $q->whereDate('received_at', '>=', $dateFrom);
         }
 
-        // ===== (8) Filter tanggal diterima =====
-        if ($rf = $request->query('received_from')) {
-            $q->whereDate('received_at', '>=', $rf);
-        }
-        if ($rt = $request->query('received_to')) {
-            $q->whereDate('received_at', '<=', $rt);
-        }
-
-        // ===== (9) Filter tanggal jadi =====
-        if ($yf = $request->query('ready_from')) {
-            $q->whereDate('ready_at', '>=', $yf);
-        }
-        if ($yt = $request->query('ready_to')) {
-            $q->whereDate('ready_at', '<=', $yt);
+        if ($dateTo = $request->query('date_to')) {
+            $q->whereDate('ready_at', '<=', $dateTo);
         }
 
         $allowedPerPages  = [10, 100, 200, 500];
