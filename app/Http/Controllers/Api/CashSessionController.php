@@ -254,6 +254,25 @@ class CashSessionController extends Controller
         ]);
     }
 
+        public function reopen(Request $request, CashSession $cashSession)
+    {
+        $this->authorizeSession($cashSession);
+
+        $session = $this->cash->reopenSession(
+            $cashSession,
+            $request->user()
+        );
+
+        return response()->json([
+            'data' => $session,
+            'meta' => [
+                'system_closing' => $this->cash->computeSystemClosing($session->id),
+            ],
+            'message' => 'Cash session reopened',
+            'errors' => null,
+        ]);
+    }
+
     public function withdraw(CashWithdrawalRequest $request, CashSession $cashSession)
     {
         $this->authorizeSession($cashSession);

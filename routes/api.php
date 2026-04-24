@@ -166,6 +166,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/cash-sessions/open', [CashSessionController::class, 'open']);
         Route::get('/cash-sessions/{cashSession}', [CashSessionController::class, 'show']);
         Route::post('/cash-sessions/{cashSession}/close', [CashSessionController::class, 'close']);
+        Route::post('/cash-sessions/{cashSession}/reopen', [CashSessionController::class, 'reopen']);
         Route::post('/cash-sessions/{cashSession}/withdrawals', [CashSessionController::class, 'withdraw']);
 
         // Tambahkan route lain di sini sesuai kebutuhan

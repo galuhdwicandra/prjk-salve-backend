@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-23 16:51:46_  
+_Dihasilkan otomatis: 2026-04-24 13:48:32_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -354,7 +354,7 @@ class BranchController extends Controller
 
 ### app\Http\Controllers\Api\CashSessionController.php
 
-- SHA: `165cb2c9cc9b`  
+- SHA: `cda68dabd648`  
 - Ukuran: 10 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -368,6 +368,7 @@ Metode Publik:
 - **open**(CashSessionOpenRequest $request)
 - **update**(CashSessionUpdateRequest $request, CashSession $cashSession)
 - **close**(CashSessionCloseRequest $request, CashSession $cashSession)
+- **reopen**(Request $request, CashSession $cashSession)
 - **withdraw**(CashWithdrawalRequest $request, CashSession $cashSession)
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
@@ -628,6 +629,25 @@ class CashSessionController extends Controller
         ]);
     }
 
+        public function reopen(Request $request, CashSession $cashSession)
+    {
+        $this->authorizeSession($cashSession);
+
+        $session = $this->cash->reopenSession(
+            $cashSession,
+            $request->user()
+        );
+
+        return response()->json([
+            'data' => $session,
+            'meta' => [
+                'system_closing' => $this->cash->computeSystemClosing($session->id),
+            ],
+            'message' => 'Cash session reopened',
+            'errors' => null,
+        ]);
+    }
+
     public function withdraw(CashWithdrawalRequest $request, CashSession $cashSession)
     {
         $this->authorizeSession($cashSession);
@@ -680,6 +700,7 @@ class CashSessionController extends Controller
         }
     }
 }
+
 ```
 </details>
 
@@ -8913,8 +8934,8 @@ class AuthService
 
 ### app\Services\CashLedgerService.php
 
-- SHA: `34c45c1e28d8`  
-- Ukuran: 10 KB  
+- SHA: `eaf39738cd47`  
+- Ukuran: 12 KB  
 - Namespace: `App\Services`
 
 **Class `CashLedgerService`**
@@ -8924,6 +8945,7 @@ Metode Publik:
 - **requireOpenSession**(string $branchId, Carbon $businessDate) : *CashSession*
 - **openSession**(string $branchId, Carbon $businessDate, float $openingCash, User $user, ?string $notes = null) : *CashSession*
 - **closeSession**(CashSession $session, float $countedCash, User $user, ?string $notes = null) : *CashSession*
+- **reopenSession**(CashSession $session, User $user) : *CashSession*
 - **createWithdrawal**(CashSession $session, float $amount, User $user, ?Carbon $effectiveAt = null, ?string $note = null) : *CashMutation*
 - **syncPayment**(Payment $payment, ?User $actor = null) : *void*
 - **syncExpense**(Expense $expense, ?User $actor = null) : *void* — @var Order|null $order
@@ -9032,6 +9054,43 @@ class CashLedgerService
                 'closing_cash_counted' => $countedCash,
                 'difference_amount'    => $difference,
                 'notes'                => $notes ?: $session->notes,
+            ])->save();
+
+            return $session->fresh(['branch', 'opener', 'closer']);
+        });
+    }
+
+        public function reopenSession(CashSession $session, User $user): CashSession
+    {
+        return DB::transaction(function () use ($session, $user) {
+            $session = CashSession::query()
+                ->whereKey($session->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((string) $session->status !== 'CLOSED') {
+                abort(422, 'Hanya sesi kas yang sudah CLOSED yang dapat dibuka ulang.');
+            }
+
+            $hasOpenSession = CashSession::query()
+                ->where('branch_id', $session->branch_id)
+                ->whereDate('business_date', $session->business_date)
+                ->where('status', 'OPEN')
+                ->whereKeyNot($session->id)
+                ->lockForUpdate()
+                ->exists();
+
+            if ($hasOpenSession) {
+                abort(422, 'Sudah ada sesi kas OPEN untuk cabang dan tanggal ini.');
+            }
+
+            $session->forceFill([
+                'status'               => 'OPEN',
+                'closed_by'            => null,
+                'closed_at'            => null,
+                'closing_cash_system'  => null,
+                'closing_cash_counted' => null,
+                'difference_amount'    => null,
             ])->save();
 
             return $session->fresh(['branch', 'opener', 'closer']);
@@ -12471,8 +12530,8 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `d47f56cfdc15`  
-- Ukuran: 9 KB
+- SHA: `f8d749ab5826`  
+- Ukuran: 10 KB
 
 **Ringkasan Routes (deteksi heuristik):**
 
@@ -12562,6 +12621,7 @@ class UserSeeder extends Seeder
 | POST | `/cash-sessions/open` | `CashSessionController` | `open` |
 | GET | `/cash-sessions/{cashSession}` | `CashSessionController` | `show` |
 | POST | `/cash-sessions/{cashSession}/close` | `CashSessionController` | `close` |
+| POST | `/cash-sessions/{cashSession}/reopen` | `CashSessionController` | `reopen` |
 | POST | `/cash-sessions/{cashSession}/withdrawals` | `CashSessionController` | `withdraw` |
 
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
@@ -12735,6 +12795,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/cash-sessions/open', [CashSessionController::class, 'open']);
         Route::get('/cash-sessions/{cashSession}', [CashSessionController::class, 'show']);
         Route::post('/cash-sessions/{cashSession}/close', [CashSessionController::class, 'close']);
+        Route::post('/cash-sessions/{cashSession}/reopen', [CashSessionController::class, 'reopen']);
         Route::post('/cash-sessions/{cashSession}/withdrawals', [CashSessionController::class, 'withdraw']);
 
         // Tambahkan route lain di sini sesuai kebutuhan

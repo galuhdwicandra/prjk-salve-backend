@@ -103,6 +103,43 @@ class CashLedgerService
         });
     }
 
+        public function reopenSession(CashSession $session, User $user): CashSession
+    {
+        return DB::transaction(function () use ($session, $user) {
+            $session = CashSession::query()
+                ->whereKey($session->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((string) $session->status !== 'CLOSED') {
+                abort(422, 'Hanya sesi kas yang sudah CLOSED yang dapat dibuka ulang.');
+            }
+
+            $hasOpenSession = CashSession::query()
+                ->where('branch_id', $session->branch_id)
+                ->whereDate('business_date', $session->business_date)
+                ->where('status', 'OPEN')
+                ->whereKeyNot($session->id)
+                ->lockForUpdate()
+                ->exists();
+
+            if ($hasOpenSession) {
+                abort(422, 'Sudah ada sesi kas OPEN untuk cabang dan tanggal ini.');
+            }
+
+            $session->forceFill([
+                'status'               => 'OPEN',
+                'closed_by'            => null,
+                'closed_at'            => null,
+                'closing_cash_system'  => null,
+                'closing_cash_counted' => null,
+                'difference_amount'    => null,
+            ])->save();
+
+            return $session->fresh(['branch', 'opener', 'closer']);
+        });
+    }
+
     public function createWithdrawal(CashSession $session, float $amount, User $user, ?Carbon $effectiveAt = null, ?string $note = null): CashMutation
     {
         return DB::transaction(function () use ($session, $amount, $user, $effectiveAt, $note) {
