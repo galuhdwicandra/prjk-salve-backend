@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -193,39 +194,74 @@ class OrderController extends Controller
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
         $cacheKey = 'order:create:' . $fingerprint;
+        $lockKey  = $cacheKey . ':lock';
 
-        if (\Illuminate\Support\Facades\Cache::has($cacheKey)) {
-            $existingOrderId = \Illuminate\Support\Facades\Cache::get($cacheKey);
+        $lock = Cache::lock($lockKey, 10);
 
-            $existingOrder = Order::query()
-                ->with(['customer', 'items.service'])
-                ->find($existingOrderId);
+        try {
+            if (! $lock->get()) {
+                usleep(300000);
 
-            if ($existingOrder) {
+                $existingOrderId = Cache::get($cacheKey);
+
+                if ($existingOrderId) {
+                    $existingOrder = Order::query()
+                        ->with(['customer', 'items.service'])
+                        ->find($existingOrderId);
+
+                    if ($existingOrder) {
+                        return response()->json([
+                            'data'    => $existingOrder,
+                            'meta'    => ['idempotent' => true],
+                            'message' => 'Created',
+                            'errors'  => null,
+                        ], 201);
+                    }
+                }
+
                 return response()->json([
-                    'data'    => $existingOrder,
+                    'data'    => null,
                     'meta'    => ['idempotent' => true],
-                    'message' => 'Created',
+                    'message' => 'Transaksi sedang diproses. Silakan tunggu sebentar.',
                     'errors'  => null,
-                ], 201);
+                ], 409);
             }
+
+            $existingOrderId = Cache::get($cacheKey);
+
+            if ($existingOrderId) {
+                $existingOrder = Order::query()
+                    ->with(['customer', 'items.service'])
+                    ->find($existingOrderId);
+
+                if ($existingOrder) {
+                    return response()->json([
+                        'data'    => $existingOrder,
+                        'meta'    => ['idempotent' => true],
+                        'message' => 'Created',
+                        'errors'  => null,
+                    ], 201);
+                }
+            }
+
+            $order = $this->svc->createDraft($payload, $request->user())
+                ->load(['customer', 'items.service']);
+
+            Cache::put(
+                $cacheKey,
+                (string) $order->getKey(),
+                now()->addSeconds(30)
+            );
+
+            return response()->json([
+                'data'    => $order,
+                'meta'    => [],
+                'message' => 'Created',
+                'errors'  => null,
+            ], 201);
+        } finally {
+            optional($lock)->release();
         }
-
-        $order = $this->svc->createDraft($payload, $request->user())
-            ->load(['customer', 'items.service']); // optional: konsisten dengan show()
-
-        \Illuminate\Support\Facades\Cache::put(
-            $cacheKey,
-            (string) $order->getKey(),
-            now()->addSeconds(15)
-        );
-
-        return response()->json([
-            'data'    => $order,
-            'meta'    => [],
-            'message' => 'Created',
-            'errors'  => null,
-        ], 201);
     }
 
     // PUT /orders/{order}
