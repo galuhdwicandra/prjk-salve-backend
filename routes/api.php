@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BranchController;
+use App\Http\Controllers\Api\CashSessionController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
@@ -12,6 +13,8 @@ use App\Http\Controllers\Api\LoyaltyController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OrderPaymentsController;
 use App\Http\Controllers\Api\OrderPhotosController;
+use App\Http\Controllers\Api\ProductionBoardController;
+use App\Http\Controllers\Api\ProductionCorrectionRequestController;
 use App\Http\Controllers\Api\ReceivableController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ServiceController;
@@ -19,9 +22,9 @@ use App\Http\Controllers\Api\ServicePriceController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WashNoteController;
 use App\Http\Controllers\Api\WhatsappTemplateController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\CashSessionController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+
 // use Illuminate\Support\Facades\URL;
 
 Route::get('/r/receipt/{order}', [OrderController::class, 'receipt'])
@@ -101,6 +104,19 @@ Route::prefix('v1')->group(function () {
         // Wash Notes
         Route::get('/wash-notes/candidates', [WashNoteController::class, 'candidates']);
         Route::apiResource('wash-notes', WashNoteController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
+
+// Production Board / Live Cucian
+        Route::get('/production-board', [ProductionBoardController::class, 'index']);
+
+        Route::get('/production-board/correction-requests', [ProductionCorrectionRequestController::class, 'index']);
+        Route::post('/production-board/{order}/correction-requests', [ProductionCorrectionRequestController::class, 'store']);
+        Route::post('/production-board/correction-requests/{correctionRequest}/approve', [ProductionCorrectionRequestController::class, 'approve']);
+        Route::post('/production-board/correction-requests/{correctionRequest}/reject', [ProductionCorrectionRequestController::class, 'reject']);
+
+        Route::post('/production-board/{order}/start', [ProductionBoardController::class, 'start']);
+        Route::post('/production-board/{order}/move', [ProductionBoardController::class, 'move']);
+        Route::post('/production-board/{order}/finish', [ProductionBoardController::class, 'finish']);
+        Route::get('/production-board/reports/staff-daily', [ProductionBoardController::class, 'staffDailyReport']);
 
         // Reports
         Route::get('/reports/{kind}', [ReportController::class, 'preview']);

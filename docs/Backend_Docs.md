@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-04-25 12:09:03_  
+_Dihasilkan otomatis: 2026-05-02 16:46:33_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -20,6 +20,7 @@ _Dihasilkan otomatis: 2026-04-25 12:09:03_
   - [app\Http\Controllers\Api\OrderController.php](#file-apphttpcontrollersapiordercontrollerphp)
   - [app\Http\Controllers\Api\OrderPaymentsController.php](#file-apphttpcontrollersapiorderpaymentscontrollerphp)
   - [app\Http\Controllers\Api\OrderPhotosController.php](#file-apphttpcontrollersapiorderphotoscontrollerphp)
+  - [app\Http\Controllers\Api\ProductionBoardController.php](#file-apphttpcontrollersapiproductionboardcontrollerphp)
   - [app\Http\Controllers\Api\ReceivableController.php](#file-apphttpcontrollersapireceivablecontrollerphp)
   - [app\Http\Controllers\Api\ReportController.php](#file-apphttpcontrollersapireportcontrollerphp)
   - [app\Http\Controllers\Api\ServiceController.php](#file-apphttpcontrollersapiservicecontrollerphp)
@@ -45,6 +46,8 @@ _Dihasilkan otomatis: 2026-04-25 12:09:03_
   - [app\Models\OrderPhoto.php](#file-appmodelsorderphotophp)
   - [app\Models\OrderVoucher.php](#file-appmodelsordervoucherphp)
   - [app\Models\Payment.php](#file-appmodelspaymentphp)
+  - [app\Models\ProductionTask.php](#file-appmodelsproductiontaskphp)
+  - [app\Models\ProductionTaskLog.php](#file-appmodelsproductiontasklogphp)
   - [app\Models\Receivable.php](#file-appmodelsreceivablephp)
   - [app\Models\Service.php](#file-appmodelsservicephp)
   - [app\Models\ServiceCategory.php](#file-appmodelsservicecategoryphp)
@@ -126,6 +129,7 @@ _Dihasilkan otomatis: 2026-04-25 12:09:03_
   - [app\Services\OrderService.php](#file-appservicesorderservicephp)
   - [app\Services\PaymentService.php](#file-appservicespaymentservicephp)
   - [app\Services\PricingService.php](#file-appservicespricingservicephp)
+  - [app\Services\ProductionTaskService.php](#file-appservicesproductiontaskservicephp)
   - [app\Services\ReceivableService.php](#file-appservicesreceivableservicephp)
   - [app\Services\ReportService.php](#file-appservicesreportservicephp)
   - [app\Services\UserService.php](#file-appservicesuserservicephp)
@@ -2413,6 +2417,405 @@ class OrderPhotosController extends Controller
 ```
 </details>
 
+### app\Http\Controllers\Api\ProductionBoardController.php
+
+- SHA: `eb7a2acb9814`  
+- Ukuran: 13 KB  
+- Namespace: `App\Http\Controllers\Api`
+
+**Class `ProductionBoardController` extends `Controller`**
+
+Metode Publik:
+- **__construct**(private ProductionTaskService $service)
+- **index**(Request $request)
+- **start**(Request $request, Order $order)
+- **move**(Request $request, Order $order)
+- **finish**(Request $request, Order $order)
+- **staffDailyReport**(Request $request)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Order;
+use App\Models\ProductionTask;
+use App\Models\ProductionTaskLog;
+use App\Services\ProductionTaskService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
+
+class ProductionBoardController extends Controller
+{
+    public function __construct(private ProductionTaskService $service)
+    {
+        $this->middleware('auth:sanctum');
+    }
+
+    public function index(Request $request)
+    {
+        $this->authorizeProductionAccess($request);
+
+        $branchId = $this->branchScopeFor($request);
+
+        $this->service->syncOpenOrdersToTasks($branchId);
+
+        $user = $request->user();
+
+        $query = ProductionTask::query()
+            ->with($this->service->taskRelations())
+            ->whereIn('current_status', ProductionTaskService::BOARD_STATUSES)
+            ->when($this->isOnlyLaundryStaff($user), function ($q) use ($user) {
+                $q->where(function ($w) use ($user) {
+                    $w->where(function ($queue) {
+                        $queue->where('current_status', 'QUEUE')
+                            ->whereNull('assigned_to');
+                    })->orWhere('assigned_to', $user->id);
+                });
+            })
+            ->orderByRaw("FIELD(current_status, 'QUEUE', 'WASHING', 'DRYING', 'IRONING', 'READY')")
+            ->orderByDesc('created_at');
+
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        if ($status = $request->query('status')) {
+            if ((string) $status === 'OVERDUE') {
+                $today = now('Asia/Jakarta')->toDateString();
+
+                $query
+                    ->where('current_status', '!=', 'READY')
+                    ->whereHas('order', function ($orderQuery) use ($today) {
+                        $orderQuery
+                            ->whereNotNull('ready_at')
+                            ->whereDate('ready_at', '<', $today);
+                    });
+            } else {
+                $query->where('current_status', $status);
+            }
+        }
+
+        if ($q = trim((string) $request->query('q', ''))) {
+            $query->whereHas('order', function ($orderQuery) use ($q) {
+                $orderQuery
+                    ->where('number', 'like', "%{$q}%")
+                    ->orWhere('invoice_no', 'like', "%{$q}%")
+                    ->orWhereHas('customer', function ($customerQuery) use ($q) {
+                        $customerQuery->where('name', 'like', "%{$q}%");
+                    });
+            });
+        }
+
+        $allowedPerPages  = [10, 20, 50, 100];
+        $requestedPerPage = (int) $request->query('per_page', 20);
+        $perPage          = in_array($requestedPerPage, $allowedPerPages, true)
+            ? $requestedPerPage
+            : 20;
+
+        $page = $query->paginate($perPage);
+
+        $columns = [];
+        foreach (ProductionTaskService::BOARD_STATUSES as $status) {
+            $columns[$status] = [];
+        }
+
+        $items = [];
+
+        foreach ($page->items() as $task) {
+            $formatted = $this->formatTask($task);
+
+            $columns[$task->current_status][] = $formatted;
+            $items[]                          = $formatted;
+        }
+
+        return response()->json([
+            'data'    => [
+                'columns' => $columns,
+                'items'   => $items,
+            ],
+            'meta'    => [
+                'branch_id'    => $branchId,
+                'statuses'     => ProductionTaskService::BOARD_STATUSES,
+                'current_page' => $page->currentPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+                'last_page'    => $page->lastPage(),
+            ],
+            'message' => 'OK',
+            'errors'  => null,
+        ]);
+    }
+
+    public function start(Request $request, Order $order)
+    {
+        $this->authorizeProductionAccess($request);
+
+        $payload = $request->validate([
+            'note' => ['nullable', 'string'],
+        ]);
+
+        $task = $this->service->start(
+            $order,
+            $request->user(),
+            $payload['note'] ?? null
+        );
+
+        return response()->json([
+            'data'    => $this->formatTask($task),
+            'meta'    => [],
+            'message' => 'Cucian berhasil diambil.',
+            'errors'  => null,
+        ]);
+    }
+
+    public function move(Request $request, Order $order)
+    {
+        $this->authorizeProductionAccess($request);
+
+        $payload = $request->validate([
+            'to_status' => ['required', 'string', Rule::in(ProductionTaskService::STATUSES)],
+            'note'      => ['nullable', 'string'],
+        ]);
+
+        $task = $this->service->move(
+            $order,
+            $request->user(),
+            $payload['to_status'],
+            $payload['note'] ?? null
+        );
+
+        return response()->json([
+            'data'    => $this->formatTask($task),
+            'meta'    => [],
+            'message' => 'Status cucian berhasil dipindahkan.',
+            'errors'  => null,
+        ]);
+    }
+
+    public function finish(Request $request, Order $order)
+    {
+        $this->authorizeProductionAccess($request);
+
+        $payload = $request->validate([
+            'note' => ['nullable', 'string'],
+        ]);
+
+        $task = $this->service->finish(
+            $order,
+            $request->user(),
+            $payload['note'] ?? null
+        );
+
+        return response()->json([
+            'data'    => $this->formatTask($task),
+            'meta'    => [],
+            'message' => 'Cucian berhasil ditandai selesai.',
+            'errors'  => null,
+        ]);
+    }
+
+    public function staffDailyReport(Request $request)
+    {
+        $this->authorizeProductionAccess($request);
+
+        $payload = $request->validate([
+            'date_from' => ['nullable', 'date'],
+            'date_to'   => ['nullable', 'date'],
+            'branch_id' => ['nullable', 'string'],
+        ]);
+
+        $from     = Carbon::parse($payload['date_from'] ?? now('Asia/Jakarta')->toDateString())->toDateString();
+        $to       = Carbon::parse($payload['date_to'] ?? $from)->toDateString();
+        $branchId = $this->branchScopeFor($request);
+        $user     = $request->user();
+
+        $logs = ProductionTaskLog::query()
+            ->with([
+                'user:id,name',
+                'task:id,order_id,assigned_to,current_status,qty,started_date,finished_date',
+                'order:id,branch_id,customer_id,number,invoice_no,status,received_at,ready_at',
+                'order.customer:id,name',
+            ])
+            ->whereBetween('process_date', [$from, $to])
+            ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
+            ->when($this->isOnlyLaundryStaff($user), fn($query) => $query->where('user_id', $user->id))
+            ->orderBy('process_date')
+            ->orderBy('created_at')
+            ->get();
+
+        $grouped = $logs
+            ->groupBy('user_id')
+            ->map(function ($userLogs) {
+                $first = $userLogs->first();
+
+                $details = $userLogs
+                    ->unique('order_id')
+                    ->map(function ($log) {
+                        $task  = $log->task;
+                        $order = $log->order;
+
+                        $readyAt      = optional($order?->ready_at)->format('Y-m-d');
+                        $finishedDate = optional($task?->finished_date)->format('Y-m-d');
+                        $overdue      = $this->overdueMeta($readyAt, $finishedDate);
+
+                        return [
+                            'order_id'       => (string) $log->order_id,
+                            'invoice_no'     => $order?->invoice_no,
+                            'number'         => $order?->number,
+                            'customer_name'  => $order?->customer?->name,
+                            'qty'            => (float) ($task?->qty ?? $log->qty ?? 0),
+                            'current_status' => $task?->current_status,
+                            'received_at'    => optional($order?->received_at)->format('Y-m-d'),
+                            'ready_at'       => $readyAt,
+                            'started_date'   => optional($task?->started_date)->format('Y-m-d'),
+                            'finished_date'  => $finishedDate,
+                            'is_overdue'     => $overdue['is_overdue'],
+                            'overdue_days'   => $overdue['overdue_days'],
+                            'overdue_text'   => $overdue['overdue_text'],
+                        ];
+                    })
+                    ->values();
+
+                return [
+                    'user_id'       => (string) $first->user_id,
+                    'staff_name'    => $first->user?->name ?? '-',
+                    'total_invoice' => $details->count(),
+                    'total_qty'     => (float) $details->sum('qty'),
+                    'finished'      => $details->whereNotNull('finished_date')->count(),
+                    'unfinished'    => $details->whereNull('finished_date')->count(),
+                    'overdue'       => $details->where('is_overdue', true)->count(),
+                    'details'       => $details,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'data'    => $grouped,
+            'meta'    => [
+                'from'      => $from,
+                'to'        => $to,
+                'branch_id' => $branchId,
+            ],
+            'message' => 'OK',
+            'errors'  => null,
+        ]);
+    }
+
+    private function overdueMeta(?string $readyAt, ?string $finishedDate): array
+    {
+        if (! $readyAt) {
+            return [
+                'is_overdue'   => false,
+                'overdue_days' => 0,
+                'overdue_text' => null,
+            ];
+        }
+
+        $targetDate = Carbon::parse($readyAt, 'Asia/Jakarta')->startOfDay();
+
+        $actualDate = $finishedDate
+            ? Carbon::parse($finishedDate, 'Asia/Jakarta')->startOfDay()
+            : now('Asia/Jakarta')->startOfDay();
+
+        if ($actualDate->lessThanOrEqualTo($targetDate)) {
+            return [
+                'is_overdue'   => false,
+                'overdue_days' => 0,
+                'overdue_text' => null,
+            ];
+        }
+
+        $days = $targetDate->diffInDays($actualDate);
+
+        return [
+            'is_overdue'   => true,
+            'overdue_days' => $days,
+            'overdue_text' => 'Terlambat ' . $days . ' hari',
+        ];
+    }
+
+    private function formatTask(ProductionTask $task): array
+    {
+        $order = $task->order;
+
+        return [
+            'id'             => (string) $task->id,
+            'order_id'       => (string) $task->order_id,
+            'branch_id'      => (string) $task->branch_id,
+            'assigned_to'    => $task->assigned_to ? (string) $task->assigned_to : null,
+            'current_status' => (string) $task->current_status,
+            'qty'            => (float) $task->qty,
+            'started_date'   => optional($task->started_date)->format('Y-m-d'),
+            'finished_date'  => optional($task->finished_date)->format('Y-m-d'),
+            'note'           => $task->note,
+            'created_at'     => optional($task->created_at)->toISOString(),
+            'updated_at'     => optional($task->updated_at)->toISOString(),
+            'assignee'       => $task->assignee
+                ? [
+                'id'   => (string) $task->assignee->id,
+                'name' => $task->assignee->name,
+            ]
+                : null,
+            'order'          => $order
+                ? [
+                'id'          => (string) $order->id,
+                'branch_id'   => (string) $order->branch_id,
+                'number'      => $order->number,
+                'invoice_no'  => $order->invoice_no,
+                'status'      => $order->status,
+                'received_at' => optional($order->received_at)->format('Y-m-d'),
+                'ready_at'    => optional($order->ready_at)->format('Y-m-d'),
+                'customer'    => $order->customer
+                    ? [
+                    'id'       => (string) $order->customer->id,
+                    'name'     => $order->customer->name,
+                    'whatsapp' => $order->customer->whatsapp,
+                ]
+                    : null,
+            ]
+                : null,
+        ];
+    }
+
+    private function authorizeProductionAccess(Request $request): void
+    {
+        $user = $request->user();
+
+        if (
+            ! $user->hasRole('Superadmin')
+            && ! $user->hasRole('Admin Cabang')
+            && ! $user->hasRole('Petugas Cuci')
+        ) {
+            abort(403, 'Anda tidak memiliki izin mengakses Live Cucian.');
+        }
+    }
+
+    private function isOnlyLaundryStaff($user): bool
+    {
+        return $user->hasRole('Petugas Cuci')
+        && ! $user->hasRole('Superadmin')
+        && ! $user->hasRole('Admin Cabang');
+    }
+
+    private function branchScopeFor(Request $request): ?string
+    {
+        $user = $request->user();
+
+        if ($user->hasRole('Superadmin')) {
+            $branchId = (string) $request->query('branch_id', '');
+            return $branchId !== '' ? $branchId : null;
+        }
+
+        return $user->branch_id ? (string) $user->branch_id : null;
+    }
+}
+
+```
+</details>
+
 ### app\Http\Controllers\Api\ReceivableController.php
 
 - SHA: `faf1c359d191`  
@@ -4500,7 +4903,7 @@ class LoyaltyLog extends Model
 
 ### app\Models\Order.php
 
-- SHA: `355ac0ce6417`  
+- SHA: `3310027d8a56`  
 - Ukuran: 3 KB  
 - Namespace: `App\Models`
 
@@ -4512,6 +4915,7 @@ Metode Publik:
 - **branch**()
 - **customer**()
 - **items**()
+- **productionTask**()
 - **photos**()
 - **payments**()
 - **vouchers**()
@@ -4589,6 +4993,10 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class, 'order_id', 'id');
+    }
+        public function productionTask()
+    {
+        return $this->hasOne(\App\Models\ProductionTask::class, 'order_id', 'id');
     }
     public function photos()
     {
@@ -4825,6 +5233,154 @@ class Payment extends Model
     public function order()
     {
         return $this->belongsTo(Order::class, 'order_id', 'id');
+    }
+}
+
+```
+</details>
+
+### app\Models\ProductionTask.php
+
+- SHA: `2778924a9f05`  
+- Ukuran: 1 KB  
+- Namespace: `App\Models`
+
+**Class `ProductionTask` extends `Model`**
+
+Metode Publik:
+- **order**()
+- **branch**()
+- **assignee**()
+- **logs**()
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class ProductionTask extends Model
+{
+    use HasFactory, HasUuids;
+
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'order_id',
+        'branch_id',
+        'assigned_to',
+        'current_status',
+        'qty',
+        'started_date',
+        'finished_date',
+        'note',
+    ];
+
+    protected $casts = [
+        'qty' => 'decimal:2',
+        'started_date' => 'date:Y-m-d',
+        'finished_date' => 'date:Y-m-d',
+    ];
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class, 'order_id', 'id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id', 'id');
+    }
+
+    public function assignee()
+    {
+        return $this->belongsTo(User::class, 'assigned_to', 'id');
+    }
+
+    public function logs()
+    {
+        return $this->hasMany(ProductionTaskLog::class, 'production_task_id', 'id');
+    }
+}
+
+```
+</details>
+
+### app\Models\ProductionTaskLog.php
+
+- SHA: `08425949cbf6`  
+- Ukuran: 1 KB  
+- Namespace: `App\Models`
+
+**Class `ProductionTaskLog` extends `Model`**
+
+Metode Publik:
+- **task**()
+- **order**()
+- **branch**()
+- **user**()
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class ProductionTaskLog extends Model
+{
+    use HasFactory, HasUuids;
+
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'production_task_id',
+        'order_id',
+        'branch_id',
+        'user_id',
+        'from_status',
+        'to_status',
+        'qty',
+        'process_date',
+        'started_date',
+        'finished_date',
+        'note',
+    ];
+
+    protected $casts = [
+        'qty' => 'decimal:2',
+        'process_date' => 'date:Y-m-d',
+        'started_date' => 'date:Y-m-d',
+        'finished_date' => 'date:Y-m-d',
+    ];
+
+    public function task()
+    {
+        return $this->belongsTo(ProductionTask::class, 'production_task_id', 'id');
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class, 'order_id', 'id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id', 'id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 }
 
@@ -10782,6 +11338,275 @@ class PricingService
 ```
 </details>
 
+### app\Services\ProductionTaskService.php
+
+- SHA: `7c73d7494465`  
+- Ukuran: 8 KB  
+- Namespace: `App\Services`
+
+**Class `ProductionTaskService`**
+
+Metode Publik:
+- **syncOpenOrdersToTasks**(?string $branchId = null) : *void*
+- **start**(Order $order, User $user, ?string $note = null) : *ProductionTask*
+- **move**(Order $order, User $user, string $toStatus, ?string $note = null) : *ProductionTask*
+- **finish**(Order $order, User $user, ?string $note = null) : *ProductionTask*
+- **calculateOrderQty**(Order $order) : *float*
+- **taskRelations**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+namespace App\Services;
+
+use App\Models\Order;
+use App\Models\ProductionTask;
+use App\Models\ProductionTaskLog;
+use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class ProductionTaskService
+{
+    public const STATUSES = [
+        'QUEUE',
+        'WASHING',
+        'DRYING',
+        'IRONING',
+        'READY',
+        'PICKED_UP',
+        'CANCELED',
+    ];
+
+    public const BOARD_STATUSES = [
+        'QUEUE',
+        'WASHING',
+        'DRYING',
+        'IRONING',
+        'READY',
+    ];
+
+    public function syncOpenOrdersToTasks(?string $branchId = null): void
+    {
+        Order::query()
+            ->with('items:id,order_id,qty')
+            ->whereIn('status', self::STATUSES)
+            ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
+            ->whereDoesntHave('productionTask')
+            ->chunkById(100, function (Collection $orders) {
+                foreach ($orders as $order) {
+                    $status = in_array((string) $order->status, self::STATUSES, true)
+                        ? (string) $order->status
+                        : 'QUEUE';
+
+                    ProductionTask::query()->create([
+                        'order_id'       => (string) $order->id,
+                        'branch_id'      => (string) $order->branch_id,
+                        'assigned_to'    => null,
+                        'current_status' => $status,
+                        'qty'            => $this->calculateOrderQty($order),
+                        'started_date'   => null,
+                        'finished_date'  => in_array($status, ['READY', 'PICKED_UP'], true)
+                            ? now('Asia/Jakarta')->toDateString()
+                            : null,
+                        'note'           => null,
+                    ]);
+                }
+            });
+    }
+
+    public function start(Order $order, User $user, ?string $note = null): ProductionTask
+    {
+        return DB::transaction(function () use ($order, $user, $note) {
+            $task = $this->findOrCreateTask($order);
+            $this->ensureTaskBranchAllowed($task, $user);
+
+            if ($task->assigned_to !== null && (string) $task->assigned_to !== (string) $user->id && ! $this->isManager($user)) {
+                throw ValidationException::withMessages([
+                    'assigned_to' => ['Cucian ini sudah diambil oleh petugas lain.'],
+                ]);
+            }
+
+            $fromStatus = $task->current_status;
+            $today      = now('Asia/Jakarta')->toDateString();
+
+            $task->fill([
+                'assigned_to'    => $task->assigned_to ?: $user->id,
+                'current_status' => 'WASHING',
+                'started_date'   => $task->started_date ?: $today,
+                'finished_date'  => null,
+                'qty'            => $this->calculateOrderQty($order),
+                'note'           => $note,
+            ])->save();
+
+            $this->syncOrderStatusFromProduction($order, 'WASHING');
+
+            $this->writeLog($task, $user, $fromStatus, 'WASHING', $note);
+
+            return $task->refresh()->load($this->taskRelations());
+        });
+    }
+
+    public function move(Order $order, User $user, string $toStatus, ?string $note = null): ProductionTask
+    {
+        if (! in_array($toStatus, self::STATUSES, true)) {
+            throw ValidationException::withMessages([
+                'to_status' => ['Status tujuan tidak valid.'],
+            ]);
+        }
+
+        return DB::transaction(function () use ($order, $user, $toStatus, $note) {
+            $task = $this->findOrCreateTask($order);
+            $this->ensureTaskBranchAllowed($task, $user);
+            $this->ensureAssignedOrManager($task, $user);
+
+            $fromStatus = $task->current_status;
+            $today      = now('Asia/Jakarta')->toDateString();
+
+            $payload = [
+                'current_status' => $toStatus,
+                'qty'            => $this->calculateOrderQty($order),
+                'note'           => $note,
+            ];
+
+            if ($task->started_date === null && $toStatus !== 'QUEUE') {
+                $payload['started_date'] = $today;
+            }
+
+            if (in_array($toStatus, ['READY', 'PICKED_UP'], true)) {
+                $payload['finished_date'] = $task->finished_date ?: $today;
+            }
+
+            if (! in_array($toStatus, ['READY', 'PICKED_UP'], true)) {
+                $payload['finished_date'] = null;
+            }
+
+            $task->fill($payload)->save();
+
+            $this->syncOrderStatusFromProduction($order, $toStatus);
+
+            $this->writeLog($task, $user, $fromStatus, $toStatus, $note);
+
+            return $task->refresh()->load($this->taskRelations());
+        });
+    }
+
+    public function finish(Order $order, User $user, ?string $note = null): ProductionTask
+    {
+        return $this->move($order, $user, 'READY', $note);
+    }
+
+    public function calculateOrderQty(Order $order): float
+    {
+        $order->loadMissing('items:id,order_id,qty');
+
+        $items = $order->getRelation('items');
+
+        return (float) $items->sum('qty');
+    }
+
+    private function syncOrderStatusFromProduction(Order $order, string $status): void
+    {
+        if (! in_array($status, self::STATUSES, true)) {
+            throw ValidationException::withMessages([
+                'status' => ['Status order tidak valid.'],
+            ]);
+        }
+
+        $order->forceFill([
+            'status' => $status,
+        ])->save();
+
+        $order->refresh();
+    }
+
+    public function taskRelations(): array
+    {
+        return [
+            'order:id,branch_id,customer_id,number,invoice_no,status,received_at,ready_at',
+            'order.customer:id,name,whatsapp',
+            'assignee:id,name',
+            'branch:id,name',
+        ];
+    }
+
+    private function findOrCreateTask(Order $order): ProductionTask
+    {
+        $order->loadMissing('items:id,order_id,qty');
+
+        return ProductionTask::query()->firstOrCreate(
+            ['order_id' => (string) $order->id],
+            [
+                'branch_id'      => (string) $order->branch_id,
+                'assigned_to'    => null,
+                'current_status' => in_array((string) $order->status, self::STATUSES, true)
+                    ? (string) $order->status
+                    : 'QUEUE',
+                'qty'            => $this->calculateOrderQty($order),
+                'started_date'   => null,
+                'finished_date'  => null,
+                'note'           => null,
+            ]
+        );
+    }
+
+    private function ensureTaskBranchAllowed(ProductionTask $task, User $user): void
+    {
+        if ($user->hasRole('Superadmin')) {
+            return;
+        }
+
+        if ((string) $task->branch_id !== (string) $user->branch_id) {
+            abort(403, 'Anda tidak memiliki akses ke cucian cabang ini.');
+        }
+    }
+
+    private function ensureAssignedOrManager(ProductionTask $task, User $user): void
+    {
+        if ($this->isManager($user)) {
+            return;
+        }
+
+        if ((string) $task->assigned_to !== (string) $user->id) {
+            throw ValidationException::withMessages([
+                'assigned_to' => ['Cucian ini belum Anda ambil atau sedang dikerjakan petugas lain.'],
+            ]);
+        }
+    }
+
+    private function isManager(User $user): bool
+    {
+        return $user->hasRole('Superadmin') || $user->hasRole('Admin Cabang');
+    }
+
+    private function writeLog(
+        ProductionTask $task,
+        User $user,
+        ?string $fromStatus,
+        string $toStatus,
+        ?string $note = null
+    ): void {
+        ProductionTaskLog::query()->create([
+            'production_task_id' => (string) $task->id,
+            'order_id'           => (string) $task->order_id,
+            'branch_id'          => (string) $task->branch_id,
+            'user_id'            => $user->id,
+            'from_status'        => $fromStatus,
+            'to_status'          => $toStatus,
+            'qty'                => $task->qty,
+            'process_date'       => Carbon::now('Asia/Jakarta')->toDateString(),
+            'started_date'       => $task->started_date,
+            'finished_date'      => $task->finished_date,
+            'note'               => $note,
+        ]);
+    }
+}
+
+```
+</details>
+
 ### app\Services\ReceivableService.php
 
 - SHA: `a74754d06ee8`  
@@ -12668,7 +13493,7 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `f8d749ab5826`  
+- SHA: `103c5fb09c39`  
 - Ukuran: 10 KB
 
 **Ringkasan Routes (deteksi heuristik):**
@@ -12718,6 +13543,11 @@ class UserSeeder extends Seeder
 | PUT | `/customers/{customer}` | `CustomerController` | `update` |
 | DELETE | `/customers/{customer}` | `CustomerController` | `destroy` |
 | GET | `/wash-notes/candidates` | `WashNoteController` | `candidates` |
+| GET | `/production-board` | `ProductionBoardController` | `index` |
+| POST | `/production-board/{order}/start` | `ProductionBoardController` | `start` |
+| POST | `/production-board/{order}/move` | `ProductionBoardController` | `move` |
+| POST | `/production-board/{order}/finish` | `ProductionBoardController` | `finish` |
+| GET | `/production-board/reports/staff-daily` | `ProductionBoardController` | `staffDailyReport` |
 | GET | `/reports/{kind}` | `ReportController` | `preview` |
 | GET | `/reports/{kind}/export` | `ReportController` | `export` |
 | GET | `/loyalty/{customer}` | `LoyaltyController` | `summary` |
@@ -12769,6 +13599,7 @@ class UserSeeder extends Seeder
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BranchController;
+use App\Http\Controllers\Api\CashSessionController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
@@ -12779,6 +13610,7 @@ use App\Http\Controllers\Api\LoyaltyController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OrderPaymentsController;
 use App\Http\Controllers\Api\OrderPhotosController;
+use App\Http\Controllers\Api\ProductionBoardController;
 use App\Http\Controllers\Api\ReceivableController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ServiceController;
@@ -12786,9 +13618,9 @@ use App\Http\Controllers\Api\ServicePriceController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WashNoteController;
 use App\Http\Controllers\Api\WhatsappTemplateController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\CashSessionController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+
 // use Illuminate\Support\Facades\URL;
 
 Route::get('/r/receipt/{order}', [OrderController::class, 'receipt'])
@@ -12868,6 +13700,13 @@ Route::prefix('v1')->group(function () {
         // Wash Notes
         Route::get('/wash-notes/candidates', [WashNoteController::class, 'candidates']);
         Route::apiResource('wash-notes', WashNoteController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
+
+        // Production Board / Live Cucian
+        Route::get('/production-board', [ProductionBoardController::class, 'index']);
+        Route::post('/production-board/{order}/start', [ProductionBoardController::class, 'start']);
+        Route::post('/production-board/{order}/move', [ProductionBoardController::class, 'move']);
+        Route::post('/production-board/{order}/finish', [ProductionBoardController::class, 'finish']);
+        Route::get('/production-board/reports/staff-daily', [ProductionBoardController::class, 'staffDailyReport']);
 
         // Reports
         Route::get('/reports/{kind}', [ReportController::class, 'preview']);

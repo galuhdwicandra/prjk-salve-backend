@@ -68,6 +68,10 @@ class Order extends Model
     {
         return $this->hasMany(OrderItem::class, 'order_id', 'id');
     }
+        public function productionTask()
+    {
+        return $this->hasOne(\App\Models\ProductionTask::class, 'order_id', 'id');
+    }
     public function photos()
     {
         return $this->hasMany(OrderPhoto::class, 'order_id', 'id');
