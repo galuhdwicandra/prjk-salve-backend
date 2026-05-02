@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-05-02 16:46:33_  
+_Dihasilkan otomatis: 2026-05-02 17:35:32_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -21,6 +21,7 @@ _Dihasilkan otomatis: 2026-05-02 16:46:33_
   - [app\Http\Controllers\Api\OrderPaymentsController.php](#file-apphttpcontrollersapiorderpaymentscontrollerphp)
   - [app\Http\Controllers\Api\OrderPhotosController.php](#file-apphttpcontrollersapiorderphotoscontrollerphp)
   - [app\Http\Controllers\Api\ProductionBoardController.php](#file-apphttpcontrollersapiproductionboardcontrollerphp)
+  - [app\Http\Controllers\Api\ProductionCorrectionRequestController.php](#file-apphttpcontrollersapiproductioncorrectionrequestcontrollerphp)
   - [app\Http\Controllers\Api\ReceivableController.php](#file-apphttpcontrollersapireceivablecontrollerphp)
   - [app\Http\Controllers\Api\ReportController.php](#file-apphttpcontrollersapireportcontrollerphp)
   - [app\Http\Controllers\Api\ServiceController.php](#file-apphttpcontrollersapiservicecontrollerphp)
@@ -47,6 +48,7 @@ _Dihasilkan otomatis: 2026-05-02 16:46:33_
   - [app\Models\OrderVoucher.php](#file-appmodelsordervoucherphp)
   - [app\Models\Payment.php](#file-appmodelspaymentphp)
   - [app\Models\ProductionTask.php](#file-appmodelsproductiontaskphp)
+  - [app\Models\ProductionTaskCorrectionRequest.php](#file-appmodelsproductiontaskcorrectionrequestphp)
   - [app\Models\ProductionTaskLog.php](#file-appmodelsproductiontasklogphp)
   - [app\Models\Receivable.php](#file-appmodelsreceivablephp)
   - [app\Models\Service.php](#file-appmodelsservicephp)
@@ -2816,6 +2818,228 @@ class ProductionBoardController extends Controller
 ```
 </details>
 
+### app\Http\Controllers\Api\ProductionCorrectionRequestController.php
+
+- SHA: `f2290cb64991`  
+- Ukuran: 7 KB  
+- Namespace: `App\Http\Controllers\Api`
+
+**Class `ProductionCorrectionRequestController` extends `Controller`**
+
+Metode Publik:
+- **__construct**(private ProductionTaskService $service)
+- **index**(Request $request)
+- **store**(Request $request, Order $order)
+- **approve**(Request $request, ProductionTaskCorrectionRequest $correctionRequest)
+- **reject**(Request $request, ProductionTaskCorrectionRequest $correctionRequest)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\Order;
+use App\Models\ProductionTaskCorrectionRequest;
+use App\Services\ProductionTaskService;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+class ProductionCorrectionRequestController extends Controller
+{
+    public function __construct(private ProductionTaskService $service)
+    {
+        $this->middleware('auth:sanctum');
+    }
+
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        $this->authorizeProductionAccess($request);
+
+        $query = ProductionTaskCorrectionRequest::query()
+            ->with([
+                'task:id,order_id,branch_id,assigned_to,current_status,qty,started_date,finished_date',
+                'order:id,branch_id,customer_id,number,invoice_no,status,received_at,ready_at',
+                'order.customer:id,name,whatsapp',
+                'requester:id,name',
+                'reviewer:id,name',
+            ])
+            ->orderByDesc('created_at');
+
+        if ($user->hasRole('Superadmin')) {
+            if ($branchId = $request->query('branch_id')) {
+                $query->where('branch_id', $branchId);
+            }
+        } else {
+            $query->where('branch_id', $user->branch_id);
+        }
+
+        if ($this->isOnlyLaundryStaff($user)) {
+            $query->where('requested_by', $user->id);
+        }
+
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($type = $request->query('type')) {
+            $query->where('type', $type);
+        }
+
+        $perPage = min(max((int) $request->query('per_page', 20), 1), 100);
+        $page = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => collect($page->items())->map(fn ($item) => $this->formatRequest($item))->values(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+                'last_page'    => $page->lastPage(),
+            ],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
+    public function store(Request $request, Order $order)
+    {
+        $this->authorizeProductionAccess($request);
+
+        $payload = $request->validate([
+            'type'   => ['required', 'string', Rule::in(ProductionTaskService::CORRECTION_TYPES)],
+            'reason' => ['required', 'string', 'min:3'],
+            'direct' => ['nullable', 'boolean'],
+        ]);
+
+        $result = $this->service->createCorrectionRequest(
+            $order,
+            $request->user(),
+            (string) $payload['type'],
+            (string) $payload['reason'],
+            (bool) ($payload['direct'] ?? false)
+        );
+
+        $isDirect = (bool) ($payload['direct'] ?? false);
+
+        return response()->json([
+            'data' => $isDirect
+                ? $result
+                : $this->formatRequest($result),
+            'meta' => [],
+            'message' => $isDirect
+                ? 'Koreksi cucian berhasil dijalankan.'
+                : 'Pengajuan koreksi cucian berhasil dikirim.',
+            'errors' => null,
+        ], $isDirect ? 200 : 201);
+    }
+
+    public function approve(Request $request, ProductionTaskCorrectionRequest $correctionRequest)
+    {
+        $payload = $request->validate([
+            'review_note' => ['nullable', 'string'],
+        ]);
+
+        $result = $this->service->approveCorrectionRequest(
+            $correctionRequest,
+            $request->user(),
+            $payload['review_note'] ?? null
+        );
+
+        return response()->json([
+            'data' => $this->formatRequest($result),
+            'meta' => [],
+            'message' => 'Pengajuan koreksi disetujui.',
+            'errors' => null,
+        ]);
+    }
+
+    public function reject(Request $request, ProductionTaskCorrectionRequest $correctionRequest)
+    {
+        $payload = $request->validate([
+            'review_note' => ['nullable', 'string'],
+        ]);
+
+        $result = $this->service->rejectCorrectionRequest(
+            $correctionRequest,
+            $request->user(),
+            $payload['review_note'] ?? null
+        );
+
+        return response()->json([
+            'data' => $this->formatRequest($result),
+            'meta' => [],
+            'message' => 'Pengajuan koreksi ditolak.',
+            'errors' => null,
+        ]);
+    }
+
+    private function authorizeProductionAccess(Request $request): void
+    {
+        $user = $request->user();
+
+        if (
+            ! $user->hasRole('Superadmin')
+            && ! $user->hasRole('Admin Cabang')
+            && ! $user->hasRole('Petugas Cuci')
+        ) {
+            abort(403, 'Anda tidak memiliki akses ke modul production.');
+        }
+
+        if (! $user->hasRole('Superadmin') && ! $user->branch_id) {
+            abort(403, 'Akun Anda belum terikat ke cabang.');
+        }
+    }
+
+    private function isOnlyLaundryStaff($user): bool
+    {
+        return $user->hasRole('Petugas Cuci')
+            && ! $user->hasRole('Superadmin')
+            && ! $user->hasRole('Admin Cabang');
+    }
+
+    private function formatRequest(ProductionTaskCorrectionRequest $item): array
+    {
+        return [
+            'id'                 => (string) $item->id,
+            'production_task_id' => (string) $item->production_task_id,
+            'order_id'           => (string) $item->order_id,
+            'branch_id'          => (string) $item->branch_id,
+            'requested_by'       => $item->requested_by,
+            'reviewed_by'        => $item->reviewed_by,
+            'type'               => (string) $item->type,
+            'from_status'        => (string) $item->from_status,
+            'to_status'          => (string) $item->to_status,
+            'reason'             => (string) $item->reason,
+            'status'             => (string) $item->status,
+            'review_note'        => $item->review_note,
+            'requested_date'     => optional($item->requested_date)->toDateString(),
+            'reviewed_date'      => optional($item->reviewed_date)->toDateString(),
+            'created_at'         => optional($item->created_at)->toDateTimeString(),
+            'updated_at'         => optional($item->updated_at)->toDateTimeString(),
+            'order'              => $item->order,
+            'task'               => $item->task,
+            'requester'          => $item->requester
+                ? [
+                    'id' => $item->requester->id,
+                    'name' => $item->requester->name,
+                ]
+                : null,
+            'reviewer'           => $item->reviewer
+                ? [
+                    'id' => $item->reviewer->id,
+                    'name' => $item->reviewer->name,
+                ]
+                : null,
+        ];
+    }
+}
+
+```
+</details>
+
 ### app\Http\Controllers\Api\ReceivableController.php
 
 - SHA: `faf1c359d191`  
@@ -5305,6 +5529,91 @@ class ProductionTask extends Model
     public function logs()
     {
         return $this->hasMany(ProductionTaskLog::class, 'production_task_id', 'id');
+    }
+}
+
+```
+</details>
+
+### app\Models\ProductionTaskCorrectionRequest.php
+
+- SHA: `d53226d9b643`  
+- Ukuran: 1 KB  
+- Namespace: `App\Models`
+
+**Class `ProductionTaskCorrectionRequest` extends `Model`**
+
+Metode Publik:
+- **task**()
+- **order**()
+- **branch**()
+- **requester**()
+- **reviewer**()
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class ProductionTaskCorrectionRequest extends Model
+{
+    use HasFactory, HasUuids;
+
+    protected $table = 'production_task_correction_requests';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'production_task_id',
+        'order_id',
+        'branch_id',
+        'requested_by',
+        'reviewed_by',
+        'type',
+        'from_status',
+        'to_status',
+        'reason',
+        'status',
+        'review_note',
+        'requested_date',
+        'reviewed_date',
+    ];
+
+    protected $casts = [
+        'requested_date' => 'date:Y-m-d',
+        'reviewed_date' => 'date:Y-m-d',
+    ];
+
+    public function task()
+    {
+        return $this->belongsTo(ProductionTask::class, 'production_task_id', 'id');
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class, 'order_id', 'id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id', 'id');
+    }
+
+    public function requester()
+    {
+        return $this->belongsTo(User::class, 'requested_by', 'id');
+    }
+
+    public function reviewer()
+    {
+        return $this->belongsTo(User::class, 'reviewed_by', 'id');
     }
 }
 
@@ -11340,8 +11649,8 @@ class PricingService
 
 ### app\Services\ProductionTaskService.php
 
-- SHA: `7c73d7494465`  
-- Ukuran: 8 KB  
+- SHA: `060c15af5fc0`  
+- Ukuran: 18 KB  
 - Namespace: `App\Services`
 
 **Class `ProductionTaskService`**
@@ -11351,6 +11660,9 @@ Metode Publik:
 - **start**(Order $order, User $user, ?string $note = null) : *ProductionTask*
 - **move**(Order $order, User $user, string $toStatus, ?string $note = null) : *ProductionTask*
 - **finish**(Order $order, User $user, ?string $note = null) : *ProductionTask*
+- **createCorrectionRequest**(Order $order, User $user, string $type, string $reason, bool $direct = false) : *ProductionTask | ProductionTaskCorrectionRequest*
+- **approveCorrectionRequest**(ProductionTaskCorrectionRequest $request, User $reviewer, ?string $reviewNote = null) : *ProductionTaskCorrectionRequest*
+- **rejectCorrectionRequest**(ProductionTaskCorrectionRequest $request, User $reviewer, ?string $reviewNote = null) : *ProductionTaskCorrectionRequest*
 - **calculateOrderQty**(Order $order) : *float*
 - **taskRelations**() : *array*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
@@ -11361,6 +11673,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\ProductionTask;
+use App\Models\ProductionTaskCorrectionRequest;
 use App\Models\ProductionTaskLog;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -11386,6 +11699,17 @@ class ProductionTaskService
         'DRYING',
         'IRONING',
         'READY',
+    ];
+
+    public const CORRECTION_TYPES = [
+        'REWASH',
+        'ROLLBACK',
+    ];
+
+    public const CORRECTION_STATUSES = [
+        'PENDING',
+        'APPROVED',
+        'REJECTED',
     ];
 
     public function syncOpenOrdersToTasks(?string $branchId = null): void
@@ -11498,6 +11822,172 @@ class ProductionTaskService
         return $this->move($order, $user, 'READY', $note);
     }
 
+    public function createCorrectionRequest(
+        Order $order,
+        User $user,
+        string $type,
+        string $reason,
+        bool $direct = false
+    ): ProductionTask | ProductionTaskCorrectionRequest {
+        return DB::transaction(function () use ($order, $user, $type, $reason, $direct) {
+            $task = $this->findOrCreateTask($order);
+            $this->ensureTaskBranchAllowed($task, $user);
+
+            $type = strtoupper($type);
+
+            if (! in_array($type, self::CORRECTION_TYPES, true)) {
+                throw ValidationException::withMessages([
+                    'type' => ['Jenis koreksi tidak valid.'],
+                ]);
+            }
+
+            if (trim($reason) === '') {
+                throw ValidationException::withMessages([
+                    'reason' => ['Catatan alasan wajib diisi.'],
+                ]);
+            }
+
+            $fromStatus = (string) $task->current_status;
+            $toStatus   = $this->targetStatusForCorrection($type, $fromStatus);
+
+            if ($direct) {
+                if (! $this->isManager($user)) {
+                    abort(403, 'Hanya Superadmin atau Admin Cabang yang dapat menjalankan koreksi langsung.');
+                }
+
+                return $this->applyCorrection(
+                    $task,
+                    $user,
+                    $toStatus,
+                    "[{$type}] {$reason}"
+                );
+            }
+
+            if (! $this->isManager($user)) {
+                $this->ensureAssignedOrManager($task, $user);
+            }
+
+            $exists = ProductionTaskCorrectionRequest::query()
+                ->where('production_task_id', (string) $task->id)
+                ->where('status', 'PENDING')
+                ->exists();
+
+            if ($exists) {
+                throw ValidationException::withMessages([
+                    'request' => ['Masih ada pengajuan koreksi yang menunggu approval untuk cucian ini.'],
+                ]);
+            }
+
+            return ProductionTaskCorrectionRequest::query()->create([
+                'production_task_id' => (string) $task->id,
+                'order_id'           => (string) $task->order_id,
+                'branch_id'          => (string) $task->branch_id,
+                'requested_by'       => $user->id,
+                'reviewed_by'        => null,
+                'type'               => $type,
+                'from_status'        => $fromStatus,
+                'to_status'          => $toStatus,
+                'reason'             => $reason,
+                'status'             => 'PENDING',
+                'review_note'        => null,
+                'requested_date'     => now('Asia/Jakarta')->toDateString(),
+                'reviewed_date'      => null,
+            ])->load([
+                'task',
+                'order:id,branch_id,customer_id,number,invoice_no,status,received_at,ready_at',
+                'order.customer:id,name,whatsapp',
+                'requester:id,name',
+                'reviewer:id,name',
+            ]);
+        });
+    }
+
+    public function approveCorrectionRequest(
+        ProductionTaskCorrectionRequest $request,
+        User $reviewer,
+        ?string $reviewNote = null
+    ): ProductionTaskCorrectionRequest {
+        return DB::transaction(function () use ($request, $reviewer, $reviewNote) {
+            $request = ProductionTaskCorrectionRequest::query()
+                ->whereKey((string) $request->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->ensureCorrectionReviewAllowed($request, $reviewer);
+
+            if ((string) $request->status !== 'PENDING') {
+                throw ValidationException::withMessages([
+                    'status' => ['Pengajuan ini sudah diproses.'],
+                ]);
+            }
+
+            $task = ProductionTask::query()
+                ->whereKey((string) $request->production_task_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->ensureTaskBranchAllowed($task, $reviewer);
+
+            $this->applyCorrection(
+                $task,
+                $reviewer,
+                (string) $request->to_status,
+                '[APPROVED ' . $request->type . '] ' . $request->reason
+            );
+
+            $request->fill([
+                'status'        => 'APPROVED',
+                'reviewed_by'   => $reviewer->id,
+                'review_note'   => $reviewNote,
+                'reviewed_date' => now('Asia/Jakarta')->toDateString(),
+            ])->save();
+
+            return $request->fresh([
+                'task',
+                'order:id,branch_id,customer_id,number,invoice_no,status,received_at,ready_at',
+                'order.customer:id,name,whatsapp',
+                'requester:id,name',
+                'reviewer:id,name',
+            ]);
+        });
+    }
+
+    public function rejectCorrectionRequest(
+        ProductionTaskCorrectionRequest $request,
+        User $reviewer,
+        ?string $reviewNote = null
+    ): ProductionTaskCorrectionRequest {
+        return DB::transaction(function () use ($request, $reviewer, $reviewNote) {
+            $request = ProductionTaskCorrectionRequest::query()
+                ->whereKey((string) $request->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->ensureCorrectionReviewAllowed($request, $reviewer);
+
+            if ((string) $request->status !== 'PENDING') {
+                throw ValidationException::withMessages([
+                    'status' => ['Pengajuan ini sudah diproses.'],
+                ]);
+            }
+
+            $request->fill([
+                'status'        => 'REJECTED',
+                'reviewed_by'   => $reviewer->id,
+                'review_note'   => $reviewNote,
+                'reviewed_date' => now('Asia/Jakarta')->toDateString(),
+            ])->save();
+
+            return $request->fresh([
+                'task',
+                'order:id,branch_id,customer_id,number,invoice_no,status,received_at,ready_at',
+                'order.customer:id,name,whatsapp',
+                'requester:id,name',
+                'reviewer:id,name',
+            ]);
+        });
+    }
+
     public function calculateOrderQty(Order $order): float
     {
         $order->loadMissing('items:id,order_id,qty');
@@ -11579,6 +12069,97 @@ class ProductionTaskService
     private function isManager(User $user): bool
     {
         return $user->hasRole('Superadmin') || $user->hasRole('Admin Cabang');
+    }
+
+    private function targetStatusForCorrection(string $type, string $fromStatus): string
+    {
+        if (! in_array($fromStatus, self::BOARD_STATUSES, true)) {
+            throw ValidationException::withMessages([
+                'from_status' => ['Status ini tidak dapat dikoreksi dari modul production.'],
+            ]);
+        }
+
+        if ($fromStatus === 'QUEUE') {
+            throw ValidationException::withMessages([
+                'from_status' => ['Status antrian belum dapat dicuci ulang atau dikembalikan tahap.'],
+            ]);
+        }
+
+        if ($type === 'REWASH') {
+            if ($fromStatus === 'WASHING') {
+                throw ValidationException::withMessages([
+                    'from_status' => ['Cucian masih berada di tahap cuci.'],
+                ]);
+            }
+
+            return 'WASHING';
+        }
+
+        $rollbackMap = [
+            'WASHING' => 'QUEUE',
+            'DRYING'  => 'WASHING',
+            'IRONING' => 'DRYING',
+            'READY'   => 'IRONING',
+        ];
+
+        if (! isset($rollbackMap[$fromStatus])) {
+            throw ValidationException::withMessages([
+                'from_status' => ['Status ini tidak memiliki tahap sebelumnya.'],
+            ]);
+        }
+
+        return $rollbackMap[$fromStatus];
+    }
+
+    private function applyCorrection(
+        ProductionTask $task,
+        User $user,
+        string $toStatus,
+        ?string $note = null
+    ): ProductionTask {
+        if (! in_array($toStatus, self::BOARD_STATUSES, true)) {
+            throw ValidationException::withMessages([
+                'to_status' => ['Target status koreksi tidak valid.'],
+            ]);
+        }
+
+        $fromStatus = (string) $task->current_status;
+        $today      = now('Asia/Jakarta')->toDateString();
+
+        if ($fromStatus === $toStatus) {
+            throw ValidationException::withMessages([
+                'to_status' => ['Status tujuan sama dengan status saat ini.'],
+            ]);
+        }
+
+        $task->fill([
+            'current_status' => $toStatus,
+            'started_date'   => $task->started_date ?: $today,
+            'finished_date'  => $toStatus === 'READY' ? $today : null,
+            'note'           => $note,
+        ])->save();
+
+        $order = Order::query()->findOrFail((string) $task->order_id);
+        $this->syncOrderStatusFromProduction($order, $toStatus);
+
+        $this->writeLog($task, $user, $fromStatus, $toStatus, $note);
+
+        return $task->fresh($this->taskRelations());
+    }
+
+    private function ensureCorrectionReviewAllowed(ProductionTaskCorrectionRequest $request, User $user): void
+    {
+        if (! $this->isManager($user)) {
+            abort(403, 'Hanya Superadmin atau Admin Cabang yang dapat memproses pengajuan koreksi.');
+        }
+
+        if ($user->hasRole('Superadmin')) {
+            return;
+        }
+
+        if ((string) $request->branch_id !== (string) $user->branch_id) {
+            abort(403, 'Anda tidak memiliki akses ke pengajuan koreksi cabang ini.');
+        }
     }
 
     private function writeLog(
@@ -13493,8 +14074,8 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `103c5fb09c39`  
-- Ukuran: 10 KB
+- SHA: `178ebe133e5a`  
+- Ukuran: 11 KB
 
 **Ringkasan Routes (deteksi heuristik):**
 
@@ -13544,6 +14125,10 @@ class UserSeeder extends Seeder
 | DELETE | `/customers/{customer}` | `CustomerController` | `destroy` |
 | GET | `/wash-notes/candidates` | `WashNoteController` | `candidates` |
 | GET | `/production-board` | `ProductionBoardController` | `index` |
+| GET | `/production-board/correction-requests` | `ProductionCorrectionRequestController` | `index` |
+| POST | `/production-board/{order}/correction-requests` | `ProductionCorrectionRequestController` | `store` |
+| POST | `/production-board/correction-requests/{correctionRequest}/approve` | `ProductionCorrectionRequestController` | `approve` |
+| POST | `/production-board/correction-requests/{correctionRequest}/reject` | `ProductionCorrectionRequestController` | `reject` |
 | POST | `/production-board/{order}/start` | `ProductionBoardController` | `start` |
 | POST | `/production-board/{order}/move` | `ProductionBoardController` | `move` |
 | POST | `/production-board/{order}/finish` | `ProductionBoardController` | `finish` |
@@ -13611,6 +14196,7 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OrderPaymentsController;
 use App\Http\Controllers\Api\OrderPhotosController;
 use App\Http\Controllers\Api\ProductionBoardController;
+use App\Http\Controllers\Api\ProductionCorrectionRequestController;
 use App\Http\Controllers\Api\ReceivableController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ServiceController;
@@ -13701,8 +14287,14 @@ Route::prefix('v1')->group(function () {
         Route::get('/wash-notes/candidates', [WashNoteController::class, 'candidates']);
         Route::apiResource('wash-notes', WashNoteController::class)->only(['index', 'show', 'store', 'update', 'destroy']);
 
-        // Production Board / Live Cucian
+// Production Board / Live Cucian
         Route::get('/production-board', [ProductionBoardController::class, 'index']);
+
+        Route::get('/production-board/correction-requests', [ProductionCorrectionRequestController::class, 'index']);
+        Route::post('/production-board/{order}/correction-requests', [ProductionCorrectionRequestController::class, 'store']);
+        Route::post('/production-board/correction-requests/{correctionRequest}/approve', [ProductionCorrectionRequestController::class, 'approve']);
+        Route::post('/production-board/correction-requests/{correctionRequest}/reject', [ProductionCorrectionRequestController::class, 'reject']);
+
         Route::post('/production-board/{order}/start', [ProductionBoardController::class, 'start']);
         Route::post('/production-board/{order}/move', [ProductionBoardController::class, 'move']);
         Route::post('/production-board/{order}/finish', [ProductionBoardController::class, 'finish']);
