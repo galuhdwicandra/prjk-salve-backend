@@ -45,6 +45,12 @@ class ProductionBoardController extends Controller
             $query->where('branch_id', $branchId);
         }
 
+        if ($user->hasRole('Superadmin')) {
+            if ($assignedTo = $request->query('assigned_to')) {
+                $query->where('assigned_to', $assignedTo);
+            }
+        }
+
         if ($status = $request->query('status')) {
             if ((string) $status === 'OVERDUE') {
                 $today = now('Asia/Jakarta')->toDateString();
@@ -188,6 +194,7 @@ class ProductionBoardController extends Controller
             'date_from' => ['nullable', 'date'],
             'date_to'   => ['nullable', 'date'],
             'branch_id' => ['nullable', 'string'],
+            'user_id'   => ['nullable', 'integer'],
         ]);
 
         $from     = Carbon::parse($payload['date_from'] ?? now('Asia/Jakarta')->toDateString())->toDateString();
@@ -205,9 +212,89 @@ class ProductionBoardController extends Controller
             ->whereBetween('process_date', [$from, $to])
             ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
             ->when($this->isOnlyLaundryStaff($user), fn($query) => $query->where('user_id', $user->id))
+            ->when(
+                $user->hasRole('Superadmin') && ! empty($payload['user_id']),
+                fn($query) => $query->where('user_id', (int) $payload['user_id'])
+            )
             ->orderBy('process_date')
             ->orderBy('created_at')
             ->get();
+
+        if ($logs->isEmpty() && $this->isOnlyLaundryStaff($user)) {
+            $tasks = ProductionTask::query()
+                ->with([
+                    'assignee:id,name',
+                    'order:id,branch_id,customer_id,number,invoice_no,status,received_at,ready_at',
+                    'order.customer:id,name',
+                ])
+                ->where('assigned_to', $user->id)
+                ->whereBetween('started_date', [$from, $to])
+                ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
+                ->orderBy('started_date')
+                ->orderBy('created_at')
+                ->get();
+
+            $rows = $tasks
+                ->map(function (ProductionTask $task) use ($user) {
+                    $order = $task->order;
+
+                    $readyAt = $order?->ready_at
+                        ? Carbon::parse($order->ready_at)->toDateString()
+                        : null;
+
+                    $finishedDate = $task->finished_date
+                        ? Carbon::parse($task->finished_date)->toDateString()
+                        : null;
+
+                    $today = now('Asia/Jakarta')->toDateString();
+
+                    $isOverdue = $readyAt !== null
+                    && $task->current_status !== 'READY'
+                    && $readyAt < $today;
+
+                    $overdueDays = 0;
+                    if ($isOverdue) {
+                        $overdueDays = Carbon::parse($readyAt)->diffInDays(Carbon::parse($today));
+                    }
+
+                    return [
+                        'user_id'       => (string) $user->id,
+                        'staff_name'    => (string) $user->name,
+                        'total_invoice' => 1,
+                        'total_qty'     => (float) $task->qty,
+                        'finished'      => $task->current_status === 'READY' ? 1 : 0,
+                        'unfinished'    => $task->current_status !== 'READY' ? 1 : 0,
+                        'overdue'       => $isOverdue ? 1 : 0,
+                        'details'       => [[
+                            'order_id'       => (string) $task->order_id,
+                            'invoice_no'     => $order?->invoice_no,
+                            'number'         => $order?->number,
+                            'customer_name'  => $order?->customer?->name,
+                            'qty'            => (float) $task->qty,
+                            'current_status' => $task->current_status,
+                            'received_at'    => $order?->received_at,
+                            'ready_at'       => $order?->ready_at,
+                            'started_date'   => $task->started_date,
+                            'finished_date'  => $finishedDate,
+                            'is_overdue'     => $isOverdue,
+                            'overdue_days'   => $overdueDays,
+                            'overdue_text'   => $isOverdue ? "Terlambat {$overdueDays} hari" : null,
+                        ]],
+                    ];
+                })
+                ->values();
+
+            return response()->json([
+                'data'    => $rows,
+                'meta'    => [
+                    'from'      => $from,
+                    'to'        => $to,
+                    'branch_id' => $branchId,
+                ],
+                'message' => 'OK',
+                'errors'  => null,
+            ]);
+        }
 
         $grouped = $logs
             ->groupBy('user_id')
@@ -261,6 +348,7 @@ class ProductionBoardController extends Controller
                 'from'      => $from,
                 'to'        => $to,
                 'branch_id' => $branchId,
+                'user_id'   => $user->hasRole('Superadmin') ? ($payload['user_id'] ?? null) : null,
             ],
             'message' => 'OK',
             'errors'  => null,
