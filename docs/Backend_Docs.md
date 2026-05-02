@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-05-02 18:06:22_  
+_Dihasilkan otomatis: 2026-05-02 18:15:38_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -2421,7 +2421,7 @@ class OrderPhotosController extends Controller
 
 ### app\Http\Controllers\Api\ProductionBoardController.php
 
-- SHA: `7ecddad6dc17`  
+- SHA: `bed6d8f8a9c3`  
 - Ukuran: 17 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -2651,6 +2651,10 @@ class ProductionBoardController extends Controller
             ->whereBetween('process_date', [$from, $to])
             ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
             ->when($this->isOnlyLaundryStaff($user), fn($query) => $query->where('user_id', $user->id))
+            ->when(
+                $user->hasRole('Superadmin') && ! empty($payload['user_id']),
+                fn($query) => $query->where('user_id', (int) $payload['user_id'])
+            )
             ->orderBy('process_date')
             ->orderBy('created_at')
             ->get();
@@ -2684,8 +2688,8 @@ class ProductionBoardController extends Controller
                     $today = now('Asia/Jakarta')->toDateString();
 
                     $isOverdue = $readyAt !== null
-                        && $task->current_status !== 'READY'
-                        && $readyAt < $today;
+                    && $task->current_status !== 'READY'
+                    && $readyAt < $today;
 
                     $overdueDays = 0;
                     if ($isOverdue) {
@@ -2778,6 +2782,7 @@ class ProductionBoardController extends Controller
             ->values();
 
         return response()->json([
+            'data'    => $grouped,
             'meta'    => [
                 'from'      => $from,
                 'to'        => $to,
