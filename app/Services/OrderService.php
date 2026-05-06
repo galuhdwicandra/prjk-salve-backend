@@ -10,6 +10,7 @@ use App\Services\DeliveryService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class OrderService
@@ -112,13 +113,45 @@ class OrderService
         });
     }
 
-    /**
-     * Lampirkan foto before/after ke order.
-     * @param array{kind:'before'|'after', path:string}[] $photos
-     */
-    public function attachPhotos(Order $order, array $photos): Order
+/**
+ * Simpan foto order.
+ *
+ * Jika $replaceExisting = true:
+ * - file foto lama pada kategori yang sama dihapus dari storage
+ * - record lama di tabel order_photos dihapus permanen
+ *
+ * @param array<int, array{kind:string, path:string}> $photos
+ */
+    public function attachPhotos(Order $order, array $photos, bool $replaceExisting = false): Order
     {
-        DB::transaction(function () use ($order, $photos) {
+        DB::transaction(function () use ($order, $photos, $replaceExisting) {
+            $kindsToReplace = collect($photos)
+                ->pluck('kind')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($replaceExisting && count($kindsToReplace) > 0) {
+                $oldPhotos = OrderPhoto::query()
+                    ->where('order_id', $order->id)
+                    ->whereIn('kind', $kindsToReplace)
+                    ->get(['id', 'path']);
+
+                foreach ($oldPhotos as $oldPhoto) {
+                    $relativePath = preg_replace('#^storage/#', '', (string) $oldPhoto->path);
+
+                    if (is_string($relativePath) && $relativePath !== '') {
+                        Storage::disk('public')->delete($relativePath);
+                    }
+                }
+
+                OrderPhoto::query()
+                    ->where('order_id', $order->id)
+                    ->whereIn('kind', $kindsToReplace)
+                    ->delete();
+            }
+
             foreach ($photos as $p) {
                 OrderPhoto::query()->create([
                     'id'       => (string) Str::uuid(),
@@ -127,7 +160,6 @@ class OrderService
                     'path'     => $p['path'],
                 ]);
             }
-            // TODO: audit('ORDER_ATTACH_PHOTO', ['order_id' => $order->id, 'count' => count($photos)]);
         });
 
         return $order->load('photos');

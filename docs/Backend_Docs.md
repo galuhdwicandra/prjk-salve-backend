@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-05-02 18:15:38_  
+_Dihasilkan otomatis: 2026-05-06 14:34:19_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -2356,7 +2356,7 @@ class OrderPaymentsController extends Controller
 
 ### app\Http\Controllers\Api\OrderPhotosController.php
 
-- SHA: `b29735f843b3`  
+- SHA: `e0d678182a04`  
 - Ukuran: 1 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -2369,7 +2369,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -2390,28 +2389,30 @@ class OrderPhotosController extends Controller
         $this->authorize('uploadPhotos', $order);
 
         $before = $request->file('photos.before', []);
-        $after = $request->file('photos.after', []);
+        $after  = $request->file('photos.after', []);
 
-        $dir = "uploads/orders/{$order->id}";
+        $dir  = "uploads/orders/{$order->id}";
         $rows = [];
 
         foreach ($before as $f) {
-            $p = $f->store($dir . '/before', 'public');
+            $p      = $f->store($dir . '/before', 'public');
             $rows[] = ['kind' => 'before', 'path' => "storage/{$p}"];
         }
 
         foreach ($after as $f) {
-            $p = $f->store($dir . '/after', 'public');
+            $p      = $f->store($dir . '/after', 'public');
             $rows[] = ['kind' => 'after', 'path' => "storage/{$p}"];
         }
 
-        $order = $this->svc->attachPhotos($order, $rows);
+        $replaceExisting = (bool) $request->boolean('replace_existing');
+
+        $order = $this->svc->attachPhotos($order, $rows, $replaceExisting);
 
         return response()->json([
-            'data' => $order,
-            'meta' => [],
+            'data'    => $order,
+            'meta'    => [],
             'message' => 'Photos uploaded',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 }
@@ -8501,7 +8502,7 @@ class OrderApplyVoucherRequest extends FormRequest
 
 ### app\Http\Requests\Orders\OrderPhotosRequest.php
 
-- SHA: `3f2eac499c5c`  
+- SHA: `db0036b3520f`  
 - Ukuran: 1 KB  
 - Namespace: `App\Http\Requests\Orders`
 
@@ -8515,6 +8516,7 @@ Metode Publik:
 
 ```php
 <?php
+
 namespace App\Http\Requests\Orders;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -8523,7 +8525,6 @@ class OrderPhotosRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Otorisasi akan dicek di Controller (authorize('update', $order))
         return true;
     }
 
@@ -8532,22 +8533,29 @@ class OrderPhotosRequest extends FormRequest
         return [
             'photos.before'   => ['required', 'array', 'min:1'],
             'photos.before.*' => ['required', 'image', 'max:4096'],
+
             'photos.after'    => ['nullable', 'array'],
             'photos.after.*'  => ['nullable', 'image', 'max:4096'],
+
+            'replace_existing' => ['nullable', 'boolean'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'photos.before.required'   => 'Foto before wajib diupload.',
-            'photos.before.array'      => 'Format foto before tidak valid.',
-            'photos.before.min'        => 'Minimal 1 foto before wajib diupload.',
+            'photos.before.required' => 'Foto before wajib diupload.',
+            'photos.before.array' => 'Format foto before tidak valid.',
+            'photos.before.min' => 'Minimal upload 1 foto before.',
             'photos.before.*.required' => 'File foto before wajib diisi.',
-            'photos.before.*.image'    => 'File "before" harus berupa gambar.',
-            'photos.before.*.max'      => 'Ukuran foto before maksimal 4MB.',
-            'photos.after.*.image'     => 'File "after" harus berupa gambar.',
-            'photos.after.*.max'       => 'Ukuran foto after maksimal 4MB.',
+            'photos.before.*.image' => 'File before harus berupa gambar.',
+            'photos.before.*.max' => 'Ukuran foto before maksimal 4MB.',
+
+            'photos.after.array' => 'Format foto after tidak valid.',
+            'photos.after.*.image' => 'File after harus berupa gambar.',
+            'photos.after.*.max' => 'Ukuran foto after maksimal 4MB.',
+
+            'replace_existing.boolean' => 'Format pilihan ganti foto lama tidak valid.',
         ];
     }
 }
@@ -11167,8 +11175,8 @@ class OrderNumberService
 
 ### app\Services\OrderService.php
 
-- SHA: `fee2f5074903`  
-- Ukuran: 14 KB  
+- SHA: `24a6f498cd52`  
+- Ukuran: 15 KB  
 - Namespace: `App\Services`
 
 **Class `OrderService`**
@@ -11176,7 +11184,7 @@ class OrderNumberService
 Metode Publik:
 - **__construct**(private PricingService $pricing, private InvoiceService $invoice, private LoyaltyService $loyalty,)
 - **createDraft**(array $data, User $actor) : *Order* — Create order (draft/queue) — hitung total dan harga per cabang.
-- **attachPhotos**(Order $order, array $photos) : *Order* — Create order (draft/queue) — hitung total dan harga per cabang.
+- **attachPhotos**(Order $order, array $photos, bool $replaceExisting = false) : *Order* — Create order (draft/queue) — hitung total dan harga per cabang.
 - **transition**(Order $order, string $next, User $actor) : *Order* — Create order (draft/queue) — hitung total dan harga per cabang.
 - **update**(Order $order, array $data, User $actor) : *Order* — Create order (draft/queue) — hitung total dan harga per cabang.
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
@@ -11194,6 +11202,7 @@ use App\Services\DeliveryService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class OrderService
@@ -11296,13 +11305,45 @@ class OrderService
         });
     }
 
-    /**
-     * Lampirkan foto before/after ke order.
-     * @param array{kind:'before'|'after', path:string}[] $photos
-     */
-    public function attachPhotos(Order $order, array $photos): Order
+/**
+ * Simpan foto order.
+ *
+ * Jika $replaceExisting = true:
+ * - file foto lama pada kategori yang sama dihapus dari storage
+ * - record lama di tabel order_photos dihapus permanen
+ *
+ * @param array<int, array{kind:string, path:string}> $photos
+ */
+    public function attachPhotos(Order $order, array $photos, bool $replaceExisting = false): Order
     {
-        DB::transaction(function () use ($order, $photos) {
+        DB::transaction(function () use ($order, $photos, $replaceExisting) {
+            $kindsToReplace = collect($photos)
+                ->pluck('kind')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($replaceExisting && count($kindsToReplace) > 0) {
+                $oldPhotos = OrderPhoto::query()
+                    ->where('order_id', $order->id)
+                    ->whereIn('kind', $kindsToReplace)
+                    ->get(['id', 'path']);
+
+                foreach ($oldPhotos as $oldPhoto) {
+                    $relativePath = preg_replace('#^storage/#', '', (string) $oldPhoto->path);
+
+                    if (is_string($relativePath) && $relativePath !== '') {
+                        Storage::disk('public')->delete($relativePath);
+                    }
+                }
+
+                OrderPhoto::query()
+                    ->where('order_id', $order->id)
+                    ->whereIn('kind', $kindsToReplace)
+                    ->delete();
+            }
+
             foreach ($photos as $p) {
                 OrderPhoto::query()->create([
                     'id'       => (string) Str::uuid(),
@@ -11311,7 +11352,6 @@ class OrderService
                     'path'     => $p['path'],
                 ]);
             }
-            // TODO: audit('ORDER_ATTACH_PHOTO', ['order_id' => $order->id, 'count' => count($photos)]);
         });
 
         return $order->load('photos');

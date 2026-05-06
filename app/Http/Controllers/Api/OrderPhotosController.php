@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -20,28 +19,30 @@ class OrderPhotosController extends Controller
         $this->authorize('uploadPhotos', $order);
 
         $before = $request->file('photos.before', []);
-        $after = $request->file('photos.after', []);
+        $after  = $request->file('photos.after', []);
 
-        $dir = "uploads/orders/{$order->id}";
+        $dir  = "uploads/orders/{$order->id}";
         $rows = [];
 
         foreach ($before as $f) {
-            $p = $f->store($dir . '/before', 'public');
+            $p      = $f->store($dir . '/before', 'public');
             $rows[] = ['kind' => 'before', 'path' => "storage/{$p}"];
         }
 
         foreach ($after as $f) {
-            $p = $f->store($dir . '/after', 'public');
+            $p      = $f->store($dir . '/after', 'public');
             $rows[] = ['kind' => 'after', 'path' => "storage/{$p}"];
         }
 
-        $order = $this->svc->attachPhotos($order, $rows);
+        $replaceExisting = (bool) $request->boolean('replace_existing');
+
+        $order = $this->svc->attachPhotos($order, $rows, $replaceExisting);
 
         return response()->json([
-            'data' => $order,
-            'meta' => [],
+            'data'    => $order,
+            'meta'    => [],
             'message' => 'Photos uploaded',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 }
