@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-05-08 11:44:29_  
+_Dihasilkan otomatis: 2026-05-08 12:51:05_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -102,6 +102,7 @@ _Dihasilkan otomatis: 2026-05-08 11:44:29_
   - [app\Http\Requests\OrderStatusRequest.php](#file-apphttprequestsorderstatusrequestphp)
   - [app\Http\Requests\OrderStoreRequest.php](#file-apphttprequestsorderstorerequestphp)
   - [app\Http\Requests\OrderUpdateRequest.php](#file-apphttprequestsorderupdaterequestphp)
+  - [app\Http\Requests\Payments\PaymentCorrectionRequest.php](#file-apphttprequestspaymentspaymentcorrectionrequestphp)
   - [app\Http\Requests\Payments\PaymentRequest.php](#file-apphttprequestspaymentspaymentrequestphp)
   - [app\Http\Requests\Receivables\ReceivableCreateRequest.php](#file-apphttprequestsreceivablesreceivablecreaterequestphp)
   - [app\Http\Requests\Receivables\ReceivableSettleRequest.php](#file-apphttprequestsreceivablesreceivablesettlerequestphp)
@@ -2297,8 +2298,8 @@ class OrderController extends Controller
 
 ### app\Http\Controllers\Api\OrderPaymentsController.php
 
-- SHA: `aadef500d7ff`  
-- Ukuran: 1 KB  
+- SHA: `64df490b6a8f`  
+- Ukuran: 2 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `OrderPaymentsController` extends `Controller`**
@@ -2306,14 +2307,15 @@ class OrderController extends Controller
 Metode Publik:
 - **__construct**(private PaymentService $svc)
 - **store**(PaymentRequest $request, Order $order) : *JsonResponse*
+- **resetToPending**(PaymentCorrectionRequest $request, Order $order) : *JsonResponse*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Payments\PaymentCorrectionRequest;
 use App\Http\Requests\Payments\PaymentRequest;
 use App\Models\Order;
 use App\Services\PaymentService;
@@ -2331,7 +2333,7 @@ class OrderPaymentsController extends Controller
         $this->authorize('settlePayment', $order);
 
         $payload = $request->validated();
-        $res = $this->svc->apply(
+        $res     = $this->svc->apply(
             $order,
             $payload['method'],
             (float) $payload['amount'],
@@ -2340,14 +2342,53 @@ class OrderPaymentsController extends Controller
         );
 
         return response()->json([
-            'data' => [
-                'order' => $res['order'],
+            'data'    => [
+                'order'   => $res['order'],
                 'payment' => $res['payment'],
             ],
-            'meta' => ['idempotent' => $res['idempotent']],
+            'meta'    => ['idempotent' => $res['idempotent']],
             'message' => 'Payment applied',
-            'errors' => null,
+            'errors'  => null,
         ], 201);
+    }
+
+    public function resetToPending(PaymentCorrectionRequest $request, Order $order): JsonResponse
+    {
+        $this->authorizePaymentCorrection($request, $order);
+
+        $payload = $request->validated();
+
+        $res = $this->svc->resetToPending(
+            $order,
+            $request->user(),
+            (string) $payload['reason']
+        );
+
+        return response()->json([
+            'data'    => [
+                'order' => $res['order'],
+            ],
+            'meta'    => $res['meta'],
+            'message' => 'Payment corrected to pending',
+            'errors'  => null,
+        ]);
+    }
+
+    private function authorizePaymentCorrection(PaymentCorrectionRequest $request, Order $order): void
+    {
+        $user = $request->user();
+
+        if (! $user->hasRole('Superadmin') && ! $user->hasRole('Admin Cabang')) {
+            abort(403, 'Hanya Superadmin atau Admin Cabang yang dapat melakukan koreksi pembayaran.');
+        }
+
+        if ($user->hasRole('Superadmin')) {
+            return;
+        }
+
+        if ((string) $order->branch_id !== (string) $user->branch_id) {
+            abort(403, 'Anda tidak memiliki akses ke order cabang ini.');
+        }
     }
 }
 
@@ -8867,6 +8908,67 @@ class OrderUpdateRequest extends FormRequest
 ```
 </details>
 
+### app\Http\Requests\Payments\PaymentCorrectionRequest.php
+
+- SHA: `7fb5174db96f`  
+- Ukuran: 1 KB  
+- Namespace: `App\Http\Requests\Payments`
+
+**Class `PaymentCorrectionRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **messages**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Payments;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class PaymentCorrectionRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'correction_type' => [
+                'required',
+                'string',
+                Rule::in(['RESET_TO_PENDING']),
+            ],
+            'reason' => [
+                'required',
+                'string',
+                'min:5',
+                'max:500',
+            ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'correction_type.required' => 'Jenis koreksi wajib diisi.',
+            'correction_type.in' => 'Jenis koreksi tidak valid.',
+            'reason.required' => 'Alasan koreksi wajib diisi.',
+            'reason.min' => 'Alasan koreksi minimal 5 karakter.',
+            'reason.max' => 'Alasan koreksi maksimal 500 karakter.',
+        ];
+    }
+}
+
+```
+</details>
+
 ### app\Http\Requests\Payments\PaymentRequest.php
 
 - SHA: `cc8052cfe780`  
@@ -11607,8 +11709,8 @@ class OrderService
 
 ### app\Services\PaymentService.php
 
-- SHA: `932233e1868c`  
-- Ukuran: 4 KB  
+- SHA: `31dae3a0db3b`  
+- Ukuran: 8 KB  
 - Namespace: `App\Services`
 
 **Class `PaymentService`**
@@ -11616,6 +11718,7 @@ class OrderService
 Metode Publik:
 - **__construct**(private CashLedgerService $cashLedger,)
 - **apply**(Order $order, string $method, float $amount, string | Carbon | null $paidAt = null, ?string $note = null) : *array*
+- **resetToPending**(Order $order, User $actor, string $reason) : *array*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -11624,6 +11727,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -11743,6 +11847,95 @@ class PaymentService
                 'order'      => $order->fresh(['items']),
                 'payment'    => $payment->fresh(),
                 'idempotent' => false,
+            ];
+        });
+    }
+
+    public function resetToPending(Order $order, User $actor, string $reason): array
+    {
+        return DB::transaction(function () use ($order, $actor, $reason) {
+            $order = Order::query()
+                ->lockForUpdate()
+                ->findOrFail($order->id);
+
+            $orderId = (string) $order->getKey();
+
+            $paymentIds = Payment::query()
+                ->where('order_id', $orderId)
+                ->pluck('id')
+                ->map(fn($id) => (string) $id)
+                ->values();
+
+            if ($paymentIds->isNotEmpty() && Schema::hasTable('cash_mutations')) {
+                DB::table('cash_mutations')
+                    ->where('source_type', 'payment')
+                    ->whereIn('source_id', $paymentIds->all())
+                    ->delete();
+            }
+
+            Payment::query()
+                ->where('order_id', $orderId)
+                ->delete();
+
+            $grandTotal = (float) $order->grand_total;
+            $dueDate    = $order->ready_at
+                ? Carbon::parse($order->ready_at)->toDateString()
+                : null;
+
+            $order->forceFill([
+                'payment_status' => 'PENDING',
+                'paid_amount'    => 0,
+                'dp_amount'      => 0,
+                'paid_at'        => null,
+                'due_amount'     => $grandTotal,
+            ])->save();
+
+            if (Schema::hasTable('receivables')) {
+                $existingReceivable = DB::table('receivables')
+                    ->where('order_id', $orderId)
+                    ->first();
+
+                if ($grandTotal > 0) {
+                    if ($existingReceivable) {
+                        DB::table('receivables')
+                            ->where('order_id', $orderId)
+                            ->update([
+                                'remaining_amount' => $grandTotal,
+                                'status'           => 'OPEN',
+                                'due_date'         => $dueDate,
+                                'updated_at'       => now(),
+                            ]);
+                    } else {
+                        DB::table('receivables')->insert([
+                            'id'               => (string) Str::uuid(),
+                            'order_id'         => $orderId,
+                            'remaining_amount' => $grandTotal,
+                            'status'           => 'OPEN',
+                            'due_date'         => $dueDate,
+                            'created_at'       => now(),
+                            'updated_at'       => now(),
+                        ]);
+                    }
+                } elseif ($existingReceivable) {
+                    DB::table('receivables')
+                        ->where('order_id', $orderId)
+                        ->update([
+                            'remaining_amount' => 0,
+                            'status'           => 'SETTLED',
+                            'due_date'         => $dueDate,
+                            'updated_at'       => now(),
+                        ]);
+                }
+            }
+
+            return [
+                'ok'    => true,
+                'order' => $order->fresh(['customer', 'items.service', 'photos', 'receivable']),
+                'meta'  => [
+                    'correction_type' => 'RESET_TO_PENDING',
+                    'reason'          => $reason,
+                    'corrected_by'    => $actor->id,
+                ],
             ];
         });
     }
@@ -14224,7 +14417,7 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `178ebe133e5a`  
+- SHA: `6156a6eaff55`  
 - Ukuran: 11 KB
 
 **Ringkasan Routes (deteksi heuristik):**
@@ -14291,6 +14484,7 @@ class UserSeeder extends Seeder
 | GET | `/orders/{order}/receipt` | `OrderController` | `receipt` |
 | POST | `/orders/{order}/share-link` | `OrderController` | `shareLink` |
 | POST | `/orders/{order}/payments` | `OrderPaymentsController` | `store` |
+| POST | `/orders/{order}/payments/reset-to-pending` | `OrderPaymentsController` | `resetToPending` |
 | POST | `/orders/{order}/apply-voucher` | `` | `` |
 | GET | `/orders` | `OrderController` | `index` |
 | GET | `/orders/{order}` | `OrderController` | `show` |
@@ -14465,6 +14659,7 @@ Route::prefix('v1')->group(function () {
 
         // Payments
         Route::post('/orders/{order}/payments', [OrderPaymentsController::class, 'store']);
+        Route::post('/orders/{order}/payments/reset-to-pending', [OrderPaymentsController::class, 'resetToPending']);
 
         // Apply voucher ke order
         Route::post('/orders/{order}/apply-voucher', [\App\Http\Controllers\Api\VoucherController::class, 'applyToOrder']);

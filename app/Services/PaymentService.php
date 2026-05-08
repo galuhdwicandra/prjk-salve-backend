@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -122,6 +123,95 @@ class PaymentService
                 'order'      => $order->fresh(['items']),
                 'payment'    => $payment->fresh(),
                 'idempotent' => false,
+            ];
+        });
+    }
+
+    public function resetToPending(Order $order, User $actor, string $reason): array
+    {
+        return DB::transaction(function () use ($order, $actor, $reason) {
+            $order = Order::query()
+                ->lockForUpdate()
+                ->findOrFail($order->id);
+
+            $orderId = (string) $order->getKey();
+
+            $paymentIds = Payment::query()
+                ->where('order_id', $orderId)
+                ->pluck('id')
+                ->map(fn($id) => (string) $id)
+                ->values();
+
+            if ($paymentIds->isNotEmpty() && Schema::hasTable('cash_mutations')) {
+                DB::table('cash_mutations')
+                    ->where('source_type', 'payment')
+                    ->whereIn('source_id', $paymentIds->all())
+                    ->delete();
+            }
+
+            Payment::query()
+                ->where('order_id', $orderId)
+                ->delete();
+
+            $grandTotal = (float) $order->grand_total;
+            $dueDate    = $order->ready_at
+                ? Carbon::parse($order->ready_at)->toDateString()
+                : null;
+
+            $order->forceFill([
+                'payment_status' => 'PENDING',
+                'paid_amount'    => 0,
+                'dp_amount'      => 0,
+                'paid_at'        => null,
+                'due_amount'     => $grandTotal,
+            ])->save();
+
+            if (Schema::hasTable('receivables')) {
+                $existingReceivable = DB::table('receivables')
+                    ->where('order_id', $orderId)
+                    ->first();
+
+                if ($grandTotal > 0) {
+                    if ($existingReceivable) {
+                        DB::table('receivables')
+                            ->where('order_id', $orderId)
+                            ->update([
+                                'remaining_amount' => $grandTotal,
+                                'status'           => 'OPEN',
+                                'due_date'         => $dueDate,
+                                'updated_at'       => now(),
+                            ]);
+                    } else {
+                        DB::table('receivables')->insert([
+                            'id'               => (string) Str::uuid(),
+                            'order_id'         => $orderId,
+                            'remaining_amount' => $grandTotal,
+                            'status'           => 'OPEN',
+                            'due_date'         => $dueDate,
+                            'created_at'       => now(),
+                            'updated_at'       => now(),
+                        ]);
+                    }
+                } elseif ($existingReceivable) {
+                    DB::table('receivables')
+                        ->where('order_id', $orderId)
+                        ->update([
+                            'remaining_amount' => 0,
+                            'status'           => 'SETTLED',
+                            'due_date'         => $dueDate,
+                            'updated_at'       => now(),
+                        ]);
+                }
+            }
+
+            return [
+                'ok'    => true,
+                'order' => $order->fresh(['customer', 'items.service', 'photos', 'receivable']),
+                'meta'  => [
+                    'correction_type' => 'RESET_TO_PENDING',
+                    'reason'          => $reason,
+                    'corrected_by'    => $actor->id,
+                ],
             ];
         });
     }

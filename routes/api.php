@@ -133,6 +133,7 @@ Route::prefix('v1')->group(function () {
 
         // Payments
         Route::post('/orders/{order}/payments', [OrderPaymentsController::class, 'store']);
+        Route::post('/orders/{order}/payments/reset-to-pending', [OrderPaymentsController::class, 'resetToPending']);
 
         // Apply voucher ke order
         Route::post('/orders/{order}/apply-voucher', [\App\Http\Controllers\Api\VoucherController::class, 'applyToOrder']);
