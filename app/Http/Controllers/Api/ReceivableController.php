@@ -1,15 +1,14 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Receivables\ReceivableSettleRequest;
+use App\Models\Order;
+use App\Models\Receivable;
+use App\Services\ReceivableService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\URL;
-use App\Models\Receivable;
-use App\Models\Order;
-use App\Http\Requests\Receivables\ReceivableSettleRequest;
-use App\Services\ReceivableService;
 
 class ReceivableController extends Controller
 {
@@ -17,14 +16,27 @@ class ReceivableController extends Controller
     {
         $this->authorize('viewAny', Receivable::class);
 
-        $user = $req->user();
+        $user   = $req->user();
         $status = strtoupper((string) $req->query('status', ''));
 
         $q = Receivable::query()
             ->with(['order' => function ($q) {
-                $q->select(['id', 'branch_id', 'customer_id', 'invoice_no', 'grand_total', 'paid_amount', 'due_amount', 'status', 'payment_status', 'created_at']);
+                $q->select([
+                    'id',
+                    'branch_id',
+                    'customer_id',
+                    'number',
+                    'invoice_no',
+                    'grand_total',
+                    'paid_amount',
+                    'due_amount',
+                    'status',
+                    'payment_status',
+                    'created_at',
+                ]);
             }, 'order.customer:id,name,whatsapp'])
             ->join('orders', 'orders.id', '=', 'receivables.order_id')
+            ->leftJoin('customers', 'customers.id', '=', 'orders.customer_id')
             ->select('receivables.*');
 
         // Filter per cabang (kecuali Superadmin)
@@ -42,6 +54,16 @@ class ReceivableController extends Controller
                 ->where('receivables.remaining_amount', '>', 0);
         }
 
+        // Search invoice / nomor order / customer
+        if ($term = trim((string) $req->query('q', ''))) {
+            $q->where(function ($w) use ($term) {
+                $w->where('orders.invoice_no', 'like', "%{$term}%")
+                    ->orWhere('orders.number', 'like', "%{$term}%")
+                    ->orWhere('customers.name', 'like', "%{$term}%")
+                    ->orWhere('customers.whatsapp', 'like', "%{$term}%");
+            });
+        }
+
         $q->orderByRaw('CASE WHEN receivables.due_date IS NULL THEN 1 ELSE 0 END')
             ->orderBy('receivables.due_date', 'asc')
             ->orderBy('receivables.created_at', 'desc');
@@ -49,10 +71,10 @@ class ReceivableController extends Controller
         $data = $q->paginate((int) $req->query('per_page', 15));
 
         return response()->json([
-            'data' => $data,
-            'meta' => (object) [],
+            'data'    => $data,
+            'meta'    => (object) [],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -61,14 +83,14 @@ class ReceivableController extends Controller
         $rcv = Receivable::query()->with('order')->findOrFail($id);
         $this->authorize('settle', $rcv);
 
-        $method = $req->input('method');     // CASH|QRIS|TRANSFER
+        $method = $req->input('method'); // CASH|QRIS|TRANSFER
         $amount = (float) $req->input('amount');
-        $paidAt = $req->date('paid_at');
+        $paidAt = $req->date('paid_at') ?: now('Asia/Jakarta');
         $note   = $req->input('note');
 
         $result = $svc->settle($rcv->order, $method, $amount, $paidAt, $note);
 
-        $ord = $result['order'];
+        $ord     = $result['order'];
         $orderId = is_array($ord)
             ? (string) data_get($ord, 'order.id', data_get($ord, 'id'))
             : (string) data_get($ord, 'id');
@@ -77,23 +99,23 @@ class ReceivableController extends Controller
         // Link publik bertanda tangan untuk dibagikan ke pelanggan (berlaku 120 menit)
         $shareUrl = $orderId
             ? URL::temporarySignedRoute(
-                'public.receipts.show',
-                now()->addMinutes(120),
-                ['order' => $orderId]
-            )
+            'public.receipts.show',
+            now()->addMinutes(120),
+            ['order' => $orderId]
+        )
             : null;
 
         return response()->json([
-            'data' => [
-                'order' => $result['order'],
-                'receivable' => $result['receivable'],
-                'order_id' => $orderId,
+            'data'    => [
+                'order'       => $result['order'],
+                'receivable'  => $result['receivable'],
+                'order_id'    => $orderId,
                 'receipt_url' => $receiptUrl,
-                'share_url' => $shareUrl,
+                'share_url'   => $shareUrl,
             ],
-            'meta' => (object) [],
+            'meta'    => (object) [],
             'message' => 'Pelunasan berhasil.',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 }
