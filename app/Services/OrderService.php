@@ -5,6 +5,7 @@ use App\Models\Delivery;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\OrderPhoto;
+use App\Models\Receivable;
 use App\Models\User;
 use App\Services\DeliveryService;
 use Carbon\Carbon;
@@ -375,6 +376,80 @@ class OrderService
             // TODO: audit('ORDER_UPDATE', ['order_id' => $order->id, 'actor' => $actor->id]);
 
             return $order->load(['items.service', 'customer', 'receivable']);
+        });
+    }
+
+    public function applyManualLoyaltyCorrection(Order $order, string $reward, string $note, User $actor): Order
+    {
+        return DB::transaction(function () use ($order, $reward, $note, $actor) {
+            /** @var Order $locked */
+            $locked = Order::query()
+                ->with(['items.service', 'customer', 'receivable'])
+                ->lockForUpdate()
+                ->findOrFail($order->id);
+
+            if (! $actor->hasRole('Superadmin') && ! $actor->hasRole('Admin Cabang')) {
+                abort(403, 'Hanya Superadmin atau Admin Cabang yang dapat melakukan koreksi loyalty.');
+            }
+
+            if ($actor->hasRole('Admin Cabang') && (string) $locked->branch_id !== (string) $actor->branch_id) {
+                abort(403, 'Anda tidak memiliki akses ke order cabang ini.');
+            }
+
+            if (! $locked->customer_id) {
+                abort(422, 'Order ini belum memiliki pelanggan, sehingga loyalty tidak dapat diterapkan.');
+            }
+
+            if (! in_array($reward, ['DISC25', 'FREE100'], true)) {
+                abort(422, 'Jenis reward loyalty tidak valid.');
+            }
+
+            $subtotal = (float) $locked->subtotal;
+            $paid     = (float) $locked->paid_amount;
+
+            $loyaltyDiscount = $reward === 'FREE100'
+                ? $subtotal
+                : round($subtotal * 0.25, 2);
+
+            $grandTotal = max(0, $subtotal - $loyaltyDiscount);
+            $dueAmount  = max(0, $grandTotal - $paid);
+
+            $locked->forceFill([
+                'loyalty_reward'   => $reward,
+                'loyalty_discount' => $this->dec($loyaltyDiscount),
+                'discount'         => $this->dec($loyaltyDiscount),
+                'grand_total'      => $this->dec($grandTotal),
+                'due_amount'       => $this->dec($dueAmount),
+                'payment_status'   => $dueAmount <= 0 ? 'PAID' : ($paid > 0 ? 'DP' : 'PENDING'),
+            ])->save();
+
+            $existing = Receivable::query()
+                ->where('order_id', (string) $locked->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                $existing->forceFill([
+                    'remaining_amount' => $this->dec($dueAmount),
+                    'status'           => $dueAmount <= 0 ? 'SETTLED' : ($dueAmount < $grandTotal ? 'PARTIAL' : 'OPEN'),
+                    'updated_at'       => now(),
+                ])->save();
+            }
+
+            DB::table('loyalty_logs')->insert([
+                'id'          => (string) Str::uuid(),
+                'order_id'    => null,
+                'customer_id' => (string) $locked->customer_id,
+                'branch_id'   => (string) $locked->branch_id,
+                'action'      => $reward === 'FREE100' ? 'MANUAL_REWARD100' : 'MANUAL_REWARD25',
+                'note'        => $note . ' | Order: ' . ($locked->invoice_no ?: $locked->number) . ' | Koreksi oleh: ' . $actor->name,
+                'before'      => 0,
+                'after'       => 0,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ]);
+
+            return $locked->fresh(['items.service', 'customer', 'receivable']);
         });
     }
 

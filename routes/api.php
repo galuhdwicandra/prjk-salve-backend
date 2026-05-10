@@ -145,6 +145,7 @@ Route::prefix('v1')->group(function () {
         Route::put('/orders/{order}', [OrderController::class, 'update']);
         Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
         Route::post('/orders/{order}/status', [OrderController::class, 'transitionStatus']);
+        Route::post('/orders/{order}/loyalty-correction', [OrderController::class, 'applyLoyaltyCorrection']);
         Route::post('/orders/{order}/photos', [OrderPhotosController::class, 'store']);
 
         // Deliveries

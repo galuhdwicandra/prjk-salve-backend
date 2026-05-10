@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OrderStatusRequest;
 use App\Http\Requests\OrderStoreRequest;
+use App\Http\Requests\Orders\OrderLoyaltyCorrectionRequest;
 use App\Http\Requests\OrderUpdateRequest;
 use App\Models\Order;
 use App\Services\CashLedgerService;
@@ -279,6 +280,26 @@ class OrderController extends Controller
         ]);
     }
 
+    // POST /orders/{order}/loyalty-correction
+    public function applyLoyaltyCorrection(OrderLoyaltyCorrectionRequest $request, Order $order)
+    {
+        $this->authorize('update', $order);
+
+        $order = $this->svc->applyManualLoyaltyCorrection(
+            $order,
+            (string) $request->validated('reward'),
+            (string) $request->validated('note'),
+            $request->user()
+        );
+
+        return response()->json([
+            'data'    => $order,
+            'meta'    => [],
+            'message' => 'Koreksi loyalty berhasil diterapkan.',
+            'errors'  => null,
+        ]);
+    }
+
     // DELETE /orders/{order}
     public function destroy(Order $order)
     {
@@ -327,11 +348,11 @@ class OrderController extends Controller
             );
             $cycle     = LoyaltyService::CYCLE;
             $stamps    = (int) $acc->stamps;
-            $next      = ($stamps % $cycle) + 1;
+            $next      = $stamps >= $cycle ? $cycle : $stamps;
             $target25  = 5;
             $target100 = 10;
-            $sisa25    = ($target25 - $next + $cycle) % $cycle;
-            $sisa100   = ($target100 - $next + $cycle) % $cycle;
+            $sisa25    = max(0, $target25 - $stamps);
+            $sisa100   = max(0, $target100 - $stamps);
 
             $loy = [
                 'stamps'  => $stamps,
