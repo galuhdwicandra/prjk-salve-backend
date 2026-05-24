@@ -147,6 +147,34 @@ class ReportController extends Controller
                 $columns = ['branch', 'service', 'unit', 'qty', 'amount'];
                 return [$q, $columns];
 
+            case 'deep-clean':
+                $q = $this->svc->buildDeepCleanTreatmentQuery($from, $to, $bid);
+
+                $columns = [
+                    'branch_code',
+                    'branch_name',
+                    'order_created_at',
+                    'received_at',
+                    'ready_at',
+                    'order_number',
+                    'invoice_no',
+                    'customer_name',
+                    'customer_whatsapp',
+                    'service_name',
+                    'unit',
+                    'qty',
+                    'price',
+                    'total',
+                    'order_status',
+                    'payment_status',
+                    'order_grand_total',
+                    'order_paid_amount',
+                    'order_due_amount',
+                    'item_note',
+                    'order_note',
+                ];
+                return [$q, $columns];
+
             case 'cash':
                 $q       = $this->svc->buildCashQuery($from, $to, $bid);
                 $columns = [

@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-05-10 15:21:18_  
+_Dihasilkan otomatis: 2026-05-24 18:16:16_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -3343,8 +3343,8 @@ class ReceivableController extends Controller
 
 ### app\Http\Controllers\Api\ReportController.php
 
-- SHA: `98e5d316d3c6`  
-- Ukuran: 6 KB  
+- SHA: `61a2f84e64f7`  
+- Ukuran: 7 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `ReportController` extends `Controller`**
@@ -3503,6 +3503,34 @@ class ReportController extends Controller
             case 'services':
                 $q       = $this->svc->buildServiceItemsQuery($from, $to, $bid);
                 $columns = ['branch', 'service', 'unit', 'qty', 'amount'];
+                return [$q, $columns];
+
+            case 'deep-clean':
+                $q = $this->svc->buildDeepCleanTreatmentQuery($from, $to, $bid);
+
+                $columns = [
+                    'branch_code',
+                    'branch_name',
+                    'order_created_at',
+                    'received_at',
+                    'ready_at',
+                    'order_number',
+                    'invoice_no',
+                    'customer_name',
+                    'customer_whatsapp',
+                    'service_name',
+                    'unit',
+                    'qty',
+                    'price',
+                    'total',
+                    'order_status',
+                    'payment_status',
+                    'order_grand_total',
+                    'order_paid_amount',
+                    'order_due_amount',
+                    'item_note',
+                    'order_note',
+                ];
                 return [$q, $columns];
 
             case 'cash':
@@ -12779,14 +12807,15 @@ class ReceivableService
 
 ### app\Services\ReportService.php
 
-- SHA: `a749ff9a2ff8`  
-- Ukuran: 12 KB  
+- SHA: `d60ec096375e`  
+- Ukuran: 13 KB  
 - Namespace: `App\Services`
 
 **Class `ReportService`**
 
 Metode Publik:
 - **buildServiceItemsQuery**(Carbon $from, Carbon $to, ?string $branchId)
+- **buildDeepCleanTreatmentQuery**(Carbon $from, Carbon $to, ?string $branchId)
 - **buildSalesQuery**(Carbon $from, Carbon $to, ?string $branchId, ?string $method = null) — SALES (basis kas) – window: payments.paid_at
 - **buildOrdersQuery**(Carbon $from, Carbon $to, ?string $branchId, ?string $status = null) — SALES (basis kas) – window: payments.paid_at
 - **buildReadyReminderQuery**(Carbon $from, Carbon $to, ?string $branchId, ?string $status = null) — SALES (basis kas) – window: payments.paid_at
@@ -12824,6 +12853,43 @@ class ReportService
             ")
             ->groupBy('b.name', 's.name', 's.unit')
             ->orderByRaw('SUM(oi.qty) DESC');
+    }
+
+    public function buildDeepCleanTreatmentQuery(Carbon $from, Carbon $to, ?string $branchId)
+    {
+        return DB::table('order_items as oi')
+            ->join('orders as o', 'o.id', '=', 'oi.order_id')
+            ->join('services as s', 's.id', '=', 'oi.service_id')
+            ->leftJoin('branches as b', 'b.id', '=', 'o.branch_id')
+            ->leftJoin('customers as c', 'c.id', '=', 'o.customer_id')
+            ->when($branchId, fn($qq) => $qq->where('o.branch_id', $branchId))
+            ->whereBetween('o.created_at', [$from, $to])
+            ->whereRaw('LOWER(s.name) = ?', ['deep clean'])
+            ->selectRaw("
+            b.code AS branch_code,
+            b.name AS branch_name,
+            DATE_FORMAT(o.created_at, '%Y-%m-%d %H:%i:%s') AS order_created_at,
+            DATE_FORMAT(o.received_at, '%Y-%m-%d') AS received_at,
+            DATE_FORMAT(o.ready_at, '%Y-%m-%d') AS ready_at,
+            o.number AS order_number,
+            o.invoice_no AS invoice_no,
+            c.name AS customer_name,
+            c.whatsapp AS customer_whatsapp,
+            s.name AS service_name,
+            s.unit AS unit,
+            CAST(oi.qty AS CHAR) AS qty,
+            oi.price AS price,
+            oi.total AS total,
+            o.status AS order_status,
+            o.payment_status AS payment_status,
+            o.grand_total AS order_grand_total,
+            o.paid_amount AS order_paid_amount,
+            o.due_amount AS order_due_amount,
+            oi.note AS item_note,
+            o.notes AS order_note
+        ")
+            ->orderBy('o.created_at', 'asc')
+            ->orderBy('o.invoice_no', 'asc');
     }
 
     /** SALES (basis kas) – window: payments.paid_at */

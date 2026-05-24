@@ -26,6 +26,43 @@ class ReportService
             ->orderByRaw('SUM(oi.qty) DESC');
     }
 
+    public function buildDeepCleanTreatmentQuery(Carbon $from, Carbon $to, ?string $branchId)
+    {
+        return DB::table('order_items as oi')
+            ->join('orders as o', 'o.id', '=', 'oi.order_id')
+            ->join('services as s', 's.id', '=', 'oi.service_id')
+            ->leftJoin('branches as b', 'b.id', '=', 'o.branch_id')
+            ->leftJoin('customers as c', 'c.id', '=', 'o.customer_id')
+            ->when($branchId, fn($qq) => $qq->where('o.branch_id', $branchId))
+            ->whereBetween('o.created_at', [$from, $to])
+            ->whereRaw('LOWER(s.name) = ?', ['deep clean'])
+            ->selectRaw("
+            b.code AS branch_code,
+            b.name AS branch_name,
+            DATE_FORMAT(o.created_at, '%Y-%m-%d %H:%i:%s') AS order_created_at,
+            DATE_FORMAT(o.received_at, '%Y-%m-%d') AS received_at,
+            DATE_FORMAT(o.ready_at, '%Y-%m-%d') AS ready_at,
+            o.number AS order_number,
+            o.invoice_no AS invoice_no,
+            c.name AS customer_name,
+            c.whatsapp AS customer_whatsapp,
+            s.name AS service_name,
+            s.unit AS unit,
+            CAST(oi.qty AS CHAR) AS qty,
+            oi.price AS price,
+            oi.total AS total,
+            o.status AS order_status,
+            o.payment_status AS payment_status,
+            o.grand_total AS order_grand_total,
+            o.paid_amount AS order_paid_amount,
+            o.due_amount AS order_due_amount,
+            oi.note AS item_note,
+            o.notes AS order_note
+        ")
+            ->orderBy('o.created_at', 'asc')
+            ->orderBy('o.invoice_no', 'asc');
+    }
+
     /** SALES (basis kas) – window: payments.paid_at */
     public function buildSalesQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $method = null)
     {
