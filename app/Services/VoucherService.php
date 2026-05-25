@@ -1,24 +1,28 @@
 <?php
-
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\OrderVoucher;
 use App\Models\User;
 use App\Models\Voucher;
-use App\Models\OrderVoucher;
+use App\Services\Accounting\AccountingPostingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class VoucherService
 {
+    public function __construct(
+        private AccountingPostingService $accountingPosting,
+    ) {}
+
     /**
      * Validasi bisnis: aktif, periode, cabang, min_total, usage_limit.
      * Lempar ValidationException bila tidak valid.
      */
     public function validate(Order $order, Voucher $voucher): void
     {
-        if (!$voucher->active) {
+        if (! $voucher->active) {
             throw ValidationException::withMessages(['code' => 'Voucher tidak aktif.']);
         }
 
@@ -68,30 +72,33 @@ class VoucherService
 
             // Hitung nilai potongan
             $subtotal = (float) $order->subtotal;
-            $amount = match ($voucher->type) {
+            $amount   = match ($voucher->type) {
                 'PERCENT' => round($subtotal * ((float) $voucher->value / 100), 2),
-                default => (float) $voucher->value,
+                default   => (float) $voucher->value,
             };
             // Batasi tidak melebihi subtotal
             $amount = max(0.0, min($amount, $subtotal));
 
             // Simpan pivot
             OrderVoucher::query()->create([
-                'id' => (string) Str::uuid(),
-                'order_id' => $order->id,
-                'voucher_id' => $voucher->id,
+                'id'             => (string) Str::uuid(),
+                'order_id'       => $order->id,
+                'voucher_id'     => $voucher->id,
                 'applied_amount' => number_format($amount, 2, '.', ''),
-                'applied_by' => $actor->id ?? null,
-                'applied_at' => now(),
+                'applied_by'     => $actor->id ?? null,
+                'applied_at'     => now(),
             ]);
 
             // Update kolom diskon & total
-            $order->discount = number_format(((float) $order->discount) + $amount, 2, '.', '');
+            $order->discount    = number_format(((float) $order->discount) + $amount, 2, '.', '');
             $order->grand_total = number_format(((float) $order->subtotal) - ((float) $order->discount), 2, '.', '');
-            $order->due_amount = number_format(((float) $order->grand_total) - ((float) $order->paid_amount), 2, '.', '');
+            $order->due_amount  = number_format(((float) $order->grand_total) - ((float) $order->paid_amount), 2, '.', '');
             $order->save();
 
-            // TODO: audit('ORDER_VOUCHER_APPLY', ['order_id' => $order->id, 'voucher' => $voucher->code, 'amount' => $amount, 'actor' => $actor->id]);
+            $this->accountingPosting->postOrderDiscount(
+                $order->refresh(),
+                $actor
+            );
 
             return $order->load(['items.service', 'vouchers']);
         });

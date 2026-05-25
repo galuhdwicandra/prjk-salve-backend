@@ -7,6 +7,7 @@ use App\Models\Expense;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Accounting\AccountingPostingService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -14,6 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class CashLedgerService
 {
+    public function __construct(
+        private AccountingPostingService $accountingPosting,
+    ) {}
+
     public function findOpenSession(string $branchId, Carbon $businessDate): ?CashSession
     {
         return CashSession::query()
@@ -58,7 +63,7 @@ class CashLedgerService
                 'notes'         => $notes,
             ]);
 
-            CashMutation::query()->create([
+            $mutation = CashMutation::query()->create([
                 'id'              => (string) Str::uuid(),
                 'cash_session_id' => $session->id,
                 'branch_id'       => $branchId,
@@ -72,6 +77,8 @@ class CashLedgerService
                 'created_by'      => $user->id,
                 'effective_at'    => now(),
             ]);
+
+            $this->accountingPosting->postCashMutation($mutation, $user);
 
             return $session->load(['branch', 'opener']);
         });
@@ -103,7 +110,7 @@ class CashLedgerService
         });
     }
 
-        public function reopenSession(CashSession $session, User $user): CashSession
+    public function reopenSession(CashSession $session, User $user): CashSession
     {
         return DB::transaction(function () use ($session, $user) {
             $session = CashSession::query()
@@ -149,7 +156,7 @@ class CashLedgerService
                 abort(422, 'Tidak bisa melakukan penarikan karena sesi kas sudah ditutup.');
             }
 
-            return CashMutation::query()->create([
+            $mutation = CashMutation::query()->create([
                 'id'              => (string) Str::uuid(),
                 'cash_session_id' => $session->id,
                 'branch_id'       => $session->branch_id,
@@ -163,6 +170,10 @@ class CashLedgerService
                 'created_by'      => $user->id,
                 'effective_at'    => $effectiveAt ?: now(),
             ]);
+
+            $this->accountingPosting->postCashMutation($mutation, $user);
+
+            return $mutation;
         });
     }
 

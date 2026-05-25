@@ -1,12 +1,20 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-05-24 21:58:49_  
+_Dihasilkan otomatis: 2026-05-25 18:09:13_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
 ## Daftar Isi
 
 - [Controllers (app/Http/Controllers/Api)](#controllers-apphttpcontrollersapi)
+  - [app\Http\Controllers\Api\Accounting\AccountController.php](#file-apphttpcontrollersapiaccountingaccountcontrollerphp)
+  - [app\Http\Controllers\Api\Accounting\AccountingDashboardController.php](#file-apphttpcontrollersapiaccountingaccountingdashboardcontrollerphp)
+  - [app\Http\Controllers\Api\Accounting\AccountMappingController.php](#file-apphttpcontrollersapiaccountingaccountmappingcontrollerphp)
+  - [app\Http\Controllers\Api\Accounting\BalanceSheetController.php](#file-apphttpcontrollersapiaccountingbalancesheetcontrollerphp)
+  - [app\Http\Controllers\Api\Accounting\CashFlowController.php](#file-apphttpcontrollersapiaccountingcashflowcontrollerphp)
+  - [app\Http\Controllers\Api\Accounting\JournalEntryController.php](#file-apphttpcontrollersapiaccountingjournalentrycontrollerphp)
+  - [app\Http\Controllers\Api\Accounting\LedgerController.php](#file-apphttpcontrollersapiaccountingledgercontrollerphp)
+  - [app\Http\Controllers\Api\Accounting\ProfitLossController.php](#file-apphttpcontrollersapiaccountingprofitlosscontrollerphp)
   - [app\Http\Controllers\Api\AuthController.php](#file-apphttpcontrollersapiauthcontrollerphp)
   - [app\Http\Controllers\Api\BranchController.php](#file-apphttpcontrollersapibranchcontrollerphp)
   - [app\Http\Controllers\Api\CashSessionController.php](#file-apphttpcontrollersapicashsessioncontrollerphp)
@@ -32,6 +40,10 @@ _Dihasilkan otomatis: 2026-05-24 21:58:49_
   - [app\Http\Controllers\Api\WhatsappTemplateController.php](#file-apphttpcontrollersapiwhatsapptemplatecontrollerphp)
 
 - [Models (app/Models)](#models-appmodels)
+  - [app\Models\AccountingAccount.php](#file-appmodelsaccountingaccountphp)
+  - [app\Models\AccountingAccountMapping.php](#file-appmodelsaccountingaccountmappingphp)
+  - [app\Models\AccountingJournalEntry.php](#file-appmodelsaccountingjournalentryphp)
+  - [app\Models\AccountingJournalLine.php](#file-appmodelsaccountingjournallinephp)
   - [app\Models\Branch.php](#file-appmodelsbranchphp)
   - [app\Models\CashMutation.php](#file-appmodelscashmutationphp)
   - [app\Models\CashSession.php](#file-appmodelscashsessionphp)
@@ -61,6 +73,9 @@ _Dihasilkan otomatis: 2026-05-24 21:58:49_
   - [app\Models\WhatsappTemplate.php](#file-appmodelswhatsapptemplatephp)
 
 - [Policies (app/Policies)](#policies-apppolicies)
+  - [app\Policies\AccountingAccountMappingPolicy.php](#file-apppoliciesaccountingaccountmappingpolicyphp)
+  - [app\Policies\AccountingAccountPolicy.php](#file-apppoliciesaccountingaccountpolicyphp)
+  - [app\Policies\AccountingJournalEntryPolicy.php](#file-apppoliciesaccountingjournalentrypolicyphp)
   - [app\Policies\BranchPolicy.php](#file-apppoliciesbranchpolicyphp)
   - [app\Policies\CategoryPolicy.php](#file-apppoliciescategorypolicyphp)
   - [app\Policies\CustomerPolicy.php](#file-apppoliciescustomerpolicyphp)
@@ -76,6 +91,15 @@ _Dihasilkan otomatis: 2026-05-24 21:58:49_
   - [app\Policies\WhatsappTemplatePolicy.php](#file-apppolicieswhatsapptemplatepolicyphp)
 
 - [Form Requests (app/Http/Requests)](#form-requests-apphttprequests)
+  - [app\Http\Requests\Accounting\AccountingReportFilterRequest.php](#file-apphttprequestsaccountingaccountingreportfilterrequestphp)
+  - [app\Http\Requests\Accounting\AccountMappingStoreRequest.php](#file-apphttprequestsaccountingaccountmappingstorerequestphp)
+  - [app\Http\Requests\Accounting\AccountMappingUpdateRequest.php](#file-apphttprequestsaccountingaccountmappingupdaterequestphp)
+  - [app\Http\Requests\Accounting\AccountStoreRequest.php](#file-apphttprequestsaccountingaccountstorerequestphp)
+  - [app\Http\Requests\Accounting\AccountUpdateRequest.php](#file-apphttprequestsaccountingaccountupdaterequestphp)
+  - [app\Http\Requests\Accounting\BalanceSheetFilterRequest.php](#file-apphttprequestsaccountingbalancesheetfilterrequestphp)
+  - [app\Http\Requests\Accounting\JournalEntryStoreRequest.php](#file-apphttprequestsaccountingjournalentrystorerequestphp)
+  - [app\Http\Requests\Accounting\JournalEntryUpdateRequest.php](#file-apphttprequestsaccountingjournalentryupdaterequestphp)
+  - [app\Http\Requests\Accounting\LedgerFilterRequest.php](#file-apphttprequestsaccountingledgerfilterrequestphp)
   - [app\Http\Requests\Auth\LoginRequest.php](#file-apphttprequestsauthloginrequestphp)
   - [app\Http\Requests\BranchStoreRequest.php](#file-apphttprequestsbranchstorerequestphp)
   - [app\Http\Requests\BranchUpdateRequest.php](#file-apphttprequestsbranchupdaterequestphp)
@@ -122,6 +146,14 @@ _Dihasilkan otomatis: 2026-05-24 21:58:49_
   - [app\Http\Requests\WhatsappTemplateUpdateRequest.php](#file-apphttprequestswhatsapptemplateupdaterequestphp)
 
 - [Services (app/Services)](#services-appservices)
+  - [app\Services\Accounting\AccountingDashboardService.php](#file-appservicesaccountingaccountingdashboardservicephp)
+  - [app\Services\Accounting\AccountingJournalNumberService.php](#file-appservicesaccountingaccountingjournalnumberservicephp)
+  - [app\Services\Accounting\AccountingLedgerService.php](#file-appservicesaccountingaccountingledgerservicephp)
+  - [app\Services\Accounting\AccountingMappingResolver.php](#file-appservicesaccountingaccountingmappingresolverphp)
+  - [app\Services\Accounting\AccountingPostingService.php](#file-appservicesaccountingaccountingpostingservicephp)
+  - [app\Services\Accounting\BalanceSheetService.php](#file-appservicesaccountingbalancesheetservicephp)
+  - [app\Services\Accounting\CashFlowService.php](#file-appservicesaccountingcashflowservicephp)
+  - [app\Services\Accounting\ProfitLossService.php](#file-appservicesaccountingprofitlossservicephp)
   - [app\Services\AuthService.php](#file-appservicesauthservicephp)
   - [app\Services\CashLedgerService.php](#file-appservicescashledgerservicephp)
   - [app\Services\DashboardService.php](#file-appservicesdashboardservicephp)
@@ -140,6 +172,7 @@ _Dihasilkan otomatis: 2026-05-24 21:58:49_
   - [app\Services\VoucherService.php](#file-appservicesvoucherservicephp)
 
 - [Database (seeders)](#database-seeders)
+  - [database\seeders\AccountingAccountSeeder.php](#file-databaseseedersaccountingaccountseederphp)
   - [database\seeders\BranchSeeder.php](#file-databaseseedersbranchseederphp)
   - [database\seeders\DatabaseSeeder.php](#file-databaseseedersdatabaseseederphp)
   - [database\seeders\RolesTableSeeder.php](#file-databaseseedersrolestableseederphp)
@@ -155,6 +188,1089 @@ _Dihasilkan otomatis: 2026-05-24 21:58:49_
 
 
 ## Controllers (app/Http/Controllers/Api)
+
+### app\Http\Controllers\Api\Accounting\AccountController.php
+
+- SHA: `fa498fcc7118`  
+- Ukuran: 5 KB  
+- Namespace: `App\Http\Controllers\Api\Accounting`
+
+**Class `AccountController` extends `Controller`**
+
+Metode Publik:
+- **index**(Request $request)
+- **show**(AccountingAccount $account)
+- **store**(AccountStoreRequest $request)
+- **update**(AccountUpdateRequest $request, AccountingAccount $account)
+- **destroy**(AccountingAccount $account)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api\Accounting;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Accounting\AccountStoreRequest;
+use App\Http\Requests\Accounting\AccountUpdateRequest;
+use App\Models\AccountingAccount;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class AccountController extends Controller
+{
+    public function index(Request $request)
+    {
+        $this->authorize('viewAny', AccountingAccount::class);
+
+        $user = $request->user();
+
+        $query = AccountingAccount::query()
+            ->with(['branch:id,name,code', 'parent:id,code,name'])
+            ->orderBy('sort_order')
+            ->orderBy('code');
+
+        if ($user->hasRole('Superadmin')) {
+            if ($branchId = $request->query('branch_id')) {
+                $query->where(function ($q) use ($branchId) {
+                    $q->whereNull('branch_id')
+                        ->orWhere('branch_id', $branchId);
+                });
+            }
+        } else {
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('branch_id')
+                    ->orWhere('branch_id', $user->branch_id);
+            });
+        }
+
+        if ($type = $request->query('type')) {
+            $query->where('type', $type);
+        }
+
+        if (($active = $request->query('is_active')) !== null) {
+            $query->where('is_active', filter_var($active, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        if ($search = trim((string) $request->query('q', ''))) {
+            $query->where(function ($q) use ($search) {
+                $q->where('code', 'like', "%{$search}%")
+                    ->orWhere('name', 'like', "%{$search}%");
+            });
+        }
+
+        $items = $query->paginate((int) $request->query('per_page', 20));
+
+        return response()->json([
+            'data' => $items->items(),
+            'meta' => [
+                'current_page' => $items->currentPage(),
+                'per_page' => $items->perPage(),
+                'total' => $items->total(),
+                'last_page' => $items->lastPage(),
+            ],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
+    public function show(AccountingAccount $account)
+    {
+        $this->authorize('view', $account);
+
+        return response()->json([
+            'data' => $account->load(['branch:id,name,code', 'parent:id,code,name']),
+            'meta' => [],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
+    public function store(AccountStoreRequest $request)
+    {
+        $this->authorize('create', AccountingAccount::class);
+
+        $payload = $this->payloadWithBranchScope($request->validated(), $request);
+
+        $account = DB::transaction(function () use ($payload) {
+            $account = new AccountingAccount($payload);
+            $account->id = (string) Str::uuid();
+            $account->save();
+
+            return $account;
+        });
+
+        return response()->json([
+            'data' => $account->load(['branch:id,name,code', 'parent:id,code,name']),
+            'meta' => [],
+            'message' => 'Created',
+            'errors' => null,
+        ], 201);
+    }
+
+    public function update(AccountUpdateRequest $request, AccountingAccount $account)
+    {
+        $this->authorize('update', $account);
+
+        $payload = $this->payloadWithBranchScope($request->validated(), $request);
+
+        DB::transaction(function () use ($account, $payload) {
+            $account->fill($payload)->save();
+        });
+
+        return response()->json([
+            'data' => $account->refresh()->load(['branch:id,name,code', 'parent:id,code,name']),
+            'meta' => [],
+            'message' => 'Updated',
+            'errors' => null,
+        ]);
+    }
+
+    public function destroy(AccountingAccount $account)
+    {
+        $this->authorize('delete', $account);
+
+        if ($account->children()->exists()) {
+            return response()->json([
+                'data' => null,
+                'meta' => [],
+                'message' => 'Akun tidak dapat dihapus karena masih memiliki akun turunan.',
+                'errors' => [
+                    'account' => ['Akun masih memiliki akun turunan.'],
+                ],
+            ], 422);
+        }
+
+        if ($account->debitMappings()->exists() || $account->creditMappings()->exists()) {
+            return response()->json([
+                'data' => null,
+                'meta' => [],
+                'message' => 'Akun tidak dapat dihapus karena masih digunakan pada mapping akun.',
+                'errors' => [
+                    'account' => ['Akun masih digunakan pada mapping akun.'],
+                ],
+            ], 422);
+        }
+
+        $account->delete();
+
+        return response()->json([
+            'data' => null,
+            'meta' => [],
+            'message' => 'Deleted',
+            'errors' => null,
+        ]);
+    }
+
+    private function payloadWithBranchScope(array $payload, Request $request): array
+    {
+        $user = $request->user();
+
+        if ($user->hasRole('Superadmin')) {
+            $payload['branch_id'] = $payload['branch_id'] ?? null;
+            return $payload;
+        }
+
+        $payload['branch_id'] = $user->branch_id;
+
+        return $payload;
+    }
+}
+
+```
+</details>
+
+### app\Http\Controllers\Api\Accounting\AccountingDashboardController.php
+
+- SHA: `2bb19c19de42`  
+- Ukuran: 766 B  
+- Namespace: `App\Http\Controllers\Api\Accounting`
+
+**Class `AccountingDashboardController` extends `Controller`**
+
+Metode Publik:
+- **__construct**(private AccountingDashboardService $dashboardService,)
+- **index**(AccountingReportFilterRequest $request)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api\Accounting;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Accounting\AccountingReportFilterRequest;
+use App\Services\Accounting\AccountingDashboardService;
+
+class AccountingDashboardController extends Controller
+{
+    public function __construct(
+        private AccountingDashboardService $dashboardService,
+    ) {}
+
+    public function index(AccountingReportFilterRequest $request)
+    {
+        $result = $this->dashboardService->build(
+            $request->validated(),
+            $request->user()
+        );
+
+        return response()->json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+}
+
+```
+</details>
+
+### app\Http\Controllers\Api\Accounting\AccountMappingController.php
+
+- SHA: `60c800155205`  
+- Ukuran: 7 KB  
+- Namespace: `App\Http\Controllers\Api\Accounting`
+
+**Class `AccountMappingController` extends `Controller`**
+
+Metode Publik:
+- **index**(Request $request)
+- **show**(AccountingAccountMapping $accountMapping)
+- **store**(AccountMappingStoreRequest $request)
+- **update**(AccountMappingUpdateRequest $request, AccountingAccountMapping $accountMapping)
+- **destroy**(AccountingAccountMapping $accountMapping)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api\Accounting;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Accounting\AccountMappingStoreRequest;
+use App\Http\Requests\Accounting\AccountMappingUpdateRequest;
+use App\Models\AccountingAccountMapping;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class AccountMappingController extends Controller
+{
+    public function index(Request $request)
+    {
+        $this->authorize('viewAny', AccountingAccountMapping::class);
+
+        $user = $request->user();
+
+        $query = AccountingAccountMapping::query()
+            ->with([
+                'branch:id,name,code',
+                'debitAccount:id,code,name,type,normal_balance',
+                'creditAccount:id,code,name,type,normal_balance',
+            ])
+            ->orderBy('event_key');
+
+        if ($user->hasRole('Superadmin')) {
+            if ($branchId = $request->query('branch_id')) {
+                $query->where(function ($q) use ($branchId) {
+                    $q->whereNull('branch_id')
+                        ->orWhere('branch_id', $branchId);
+                });
+            }
+        } else {
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('branch_id')
+                    ->orWhere('branch_id', $user->branch_id);
+            });
+        }
+
+        if ($eventKey = $request->query('event_key')) {
+            $query->where('event_key', $eventKey);
+        }
+
+        if (($active = $request->query('is_active')) !== null) {
+            $query->where('is_active', filter_var($active, FILTER_VALIDATE_BOOLEAN));
+        }
+
+        if ($search = trim((string) $request->query('q', ''))) {
+            $query->where(function ($q) use ($search) {
+                $q->where('event_key', 'like', "%{$search}%")
+                    ->orWhere('payment_method', 'like', "%{$search}%")
+                    ->orWhere('expense_category', 'like', "%{$search}%");
+            });
+        }
+
+        $items = $query->paginate((int) $request->query('per_page', 20));
+
+        return response()->json([
+            'data' => $items->items(),
+            'meta' => [
+                'current_page' => $items->currentPage(),
+                'per_page' => $items->perPage(),
+                'total' => $items->total(),
+                'last_page' => $items->lastPage(),
+            ],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
+    public function show(AccountingAccountMapping $accountMapping)
+    {
+        $this->authorize('view', $accountMapping);
+
+        return response()->json([
+            'data' => $accountMapping->load([
+                'branch:id,name,code',
+                'debitAccount:id,code,name,type,normal_balance',
+                'creditAccount:id,code,name,type,normal_balance',
+            ]),
+            'meta' => [],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
+    public function store(AccountMappingStoreRequest $request)
+    {
+        $this->authorize('create', AccountingAccountMapping::class);
+
+        $payload = $this->payloadWithBranchScope($request->validated(), $request);
+
+        $duplicate = $this->duplicateExists($payload);
+
+        if ($duplicate) {
+            return response()->json([
+                'data' => null,
+                'meta' => [],
+                'message' => 'Mapping akun dengan kombinasi event, metode bayar, kategori, dan cabang tersebut sudah ada.',
+                'errors' => [
+                    'event_key' => ['Mapping akun sudah ada.'],
+                ],
+            ], 422);
+        }
+
+        $mapping = DB::transaction(function () use ($payload) {
+            $mapping = new AccountingAccountMapping($payload);
+            $mapping->id = (string) Str::uuid();
+            $mapping->save();
+
+            return $mapping;
+        });
+
+        return response()->json([
+            'data' => $mapping->load([
+                'branch:id,name,code',
+                'debitAccount:id,code,name,type,normal_balance',
+                'creditAccount:id,code,name,type,normal_balance',
+            ]),
+            'meta' => [],
+            'message' => 'Created',
+            'errors' => null,
+        ], 201);
+    }
+
+    public function update(AccountMappingUpdateRequest $request, AccountingAccountMapping $accountMapping)
+    {
+        $this->authorize('update', $accountMapping);
+
+        $payload = $this->payloadWithBranchScope($request->validated(), $request);
+
+        $duplicate = $this->duplicateExists($payload, (string) $accountMapping->id);
+
+        if ($duplicate) {
+            return response()->json([
+                'data' => null,
+                'meta' => [],
+                'message' => 'Mapping akun dengan kombinasi event, metode bayar, kategori, dan cabang tersebut sudah ada.',
+                'errors' => [
+                    'event_key' => ['Mapping akun sudah ada.'],
+                ],
+            ], 422);
+        }
+
+        DB::transaction(function () use ($accountMapping, $payload) {
+            $accountMapping->fill($payload)->save();
+        });
+
+        return response()->json([
+            'data' => $accountMapping->refresh()->load([
+                'branch:id,name,code',
+                'debitAccount:id,code,name,type,normal_balance',
+                'creditAccount:id,code,name,type,normal_balance',
+            ]),
+            'meta' => [],
+            'message' => 'Updated',
+            'errors' => null,
+        ]);
+    }
+
+    public function destroy(AccountingAccountMapping $accountMapping)
+    {
+        $this->authorize('delete', $accountMapping);
+
+        $accountMapping->delete();
+
+        return response()->json([
+            'data' => null,
+            'meta' => [],
+            'message' => 'Deleted',
+            'errors' => null,
+        ]);
+    }
+
+    private function payloadWithBranchScope(array $payload, Request $request): array
+    {
+        $user = $request->user();
+
+        if ($user->hasRole('Superadmin')) {
+            $payload['branch_id'] = $payload['branch_id'] ?? null;
+            return $payload;
+        }
+
+        $payload['branch_id'] = $user->branch_id;
+
+        return $payload;
+    }
+
+    private function duplicateExists(array $payload, ?string $ignoreId = null): bool
+    {
+        $query = AccountingAccountMapping::query()
+            ->where('event_key', $payload['event_key'])
+            ->where('branch_id', $payload['branch_id'] ?? null)
+            ->where('payment_method', $payload['payment_method'] ?? null)
+            ->where('expense_category', $payload['expense_category'] ?? null);
+
+        if ($ignoreId) {
+            $query->where('id', '!=', $ignoreId);
+        }
+
+        return $query->exists();
+    }
+}
+
+```
+</details>
+
+### app\Http\Controllers\Api\Accounting\BalanceSheetController.php
+
+- SHA: `9503fd1bb7f7`  
+- Ukuran: 743 B  
+- Namespace: `App\Http\Controllers\Api\Accounting`
+
+**Class `BalanceSheetController` extends `Controller`**
+
+Metode Publik:
+- **__construct**(private BalanceSheetService $balanceSheetService,)
+- **index**(BalanceSheetFilterRequest $request)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api\Accounting;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Accounting\BalanceSheetFilterRequest;
+use App\Services\Accounting\BalanceSheetService;
+
+class BalanceSheetController extends Controller
+{
+    public function __construct(
+        private BalanceSheetService $balanceSheetService,
+    ) {}
+
+    public function index(BalanceSheetFilterRequest $request)
+    {
+        $result = $this->balanceSheetService->build(
+            $request->validated(),
+            $request->user()
+        );
+
+        return response()->json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+}
+
+```
+</details>
+
+### app\Http\Controllers\Api\Accounting\CashFlowController.php
+
+- SHA: `2af54ecf0b54`  
+- Ukuran: 731 B  
+- Namespace: `App\Http\Controllers\Api\Accounting`
+
+**Class `CashFlowController` extends `Controller`**
+
+Metode Publik:
+- **__construct**(private CashFlowService $cashFlowService,)
+- **index**(AccountingReportFilterRequest $request)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api\Accounting;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Accounting\AccountingReportFilterRequest;
+use App\Services\Accounting\CashFlowService;
+
+class CashFlowController extends Controller
+{
+    public function __construct(
+        private CashFlowService $cashFlowService,
+    ) {}
+
+    public function index(AccountingReportFilterRequest $request)
+    {
+        $result = $this->cashFlowService->build(
+            $request->validated(),
+            $request->user()
+        );
+
+        return response()->json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+}
+
+```
+</details>
+
+### app\Http\Controllers\Api\Accounting\JournalEntryController.php
+
+- SHA: `b04e104d3f4f`  
+- Ukuran: 14 KB  
+- Namespace: `App\Http\Controllers\Api\Accounting`
+
+**Class `JournalEntryController` extends `Controller`**
+
+Metode Publik:
+- **__construct**(private AccountingJournalNumberService $numberService,)
+- **index**(Request $request)
+- **show**(AccountingJournalEntry $journal)
+- **store**(JournalEntryStoreRequest $request)
+- **update**(JournalEntryUpdateRequest $request, AccountingJournalEntry $journal)
+- **post**(Request $request, AccountingJournalEntry $journal)
+- **void**(Request $request, AccountingJournalEntry $journal)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api\Accounting;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Accounting\JournalEntryStoreRequest;
+use App\Http\Requests\Accounting\JournalEntryUpdateRequest;
+use App\Models\AccountingAccount;
+use App\Models\AccountingJournalEntry;
+use App\Models\AccountingJournalLine;
+use App\Services\Accounting\AccountingJournalNumberService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+
+class JournalEntryController extends Controller
+{
+    public function __construct(
+        private AccountingJournalNumberService $numberService,
+    ) {}
+
+    public function index(Request $request)
+    {
+        $this->authorize('viewAny', AccountingJournalEntry::class);
+
+        $user = $request->user();
+
+        $query = AccountingJournalEntry::query()
+            ->with([
+                'branch:id,name,code',
+                'creator:id,name',
+                'poster:id,name',
+                'voider:id,name',
+            ])
+            ->withCount('lines')
+            ->orderByDesc('journal_date')
+            ->orderByDesc('created_at');
+
+        if ($user->hasRole('Superadmin')) {
+            if ($branchId = $request->query('branch_id')) {
+                $query->where('branch_id', $branchId);
+            }
+        } else {
+            $query->where('branch_id', $user->branch_id);
+        }
+
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($sourceType = $request->query('source_type')) {
+            $query->where('source_type', $sourceType);
+        }
+
+        if ($from = $request->query('date_from')) {
+            $query->whereDate('journal_date', '>=', $from);
+        }
+
+        if ($to = $request->query('date_to')) {
+            $query->whereDate('journal_date', '<=', $to);
+        }
+
+        if ($search = trim((string) $request->query('q', ''))) {
+            $query->where(function ($q) use ($search) {
+                $q->where('journal_no', 'like', "%{$search}%")
+                    ->orWhere('source_no', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $items = $query->paginate((int) $request->query('per_page', 20));
+
+        return response()->json([
+            'data' => $items->items(),
+            'meta' => [
+                'current_page' => $items->currentPage(),
+                'per_page' => $items->perPage(),
+                'total' => $items->total(),
+                'last_page' => $items->lastPage(),
+            ],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
+    public function show(AccountingJournalEntry $journal)
+    {
+        $this->authorize('view', $journal);
+
+        return response()->json([
+            'data' => $journal->load([
+                'branch:id,name,code',
+                'mapping:id,event_key,payment_method,expense_category',
+                'creator:id,name',
+                'poster:id,name',
+                'voider:id,name',
+                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
+            ]),
+            'meta' => [],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+
+    public function store(JournalEntryStoreRequest $request)
+    {
+        $this->authorize('create', AccountingJournalEntry::class);
+
+        $payload = $request->validated();
+        $branchId = $this->resolveBranchId($request, $payload);
+        $lines = $this->normalizeLines($payload['lines'], $branchId);
+
+        $journal = DB::transaction(function () use ($request, $payload, $branchId, $lines) {
+            $journal = new AccountingJournalEntry([
+                'branch_id' => $branchId,
+                'mapping_id' => null,
+                'journal_no' => $this->numberService->next($payload['journal_date']),
+                'journal_date' => Carbon::parse($payload['journal_date'])->toDateString(),
+                'source_type' => 'manual',
+                'source_id' => null,
+                'source_no' => null,
+                'status' => 'DRAFT',
+                'description' => $payload['description'] ?? null,
+                'total_debit' => $lines['total_debit'],
+                'total_credit' => $lines['total_credit'],
+                'created_by' => $request->user()?->id,
+                'posted_by' => null,
+                'posted_at' => null,
+                'voided_by' => null,
+                'voided_at' => null,
+                'void_reason' => null,
+            ]);
+
+            $journal->id = (string) Str::uuid();
+            $journal->save();
+
+            foreach ($lines['items'] as $index => $line) {
+                $detail = new AccountingJournalLine([
+                    'journal_entry_id' => $journal->id,
+                    'account_id' => $line['account_id'],
+                    'description' => $line['description'],
+                    'debit' => $line['debit'],
+                    'credit' => $line['credit'],
+                    'line_order' => $index + 1,
+                ]);
+
+                $detail->id = (string) Str::uuid();
+                $detail->save();
+            }
+
+            return $journal;
+        });
+
+        return response()->json([
+            'data' => $journal->load([
+                'branch:id,name,code',
+                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
+            ]),
+            'meta' => [],
+            'message' => 'Created',
+            'errors' => null,
+        ], 201);
+    }
+
+    public function update(JournalEntryUpdateRequest $request, AccountingJournalEntry $journal)
+    {
+        $this->authorize('update', $journal);
+
+        if ((string) $journal->source_type !== 'manual') {
+            return response()->json([
+                'data' => null,
+                'meta' => [],
+                'message' => 'Jurnal otomatis tidak boleh diedit manual.',
+                'errors' => [
+                    'journal' => ['Jurnal otomatis tidak boleh diedit manual. Gunakan jurnal koreksi.'],
+                ],
+            ], 422);
+        }
+
+        $payload = $request->validated();
+        $branchId = $this->resolveBranchId($request, $payload);
+        $lines = $this->normalizeLines($payload['lines'], $branchId);
+
+        DB::transaction(function () use ($journal, $payload, $branchId, $lines) {
+            $journal->fill([
+                'branch_id' => $branchId,
+                'journal_date' => Carbon::parse($payload['journal_date'])->toDateString(),
+                'description' => $payload['description'] ?? null,
+                'total_debit' => $lines['total_debit'],
+                'total_credit' => $lines['total_credit'],
+            ])->save();
+
+            AccountingJournalLine::query()
+                ->where('journal_entry_id', $journal->id)
+                ->delete();
+
+            foreach ($lines['items'] as $index => $line) {
+                $detail = new AccountingJournalLine([
+                    'journal_entry_id' => $journal->id,
+                    'account_id' => $line['account_id'],
+                    'description' => $line['description'],
+                    'debit' => $line['debit'],
+                    'credit' => $line['credit'],
+                    'line_order' => $index + 1,
+                ]);
+
+                $detail->id = (string) Str::uuid();
+                $detail->save();
+            }
+        });
+
+        return response()->json([
+            'data' => $journal->refresh()->load([
+                'branch:id,name,code',
+                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
+            ]),
+            'meta' => [],
+            'message' => 'Updated',
+            'errors' => null,
+        ]);
+    }
+
+    public function post(Request $request, AccountingJournalEntry $journal)
+    {
+        $this->authorize('post', $journal);
+
+        $journal->loadMissing('lines');
+
+        if ($journal->lines->count() < 2) {
+            return response()->json([
+                'data' => null,
+                'meta' => [],
+                'message' => 'Jurnal minimal memiliki dua baris.',
+                'errors' => [
+                    'lines' => ['Jurnal minimal memiliki dua baris.'],
+                ],
+            ], 422);
+        }
+
+        if (bccomp((string) $journal->total_debit, (string) $journal->total_credit, 2) !== 0) {
+            return response()->json([
+                'data' => null,
+                'meta' => [],
+                'message' => 'Jurnal belum balance.',
+                'errors' => [
+                    'total' => ['Total debit harus sama dengan total kredit.'],
+                ],
+            ], 422);
+        }
+
+        DB::transaction(function () use ($request, $journal) {
+            $journal->fill([
+                'status' => 'POSTED',
+                'posted_by' => $request->user()?->id,
+                'posted_at' => now(),
+                'voided_by' => null,
+                'voided_at' => null,
+                'void_reason' => null,
+            ])->save();
+        });
+
+        return response()->json([
+            'data' => $journal->refresh()->load([
+                'branch:id,name,code',
+                'poster:id,name',
+                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
+            ]),
+            'meta' => [],
+            'message' => 'Posted',
+            'errors' => null,
+        ]);
+    }
+
+    public function void(Request $request, AccountingJournalEntry $journal)
+    {
+        $this->authorize('void', $journal);
+
+        $request->validate([
+            'void_reason' => ['required', 'string', 'max:1000'],
+        ], [
+            'void_reason.required' => 'Alasan void wajib diisi.',
+        ]);
+
+        DB::transaction(function () use ($request, $journal) {
+            $journal->fill([
+                'status' => 'VOID',
+                'voided_by' => $request->user()?->id,
+                'voided_at' => now(),
+                'void_reason' => $request->input('void_reason'),
+            ])->save();
+        });
+
+        return response()->json([
+            'data' => $journal->refresh()->load([
+                'branch:id,name,code',
+                'voider:id,name',
+                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
+            ]),
+            'meta' => [],
+            'message' => 'Voided',
+            'errors' => null,
+        ]);
+    }
+
+    private function resolveBranchId(Request $request, array $payload): string
+    {
+        $user = $request->user();
+
+        if (! $user->hasRole('Superadmin')) {
+            if (! $user->branch_id) {
+                throw ValidationException::withMessages([
+                    'branch_id' => ['User belum terikat ke cabang.'],
+                ]);
+            }
+
+            return (string) $user->branch_id;
+        }
+
+        $branchId = $payload['branch_id'] ?? null;
+
+        if (! $branchId) {
+            throw ValidationException::withMessages([
+                'branch_id' => ['Cabang wajib dipilih untuk membuat jurnal.'],
+            ]);
+        }
+
+        return (string) $branchId;
+    }
+
+    private function normalizeLines(array $rows, string $branchId): array
+    {
+        $items = [];
+        $totalDebit = 0.0;
+        $totalCredit = 0.0;
+
+        foreach ($rows as $index => $row) {
+            $debit = round((float) ($row['debit'] ?? 0), 2);
+            $credit = round((float) ($row['credit'] ?? 0), 2);
+
+            if ($debit <= 0 && $credit <= 0) {
+                throw ValidationException::withMessages([
+                    "lines.{$index}.debit" => ['Debit atau kredit harus diisi.'],
+                ]);
+            }
+
+            if ($debit > 0 && $credit > 0) {
+                throw ValidationException::withMessages([
+                    "lines.{$index}.debit" => ['Satu baris tidak boleh memiliki debit dan kredit sekaligus.'],
+                ]);
+            }
+
+            $account = AccountingAccount::query()
+                ->where('id', $row['account_id'])
+                ->where('is_active', true)
+                ->where(function ($q) use ($branchId) {
+                    $q->whereNull('branch_id')
+                        ->orWhere('branch_id', $branchId);
+                })
+                ->first();
+
+            if (! $account) {
+                throw ValidationException::withMessages([
+                    "lines.{$index}.account_id" => ['Akun tidak aktif atau tidak sesuai cabang jurnal.'],
+                ]);
+            }
+
+            $items[] = [
+                'account_id' => (string) $row['account_id'],
+                'description' => $row['description'] ?? null,
+                'debit' => $debit,
+                'credit' => $credit,
+            ];
+
+            $totalDebit += $debit;
+            $totalCredit += $credit;
+        }
+
+        $totalDebit = round($totalDebit, 2);
+        $totalCredit = round($totalCredit, 2);
+
+        if ($totalDebit <= 0 || $totalCredit <= 0) {
+            throw ValidationException::withMessages([
+                'lines' => ['Total debit dan kredit harus lebih dari nol.'],
+            ]);
+        }
+
+        if (bccomp((string) $totalDebit, (string) $totalCredit, 2) !== 0) {
+            throw ValidationException::withMessages([
+                'total' => ['Total debit harus sama dengan total kredit.'],
+            ]);
+        }
+
+        return [
+            'items' => $items,
+            'total_debit' => $totalDebit,
+            'total_credit' => $totalCredit,
+        ];
+    }
+}
+
+```
+</details>
+
+### app\Http\Controllers\Api\Accounting\LedgerController.php
+
+- SHA: `a122f6f6d954`  
+- Ukuran: 721 B  
+- Namespace: `App\Http\Controllers\Api\Accounting`
+
+**Class `LedgerController` extends `Controller`**
+
+Metode Publik:
+- **__construct**(private AccountingLedgerService $ledgerService,)
+- **index**(LedgerFilterRequest $request)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api\Accounting;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Accounting\LedgerFilterRequest;
+use App\Services\Accounting\AccountingLedgerService;
+
+class LedgerController extends Controller
+{
+    public function __construct(
+        private AccountingLedgerService $ledgerService,
+    ) {}
+
+    public function index(LedgerFilterRequest $request)
+    {
+        $result = $this->ledgerService->build(
+            $request->validated(),
+            $request->user()
+        );
+
+        return response()->json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+}
+
+```
+</details>
+
+### app\Http\Controllers\Api\Accounting\ProfitLossController.php
+
+- SHA: `664c9c6cde59`  
+- Ukuran: 741 B  
+- Namespace: `App\Http\Controllers\Api\Accounting`
+
+**Class `ProfitLossController` extends `Controller`**
+
+Metode Publik:
+- **__construct**(private ProfitLossService $profitLossService,)
+- **index**(AccountingReportFilterRequest $request)
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api\Accounting;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Accounting\AccountingReportFilterRequest;
+use App\Services\Accounting\ProfitLossService;
+
+class ProfitLossController extends Controller
+{
+    public function __construct(
+        private ProfitLossService $profitLossService,
+    ) {}
+
+    public function index(AccountingReportFilterRequest $request)
+    {
+        $result = $this->profitLossService->build(
+            $request->validated(),
+            $request->user()
+        );
+
+        return response()->json([
+            'data' => $result['data'],
+            'meta' => $result['meta'],
+            'message' => 'OK',
+            'errors' => null,
+        ]);
+    }
+}
+
+```
+</details>
 
 ### app\Http\Controllers\Api\AuthController.php
 
@@ -362,8 +1478,8 @@ class BranchController extends Controller
 
 ### app\Http\Controllers\Api\CashSessionController.php
 
-- SHA: `cda68dabd648`  
-- Ukuran: 10 KB  
+- SHA: `25df63d7c4f0`  
+- Ukuran: 11 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `CashSessionController` extends `Controller`**
@@ -382,18 +1498,18 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CashSessionCloseRequest;
 use App\Http\Requests\CashSessionOpenRequest;
-use App\Http\Requests\CashWithdrawalRequest;
 use App\Http\Requests\CashSessionUpdateRequest;
+use App\Http\Requests\CashWithdrawalRequest;
 use App\Models\CashSession;
 use App\Services\CashLedgerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class CashSessionController extends Controller
 {
@@ -434,15 +1550,15 @@ class CashSessionController extends Controller
         $items = $q->paginate((int) $request->query('per_page', 20));
 
         return response()->json([
-            'data' => $items->items(),
-            'meta' => [
+            'data'    => $items->items(),
+            'meta'    => [
                 'current_page' => $items->currentPage(),
-                'per_page' => $items->perPage(),
-                'total' => $items->total(),
-                'last_page' => $items->lastPage(),
+                'per_page'     => $items->perPage(),
+                'total'        => $items->total(),
+                'last_page'    => $items->lastPage(),
             ],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -454,17 +1570,17 @@ class CashSessionController extends Controller
             'branch:id,name',
             'opener:id,name',
             'closer:id,name',
-            'mutations' => fn ($q) => $q->orderByDesc('effective_at')->orderByDesc('created_at'),
+            'mutations' => fn($q) => $q->orderByDesc('effective_at')->orderByDesc('created_at'),
             'mutations.creator:id,name',
         ]);
 
         return response()->json([
-            'data' => $cashSession,
-            'meta' => [
+            'data'    => $cashSession,
+            'meta'    => [
                 'system_closing' => $this->cash->computeSystemClosing($cashSession->id),
             ],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -478,7 +1594,7 @@ class CashSessionController extends Controller
                 'branch:id,name',
                 'opener:id,name',
                 'closer:id,name',
-                'mutations' => fn ($mq) => $mq->orderByDesc('effective_at')->orderByDesc('created_at'),
+                'mutations' => fn($mq) => $mq->orderByDesc('effective_at')->orderByDesc('created_at'),
                 'mutations.creator:id,name',
             ])
             ->orderByDesc('business_date')
@@ -489,18 +1605,18 @@ class CashSessionController extends Controller
                 $q->where('branch_id', $branchId);
             }
         } else {
-            if (!$user->branch_id) {
+            if (! $user->branch_id) {
                 return response()->json([
-                    'data' => null,
-                    'meta' => [
-                        'system_closing' => 0,
-                        'cash_in_total' => 0,
-                        'cash_out_total' => 0,
+                    'data'    => null,
+                    'meta'    => [
+                        'system_closing'   => 0,
+                        'cash_in_total'    => 0,
+                        'cash_out_total'   => 0,
                         'withdrawal_total' => 0,
                         'has_open_session' => false,
                     ],
                     'message' => 'User belum terikat ke cabang.',
-                    'errors' => null,
+                    'errors'  => null,
                 ], 200);
             }
 
@@ -513,19 +1629,19 @@ class CashSessionController extends Controller
 
         $session = $q->whereDate('business_date', $businessDate)->first();
 
-        if (!$session) {
+        if (! $session) {
             return response()->json([
-                'data' => null,
-                'meta' => [
-                    'system_closing' => 0,
-                    'cash_in_total' => 0,
-                    'cash_out_total' => 0,
+                'data'    => null,
+                'meta'    => [
+                    'system_closing'   => 0,
+                    'cash_in_total'    => 0,
+                    'cash_out_total'   => 0,
                     'withdrawal_total' => 0,
                     'has_open_session' => false,
-                    'business_date' => $businessDate,
+                    'business_date'    => $businessDate,
                 ],
                 'message' => 'Belum ada sesi kas untuk tanggal ini.',
-                'errors' => null,
+                'errors'  => null,
             ]);
         }
 
@@ -546,17 +1662,17 @@ class CashSessionController extends Controller
             ->sum('amount');
 
         return response()->json([
-            'data' => $session,
-            'meta' => [
-                'system_closing' => $systemClosing,
-                'cash_in_total' => $cashInTotal,
-                'cash_out_total' => $cashOutTotal,
+            'data'    => $session,
+            'meta'    => [
+                'system_closing'   => $systemClosing,
+                'cash_in_total'    => $cashInTotal,
+                'cash_out_total'   => $cashOutTotal,
                 'withdrawal_total' => $withdrawalTotal,
                 'has_open_session' => (string) $session->status === 'OPEN',
-                'business_date' => $businessDate,
+                'business_date'    => $businessDate,
             ],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -565,25 +1681,33 @@ class CashSessionController extends Controller
         $user = $request->user();
         $this->authorizeManager($user);
 
-        $branchId = $user->hasRole('Superadmin')
-            ? (string) $request->validated('branch_id')
-            : (string) $user->branch_id;
+        $payload = $request->validated();
 
-        $businessDate = Carbon::parse($request->validated('business_date'))->startOfDay();
+        $branchId = $user->hasRole('Superadmin')
+            ? (string) ($payload['branch_id'] ?? '')
+            : (string) ($user->branch_id ?? '');
+
+        if ($branchId === '') {
+            throw ValidationException::withMessages([
+                'branch_id' => ['Cabang wajib dipilih atau user belum terikat ke cabang.'],
+            ]);
+        }
+
+        $businessDate = Carbon::parse($payload['business_date'])->startOfDay();
 
         $session = $this->cash->openSession(
             $branchId,
             $businessDate,
-            (float) $request->validated('opening_cash'),
+            (float) $payload['opening_cash'],
             $user,
-            $request->validated('notes')
+            $payload['notes'] ?? null
         );
 
         return response()->json([
-            'data' => $session,
-            'meta' => null,
+            'data'    => $session,
+            'meta'    => null,
             'message' => 'Cash session opened',
-            'errors' => null,
+            'errors'  => null,
         ], 201);
     }
 
@@ -593,10 +1717,10 @@ class CashSessionController extends Controller
 
         if ((string) $cashSession->status !== 'OPEN') {
             return response()->json([
-                'data' => null,
-                'meta' => null,
+                'data'    => null,
+                'meta'    => null,
                 'message' => 'Hanya sesi kas yang masih OPEN yang dapat diedit.',
-                'errors' => [
+                'errors'  => [
                     'cash_session' => ['Hanya sesi kas yang masih OPEN yang dapat diedit.'],
                 ],
             ], 422);
@@ -610,12 +1734,12 @@ class CashSessionController extends Controller
         );
 
         return response()->json([
-            'data' => $session,
-            'meta' => [
+            'data'    => $session,
+            'meta'    => [
                 'system_closing' => $this->cash->computeSystemClosing($session->id),
             ],
             'message' => 'Cash session updated',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
     public function close(CashSessionCloseRequest $request, CashSession $cashSession)
@@ -630,14 +1754,14 @@ class CashSessionController extends Controller
         );
 
         return response()->json([
-            'data' => $session,
-            'meta' => null,
+            'data'    => $session,
+            'meta'    => null,
             'message' => 'Cash session closed',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
-        public function reopen(Request $request, CashSession $cashSession)
+    public function reopen(Request $request, CashSession $cashSession)
     {
         $this->authorizeSession($cashSession);
 
@@ -647,12 +1771,12 @@ class CashSessionController extends Controller
         );
 
         return response()->json([
-            'data' => $session,
-            'meta' => [
+            'data'    => $session,
+            'meta'    => [
                 'system_closing' => $this->cash->computeSystemClosing($session->id),
             ],
             'message' => 'Cash session reopened',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -669,16 +1793,16 @@ class CashSessionController extends Controller
         );
 
         return response()->json([
-            'data' => $mutation,
-            'meta' => null,
+            'data'    => $mutation,
+            'meta'    => null,
             'message' => 'Withdrawal recorded',
-            'errors' => null,
+            'errors'  => null,
         ], 201);
     }
 
     private function authorizeManager($user): void
     {
-        if (!$user->hasRole('Superadmin') && !$user->hasRole('Admin Cabang')) {
+        if (! $user->hasRole('Superadmin') && ! $user->hasRole('Admin Cabang')) {
             abort(403, 'Anda tidak memiliki izin untuk mengelola cash box.');
         }
     }
@@ -686,9 +1810,9 @@ class CashSessionController extends Controller
     private function authorizeCashTodayViewer($user): void
     {
         if (
-            !$user->hasRole('Superadmin')
-            && !$user->hasRole('Admin Cabang')
-            && !$user->hasRole('Kasir')
+            ! $user->hasRole('Superadmin')
+            && ! $user->hasRole('Admin Cabang')
+            && ! $user->hasRole('Kasir')
         ) {
             abort(403, 'Anda tidak memiliki izin untuk melihat ringkasan kas hari ini.');
         }
@@ -696,7 +1820,12 @@ class CashSessionController extends Controller
 
     private function authorizeSession(CashSession $cashSession): void
     {
-        $user = request()->user();
+        $user = app(Request::class)->user();
+
+        if (! $user) {
+            abort(401, 'Unauthenticated.');
+        }
+
         $this->authorizeManager($user);
 
         if ($user->hasRole('Superadmin')) {
@@ -1325,14 +2454,14 @@ class DeliveryController extends Controller
 
 ### app\Http\Controllers\Api\ExpenseController.php
 
-- SHA: `eb5b8c353b44`  
-- Ukuran: 4 KB  
+- SHA: `769c7ff81163`  
+- Ukuran: 5 KB  
 - Namespace: `App\Http\Controllers\Api`
 
 **Class `ExpenseController` extends `Controller`**
 
 Metode Publik:
-- **__construct**(private CashLedgerService $cashLedger,)
+- **__construct**(private CashLedgerService $cashLedger, private AccountingPostingService $accountingPosting,)
 - **index**(Request $request)
 - **store**(ExpenseStoreRequest $request)
 - **show**(Expense $expense)
@@ -1342,13 +2471,13 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Expenses\ExpenseStoreRequest;
 use App\Http\Requests\Expenses\ExpenseUpdateRequest;
 use App\Models\Expense;
+use App\Services\Accounting\AccountingPostingService;
 use App\Services\CashLedgerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -1358,6 +2487,7 @@ class ExpenseController extends Controller
 {
     public function __construct(
         private CashLedgerService $cashLedger,
+        private AccountingPostingService $accountingPosting,
     ) {}
 
     public function index(Request $request)
@@ -1396,36 +2526,38 @@ class ExpenseController extends Controller
     {
         $this->authorize('create', Expense::class);
 
-        $user = $request->user();
+        $user     = $request->user();
         $branchId = null;
 
         if ($user->hasRole('Superadmin')) {
             $branchId = $request->input('branch_id');
 
-            if (!$branchId) {
+            if (! $branchId) {
                 return response()->json(['message' => 'branch_id wajib diisi untuk Superadmin.'], 422);
             }
         } else {
             $branchId = $user->branch_id;
 
-            if (!$branchId) {
+            if (! $branchId) {
                 return response()->json(['message' => 'User tidak memiliki cabang yang terasosiasi.'], 422);
             }
         }
 
         $expense = DB::transaction(function () use ($request, $branchId, $user) {
-            $data = $request->validated();
-            $data['branch_id'] = $branchId;
+            $data                   = $request->validated();
+            $data['branch_id']      = $branchId;
             $data['payment_source'] = $data['payment_source'] ?? 'NON_CASH';
 
             if ($request->hasFile('proof')) {
-                $storedPath = $request->file('proof')->store('uploads/expenses', 'public');
+                $storedPath         = $request->file('proof')->store('uploads/expenses', 'public');
                 $data['proof_path'] = 'storage/' . $storedPath;
             }
 
             $expense = Expense::create($data);
 
             $this->cashLedger->syncExpense($expense, $user);
+
+            $this->accountingPosting->postExpense($expense, $user);
 
             return $expense;
         });
@@ -1457,12 +2589,13 @@ class ExpenseController extends Controller
                     $this->deleteProofFile($expense->proof_path);
                 }
 
-                $storedPath = $request->file('proof')->store('uploads/expenses', 'public');
+                $storedPath         = $request->file('proof')->store('uploads/expenses', 'public');
                 $data['proof_path'] = 'storage/' . $storedPath;
             }
 
             $expense->update($data);
             $this->cashLedger->syncExpense($expense->fresh(), $request->user());
+            $this->accountingPosting->postExpense($expense, $request->user());
 
             return $expense->fresh();
         });
@@ -1494,6 +2627,7 @@ class ExpenseController extends Controller
         Storage::disk('public')->delete($relativePath);
     }
 }
+
 ```
 </details>
 
@@ -4816,6 +5950,314 @@ class WhatsappTemplateController extends Controller
 
 ## Models (app/Models)
 
+### app\Models\AccountingAccount.php
+
+- SHA: `a60c6bd0d3a4`  
+- Ukuran: 1 KB  
+- Namespace: `App\Models`
+
+**Class `AccountingAccount` extends `Model`**
+
+Metode Publik:
+- **branch**() : *BelongsTo*
+- **parent**() : *BelongsTo*
+- **children**() : *HasMany*
+- **debitMappings**() : *HasMany*
+- **creditMappings**() : *HasMany*
+- **journalLines**() : *HasMany*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class AccountingAccount extends Model
+{
+    protected $table = 'accounting_accounts';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'branch_id',
+        'parent_id',
+        'code',
+        'name',
+        'type',
+        'normal_balance',
+        'is_cash_account',
+        'is_active',
+        'sort_order',
+    ];
+
+    protected $casts = [
+        'is_cash_account' => 'boolean',
+        'is_active'       => 'boolean',
+        'sort_order'      => 'integer',
+    ];
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(AccountingAccount::class, 'parent_id');
+    }
+
+    public function children(): HasMany
+    {
+        return $this->hasMany(AccountingAccount::class, 'parent_id');
+    }
+
+    public function debitMappings(): HasMany
+    {
+        return $this->hasMany(AccountingAccountMapping::class, 'debit_account_id');
+    }
+
+    public function creditMappings(): HasMany
+    {
+        return $this->hasMany(AccountingAccountMapping::class, 'credit_account_id');
+    }
+
+    public function journalLines(): HasMany
+    {
+        return $this->hasMany(AccountingJournalLine::class, 'account_id');
+    }
+}
+
+```
+</details>
+
+### app\Models\AccountingAccountMapping.php
+
+- SHA: `5aff4d264fa4`  
+- Ukuran: 1 KB  
+- Namespace: `App\Models`
+
+**Class `AccountingAccountMapping` extends `Model`**
+
+Metode Publik:
+- **branch**() : *BelongsTo*
+- **debitAccount**() : *BelongsTo*
+- **creditAccount**() : *BelongsTo*
+- **journalEntries**() : *HasMany*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class AccountingAccountMapping extends Model
+{
+    protected $table = 'accounting_account_mappings';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'branch_id',
+        'event_key',
+        'payment_method',
+        'expense_category',
+        'debit_account_id',
+        'credit_account_id',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function debitAccount(): BelongsTo
+    {
+        return $this->belongsTo(AccountingAccount::class, 'debit_account_id');
+    }
+
+    public function creditAccount(): BelongsTo
+    {
+        return $this->belongsTo(AccountingAccount::class, 'credit_account_id');
+    }
+
+    public function journalEntries(): HasMany
+    {
+        return $this->hasMany(AccountingJournalEntry::class, 'mapping_id');
+    }
+}
+
+```
+</details>
+
+### app\Models\AccountingJournalEntry.php
+
+- SHA: `6413678264a0`  
+- Ukuran: 2 KB  
+- Namespace: `App\Models`
+
+**Class `AccountingJournalEntry` extends `Model`**
+
+Metode Publik:
+- **branch**() : *BelongsTo*
+- **mapping**() : *BelongsTo*
+- **lines**() : *HasMany*
+- **creator**() : *BelongsTo*
+- **poster**() : *BelongsTo*
+- **voider**() : *BelongsTo*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class AccountingJournalEntry extends Model
+{
+    protected $table = 'accounting_journal_entries';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'id',
+        'branch_id',
+        'mapping_id',
+        'journal_no',
+        'journal_date',
+        'source_type',
+        'source_id',
+        'source_no',
+        'status',
+        'description',
+        'total_debit',
+        'total_credit',
+        'created_by',
+        'posted_by',
+        'posted_at',
+        'voided_by',
+        'voided_at',
+        'void_reason',
+    ];
+
+    protected $casts = [
+        'journal_date' => 'date',
+        'total_debit'  => 'decimal:2',
+        'total_credit' => 'decimal:2',
+        'posted_at'    => 'datetime',
+        'voided_at'    => 'datetime',
+    ];
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function mapping(): BelongsTo
+    {
+        return $this->belongsTo(AccountingAccountMapping::class, 'mapping_id');
+    }
+
+    public function lines(): HasMany
+    {
+        return $this->hasMany(AccountingJournalLine::class, 'journal_entry_id');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function poster(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'posted_by');
+    }
+
+    public function voider(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'voided_by');
+    }
+}
+
+```
+</details>
+
+### app\Models\AccountingJournalLine.php
+
+- SHA: `4fbfcf4b6aab`  
+- Ukuran: 884 B  
+- Namespace: `App\Models`
+
+**Class `AccountingJournalLine` extends `Model`**
+
+Metode Publik:
+- **journalEntry**() : *BelongsTo*
+- **account**() : *BelongsTo*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class AccountingJournalLine extends Model
+{
+    protected $table = 'accounting_journal_lines';
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'id',
+        'journal_entry_id',
+        'account_id',
+        'description',
+        'debit',
+        'credit',
+        'line_order',
+    ];
+
+    protected $casts = [
+        'debit'      => 'decimal:2',
+        'credit'     => 'decimal:2',
+        'line_order' => 'integer',
+    ];
+
+    public function journalEntry(): BelongsTo
+    {
+        return $this->belongsTo(AccountingJournalEntry::class, 'journal_entry_id');
+    }
+
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(AccountingAccount::class, 'account_id');
+    }
+}
+
+```
+</details>
+
 ### app\Models\Branch.php
 
 - SHA: `2872c07ec6c6`  
@@ -6430,6 +7872,241 @@ class WhatsappTemplate extends Model
 
 ## Policies (app/Policies)
 
+### app\Policies\AccountingAccountMappingPolicy.php
+
+- SHA: `3d072cb45c04`  
+- Ukuran: 1 KB  
+- Namespace: `App\Policies`
+
+**Class `AccountingAccountMappingPolicy`**
+
+Metode Publik:
+- **before**(User $user, string $ability) : *bool|null*
+- **viewAny**(User $user) : *bool*
+- **view**(User $user, AccountingAccountMapping $mapping) : *bool*
+- **create**(User $user) : *bool*
+- **update**(User $user, AccountingAccountMapping $mapping) : *bool*
+- **delete**(User $user, AccountingAccountMapping $mapping) : *bool*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Policies;
+
+use App\Models\AccountingAccountMapping;
+use App\Models\User;
+
+class AccountingAccountMappingPolicy
+{
+    public function before(User $user, string $ability): bool|null
+    {
+        return $user->hasRole('Superadmin') ? true : null;
+    }
+
+    public function viewAny(User $user): bool
+    {
+        return $user->hasRole('Admin Cabang');
+    }
+
+    public function view(User $user, AccountingAccountMapping $mapping): bool
+    {
+        if ($mapping->branch_id === null) {
+            return $user->hasRole('Admin Cabang');
+        }
+
+        return $user->hasRole('Admin Cabang')
+            && (string) $mapping->branch_id === (string) $user->branch_id;
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->hasRole('Admin Cabang');
+    }
+
+    public function update(User $user, AccountingAccountMapping $mapping): bool
+    {
+        if ($mapping->branch_id === null) {
+            return false;
+        }
+
+        return $user->hasRole('Admin Cabang')
+            && (string) $mapping->branch_id === (string) $user->branch_id;
+    }
+
+    public function delete(User $user, AccountingAccountMapping $mapping): bool
+    {
+        if ($mapping->branch_id === null) {
+            return false;
+        }
+
+        return $user->hasRole('Admin Cabang')
+            && (string) $mapping->branch_id === (string) $user->branch_id;
+    }
+}
+
+```
+</details>
+
+### app\Policies\AccountingAccountPolicy.php
+
+- SHA: `8b1589857b23`  
+- Ukuran: 1 KB  
+- Namespace: `App\Policies`
+
+**Class `AccountingAccountPolicy`**
+
+Metode Publik:
+- **before**(User $user, string $ability) : *bool|null*
+- **viewAny**(User $user) : *bool*
+- **view**(User $user, AccountingAccount $account) : *bool*
+- **create**(User $user) : *bool*
+- **update**(User $user, AccountingAccount $account) : *bool*
+- **delete**(User $user, AccountingAccount $account) : *bool*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Policies;
+
+use App\Models\AccountingAccount;
+use App\Models\User;
+
+class AccountingAccountPolicy
+{
+    public function before(User $user, string $ability): bool|null
+    {
+        return $user->hasRole('Superadmin') ? true : null;
+    }
+
+    public function viewAny(User $user): bool
+    {
+        return $user->hasRole('Admin Cabang');
+    }
+
+    public function view(User $user, AccountingAccount $account): bool
+    {
+        if ($account->branch_id === null) {
+            return $user->hasRole('Admin Cabang');
+        }
+
+        return $user->hasRole('Admin Cabang')
+            && (string) $account->branch_id === (string) $user->branch_id;
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->hasRole('Admin Cabang');
+    }
+
+    public function update(User $user, AccountingAccount $account): bool
+    {
+        if ($account->branch_id === null) {
+            return false;
+        }
+
+        return $user->hasRole('Admin Cabang')
+            && (string) $account->branch_id === (string) $user->branch_id;
+    }
+
+    public function delete(User $user, AccountingAccount $account): bool
+    {
+        if ($account->branch_id === null) {
+            return false;
+        }
+
+        return $user->hasRole('Admin Cabang')
+            && (string) $account->branch_id === (string) $user->branch_id;
+    }
+}
+
+```
+</details>
+
+### app\Policies\AccountingJournalEntryPolicy.php
+
+- SHA: `9b4032e1c053`  
+- Ukuran: 2 KB  
+- Namespace: `App\Policies`
+
+**Class `AccountingJournalEntryPolicy`**
+
+Metode Publik:
+- **before**(User $user, string $ability) : *bool|null*
+- **viewAny**(User $user) : *bool*
+- **view**(User $user, AccountingJournalEntry $journal) : *bool*
+- **create**(User $user) : *bool*
+- **update**(User $user, AccountingJournalEntry $journal) : *bool*
+- **post**(User $user, AccountingJournalEntry $journal) : *bool*
+- **void**(User $user, AccountingJournalEntry $journal) : *bool*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Policies;
+
+use App\Models\AccountingJournalEntry;
+use App\Models\User;
+
+class AccountingJournalEntryPolicy
+{
+    public function before(User $user, string $ability): bool|null
+    {
+        return $user->hasRole('Superadmin') ? true : null;
+    }
+
+    public function viewAny(User $user): bool
+    {
+        return $user->hasRole('Admin Cabang');
+    }
+
+    public function view(User $user, AccountingJournalEntry $journal): bool
+    {
+        return $user->hasRole('Admin Cabang')
+            && (string) $journal->branch_id === (string) $user->branch_id;
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->hasRole('Admin Cabang');
+    }
+
+    public function update(User $user, AccountingJournalEntry $journal): bool
+    {
+        if ((string) $journal->status !== 'DRAFT') {
+            return false;
+        }
+
+        return $user->hasRole('Admin Cabang')
+            && (string) $journal->branch_id === (string) $user->branch_id;
+    }
+
+    public function post(User $user, AccountingJournalEntry $journal): bool
+    {
+        if ((string) $journal->status !== 'DRAFT') {
+            return false;
+        }
+
+        return $user->hasRole('Admin Cabang')
+            && (string) $journal->branch_id === (string) $user->branch_id;
+    }
+
+    public function void(User $user, AccountingJournalEntry $journal): bool
+    {
+        if ((string) $journal->status === 'VOID') {
+            return false;
+        }
+
+        return $user->hasRole('Admin Cabang')
+            && (string) $journal->branch_id === (string) $user->branch_id;
+    }
+}
+
+```
+</details>
+
 ### app\Policies\BranchPolicy.php
 
 - SHA: `228311b9829b`  
@@ -7491,6 +9168,638 @@ class WhatsappTemplatePolicy
 
 ## Form Requests (app/Http/Requests)
 
+### app\Http\Requests\Accounting\AccountingReportFilterRequest.php
+
+- SHA: `10c076347afe`  
+- Ukuran: 1 KB  
+- Namespace: `App\Http\Requests\Accounting`
+
+**Class `AccountingReportFilterRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **messages**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Accounting;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class AccountingReportFilterRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user() !== null
+            && (
+                $this->user()->hasRole('Superadmin')
+                || $this->user()->hasRole('Admin Cabang')
+            );
+    }
+
+    public function rules(): array
+    {
+        return [
+            'date_from' => ['required', 'date'],
+            'date_to' => ['required', 'date', 'after_or_equal:date_from'],
+            'branch_id' => ['nullable', 'uuid'],
+            'basis' => ['nullable', 'string', 'in:posted,journal_posted'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'date_from.required' => 'Tanggal awal wajib diisi.',
+            'date_from.date' => 'Tanggal awal tidak valid.',
+            'date_to.required' => 'Tanggal akhir wajib diisi.',
+            'date_to.date' => 'Tanggal akhir tidak valid.',
+            'date_to.after_or_equal' => 'Tanggal akhir tidak boleh lebih kecil dari tanggal awal.',
+            'branch_id.uuid' => 'Cabang tidak valid.',
+            'basis.in' => 'Basis laporan tidak valid.',
+        ];
+    }
+}
+
+```
+</details>
+
+### app\Http\Requests\Accounting\AccountMappingStoreRequest.php
+
+- SHA: `188f93f8a8e2`  
+- Ukuran: 2 KB  
+- Namespace: `App\Http\Requests\Accounting`
+
+**Class `AccountMappingStoreRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **messages**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Accounting;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class AccountMappingStoreRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user() !== null;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+            'event_key' => [
+                'required',
+                'string',
+                'max:80',
+                Rule::in([
+                    'ORDER_PAID_CASH',
+                    'ORDER_PAID_QRIS',
+                    'ORDER_PAID_TRANSFER',
+                    'ORDER_RECEIVABLE_CREATED',
+                    'RECEIVABLE_SETTLED_CASH',
+                    'EXPENSE_CASH_BOX',
+                    'EXPENSE_NON_CASH',
+                    'CASH_OPENING_FLOAT',
+                    'CASH_WITHDRAWAL',
+                    'CASH_ADJUSTMENT_IN',
+                    'CASH_ADJUSTMENT_OUT',
+                    'ORDER_DISCOUNT',
+                ]),
+            ],
+            'payment_method' => ['nullable', 'string', 'max:30'],
+            'expense_category' => ['nullable', 'string', 'max:100'],
+            'debit_account_id' => ['required', 'uuid', 'exists:accounting_accounts,id'],
+            'credit_account_id' => ['required', 'uuid', 'exists:accounting_accounts,id', 'different:debit_account_id'],
+            'is_active' => ['sometimes', 'boolean'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'event_key.required' => 'Event mapping wajib dipilih.',
+            'event_key.in' => 'Event mapping tidak valid.',
+            'debit_account_id.required' => 'Akun debit wajib dipilih.',
+            'credit_account_id.required' => 'Akun kredit wajib dipilih.',
+            'credit_account_id.different' => 'Akun debit dan kredit tidak boleh sama.',
+        ];
+    }
+}
+
+```
+</details>
+
+### app\Http\Requests\Accounting\AccountMappingUpdateRequest.php
+
+- SHA: `043f99dc3a87`  
+- Ukuran: 2 KB  
+- Namespace: `App\Http\Requests\Accounting`
+
+**Class `AccountMappingUpdateRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **messages**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Accounting;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class AccountMappingUpdateRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user() !== null;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+            'event_key' => [
+                'required',
+                'string',
+                'max:80',
+                Rule::in([
+                    'ORDER_PAID_CASH',
+                    'ORDER_PAID_QRIS',
+                    'ORDER_PAID_TRANSFER',
+                    'ORDER_RECEIVABLE_CREATED',
+                    'RECEIVABLE_SETTLED_CASH',
+                    'EXPENSE_CASH_BOX',
+                    'EXPENSE_NON_CASH',
+                    'CASH_OPENING_FLOAT',
+                    'CASH_WITHDRAWAL',
+                    'CASH_ADJUSTMENT_IN',
+                    'CASH_ADJUSTMENT_OUT',
+                    'ORDER_DISCOUNT',
+                ]),
+            ],
+            'payment_method' => ['nullable', 'string', 'max:30'],
+            'expense_category' => ['nullable', 'string', 'max:100'],
+            'debit_account_id' => ['required', 'uuid', 'exists:accounting_accounts,id'],
+            'credit_account_id' => ['required', 'uuid', 'exists:accounting_accounts,id', 'different:debit_account_id'],
+            'is_active' => ['sometimes', 'boolean'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'event_key.required' => 'Event mapping wajib dipilih.',
+            'event_key.in' => 'Event mapping tidak valid.',
+            'debit_account_id.required' => 'Akun debit wajib dipilih.',
+            'credit_account_id.required' => 'Akun kredit wajib dipilih.',
+            'credit_account_id.different' => 'Akun debit dan kredit tidak boleh sama.',
+        ];
+    }
+}
+
+```
+</details>
+
+### app\Http\Requests\Accounting\AccountStoreRequest.php
+
+- SHA: `744ef458ace4`  
+- Ukuran: 2 KB  
+- Namespace: `App\Http\Requests\Accounting`
+
+**Class `AccountStoreRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **withValidator**($validator) : *void*
+- **messages**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Accounting;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class AccountStoreRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user() !== null;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+            'parent_id' => ['nullable', 'uuid', 'exists:accounting_accounts,id'],
+            'code' => [
+                'required',
+                'string',
+                'max:32',
+                Rule::unique('accounting_accounts', 'code')
+                    ->where(fn ($query) => $query->where('branch_id', $this->input('branch_id'))),
+            ],
+            'name' => ['required', 'string', 'max:150'],
+            'type' => ['required', Rule::in(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'])],
+            'normal_balance' => ['required', Rule::in(['DEBIT', 'CREDIT'])],
+            'is_cash_account' => ['sometimes', 'boolean'],
+            'is_active' => ['sometimes', 'boolean'],
+            'sort_order' => ['sometimes', 'integer', 'min:0'],
+        ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $type = $this->input('type');
+            $normal = $this->input('normal_balance');
+
+            $expected = match ($type) {
+                'ASSET', 'EXPENSE' => 'DEBIT',
+                'LIABILITY', 'EQUITY', 'REVENUE' => 'CREDIT',
+                default => null,
+            };
+
+            if ($expected !== null && $normal !== $expected) {
+                $validator->errors()->add(
+                    'normal_balance',
+                    "Normal balance untuk {$type} harus {$expected}."
+                );
+            }
+        });
+    }
+
+    public function messages(): array
+    {
+        return [
+            'code.required' => 'Kode akun wajib diisi.',
+            'code.unique' => 'Kode akun sudah digunakan pada scope cabang yang sama.',
+            'name.required' => 'Nama akun wajib diisi.',
+            'type.required' => 'Tipe akun wajib dipilih.',
+            'normal_balance.required' => 'Normal balance wajib dipilih.',
+        ];
+    }
+}
+
+```
+</details>
+
+### app\Http\Requests\Accounting\AccountUpdateRequest.php
+
+- SHA: `a6c82502f5ce`  
+- Ukuran: 2 KB  
+- Namespace: `App\Http\Requests\Accounting`
+
+**Class `AccountUpdateRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **withValidator**($validator) : *void*
+- **messages**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Accounting;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class AccountUpdateRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user() !== null;
+    }
+
+    public function rules(): array
+    {
+        $accountId = $this->route('account')?->id ?? $this->route('account');
+
+        return [
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+            'parent_id' => [
+                'nullable',
+                'uuid',
+                'exists:accounting_accounts,id',
+                Rule::notIn([(string) $accountId]),
+            ],
+            'code' => [
+                'required',
+                'string',
+                'max:32',
+                Rule::unique('accounting_accounts', 'code')
+                    ->ignore($accountId)
+                    ->where(fn ($query) => $query->where('branch_id', $this->input('branch_id'))),
+            ],
+            'name' => ['required', 'string', 'max:150'],
+            'type' => ['required', Rule::in(['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'])],
+            'normal_balance' => ['required', Rule::in(['DEBIT', 'CREDIT'])],
+            'is_cash_account' => ['sometimes', 'boolean'],
+            'is_active' => ['sometimes', 'boolean'],
+            'sort_order' => ['sometimes', 'integer', 'min:0'],
+        ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $type = $this->input('type');
+            $normal = $this->input('normal_balance');
+
+            $expected = match ($type) {
+                'ASSET', 'EXPENSE' => 'DEBIT',
+                'LIABILITY', 'EQUITY', 'REVENUE' => 'CREDIT',
+                default => null,
+            };
+
+            if ($expected !== null && $normal !== $expected) {
+                $validator->errors()->add(
+                    'normal_balance',
+                    "Normal balance untuk {$type} harus {$expected}."
+                );
+            }
+        });
+    }
+
+    public function messages(): array
+    {
+        return [
+            'code.required' => 'Kode akun wajib diisi.',
+            'code.unique' => 'Kode akun sudah digunakan pada scope cabang yang sama.',
+            'parent_id.not_in' => 'Akun induk tidak boleh sama dengan akun yang sedang diedit.',
+            'name.required' => 'Nama akun wajib diisi.',
+        ];
+    }
+}
+
+```
+</details>
+
+### app\Http\Requests\Accounting\BalanceSheetFilterRequest.php
+
+- SHA: `55c24750c0d4`  
+- Ukuran: 1 KB  
+- Namespace: `App\Http\Requests\Accounting`
+
+**Class `BalanceSheetFilterRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **messages**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+namespace App\Http\Requests\Accounting;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class BalanceSheetFilterRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        $user = $this->user();
+
+        return $user !== null
+            && (
+            $user->hasRole('Superadmin')
+            || $user->hasRole('Admin Cabang')
+        );
+    }
+
+    public function rules(): array
+    {
+        return [
+            'date_from' => ['required', 'date'],
+            'date_to'   => ['required', 'date', 'after_or_equal:date_from'],
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'date_from.required'     => 'Tanggal awal wajib diisi.',
+            'date_from.date'         => 'Tanggal awal tidak valid.',
+            'date_to.required'       => 'Tanggal akhir wajib diisi.',
+            'date_to.date'           => 'Tanggal akhir tidak valid.',
+            'date_to.after_or_equal' => 'Tanggal akhir harus sama atau setelah tanggal awal.',
+            'branch_id.uuid'         => 'Cabang tidak valid.',
+            'branch_id.exists'       => 'Cabang tidak ditemukan.',
+        ];
+    }
+}
+
+```
+</details>
+
+### app\Http\Requests\Accounting\JournalEntryStoreRequest.php
+
+- SHA: `67db42f4928d`  
+- Ukuran: 1 KB  
+- Namespace: `App\Http\Requests\Accounting`
+
+**Class `JournalEntryStoreRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **messages**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Accounting;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class JournalEntryStoreRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user() !== null;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+            'journal_date' => ['required', 'date'],
+            'description' => ['nullable', 'string', 'max:1000'],
+
+            'lines' => ['required', 'array', 'min:2'],
+            'lines.*.account_id' => ['required', 'uuid', 'exists:accounting_accounts,id'],
+            'lines.*.description' => ['nullable', 'string', 'max:1000'],
+            'lines.*.debit' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.credit' => ['nullable', 'numeric', 'min:0'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'journal_date.required' => 'Tanggal jurnal wajib diisi.',
+            'journal_date.date' => 'Tanggal jurnal tidak valid.',
+            'lines.required' => 'Detail jurnal wajib diisi.',
+            'lines.array' => 'Detail jurnal tidak valid.',
+            'lines.min' => 'Jurnal minimal memiliki dua baris.',
+            'lines.*.account_id.required' => 'Akun wajib dipilih.',
+            'lines.*.account_id.exists' => 'Akun tidak ditemukan.',
+        ];
+    }
+}
+
+```
+</details>
+
+### app\Http\Requests\Accounting\JournalEntryUpdateRequest.php
+
+- SHA: `04e8cf7fbefe`  
+- Ukuran: 1 KB  
+- Namespace: `App\Http\Requests\Accounting`
+
+**Class `JournalEntryUpdateRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **messages**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Accounting;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class JournalEntryUpdateRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user() !== null;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+            'journal_date' => ['required', 'date'],
+            'description' => ['nullable', 'string', 'max:1000'],
+
+            'lines' => ['required', 'array', 'min:2'],
+            'lines.*.account_id' => ['required', 'uuid', 'exists:accounting_accounts,id'],
+            'lines.*.description' => ['nullable', 'string', 'max:1000'],
+            'lines.*.debit' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.credit' => ['nullable', 'numeric', 'min:0'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'journal_date.required' => 'Tanggal jurnal wajib diisi.',
+            'journal_date.date' => 'Tanggal jurnal tidak valid.',
+            'lines.required' => 'Detail jurnal wajib diisi.',
+            'lines.array' => 'Detail jurnal tidak valid.',
+            'lines.min' => 'Jurnal minimal memiliki dua baris.',
+            'lines.*.account_id.required' => 'Akun wajib dipilih.',
+            'lines.*.account_id.exists' => 'Akun tidak ditemukan.',
+        ];
+    }
+}
+
+```
+</details>
+
+### app\Http\Requests\Accounting\LedgerFilterRequest.php
+
+- SHA: `89ab73017487`  
+- Ukuran: 1 KB  
+- Namespace: `App\Http\Requests\Accounting`
+
+**Class `LedgerFilterRequest` extends `FormRequest`**
+
+Metode Publik:
+- **authorize**() : *bool*
+- **rules**() : *array*
+- **messages**() : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Http\Requests\Accounting;
+
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class LedgerFilterRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        $user = $this->user();
+
+        return $user !== null
+            && (
+                $user->hasRole('Superadmin')
+                || $user->hasRole('Admin Cabang')
+            );
+    }
+
+    public function rules(): array
+    {
+        return [
+            'account_id' => ['required', 'uuid', 'exists:accounting_accounts,id'],
+            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
+            'date_from' => ['required', 'date'],
+            'date_to' => ['required', 'date', 'after_or_equal:date_from'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'account_id.required' => 'Akun wajib dipilih.',
+            'account_id.exists' => 'Akun tidak ditemukan.',
+            'date_from.required' => 'Tanggal awal wajib diisi.',
+            'date_to.required' => 'Tanggal akhir wajib diisi.',
+            'date_to.after_or_equal' => 'Tanggal akhir tidak boleh lebih kecil dari tanggal awal.',
+        ];
+    }
+}
+
+```
+</details>
+
 ### app\Http\Requests\Auth\LoginRequest.php
 
 - SHA: `8dd59b857462`  
@@ -7723,8 +10032,8 @@ class CashSessionCloseRequest extends FormRequest
 
 ### app\Http\Requests\CashSessionOpenRequest.php
 
-- SHA: `e63e3136c2dc`  
-- Ukuran: 518 B  
+- SHA: `7adbfbbfe017`  
+- Ukuran: 937 B  
 - Namespace: `App\Http\Requests`
 
 **Class `CashSessionOpenRequest` extends `FormRequest`**
@@ -7732,6 +10041,7 @@ class CashSessionCloseRequest extends FormRequest
 Metode Publik:
 - **authorize**() : *bool*
 - **rules**() : *array*
+- **messages**() : *array*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -7748,16 +10058,33 @@ class CashSessionOpenRequest extends FormRequest
         return true;
     }
 
-    public function rules(): array
-    {
-        return [
-            'branch_id' => ['nullable', 'string', 'exists:branches,id'],
-            'business_date' => ['required', 'date'],
-            'opening_cash' => ['required', 'numeric', 'min:0'],
-            'notes' => ['nullable', 'string'],
-        ];
-    }
+public function rules(): array
+{
+    $isSuperadmin = $this->user()?->hasRole('Superadmin') ?? false;
+
+    return [
+        'branch_id' => [
+            $isSuperadmin ? 'required' : 'nullable',
+            'string',
+            'exists:branches,id',
+        ],
+        'business_date' => ['required', 'date'],
+        'opening_cash' => ['required', 'numeric', 'min:0'],
+        'notes' => ['nullable', 'string'],
+    ];
 }
+
+public function messages(): array
+{
+    return [
+        'branch_id.required' => 'Cabang wajib dipilih.',
+        'branch_id.exists' => 'Cabang yang dipilih tidak valid.',
+        'business_date.required' => 'Tanggal bisnis wajib diisi.',
+        'opening_cash.required' => 'Kas awal wajib diisi.',
+    ];
+}
+}
+
 ```
 </details>
 
@@ -10132,6 +12459,1981 @@ class WhatsappTemplateUpdateRequest extends FormRequest
 
 ## Services (app/Services)
 
+### app\Services\Accounting\AccountingDashboardService.php
+
+- SHA: `13df33179314`  
+- Ukuran: 22 KB  
+- Namespace: `App\Services\Accounting`
+
+**Class `AccountingDashboardService`**
+
+Metode Publik:
+- **build**(array $filters, User $user) : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Services\Accounting;
+
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class AccountingDashboardService
+{
+    public function build(array $filters, User $user): array
+    {
+        $dateFrom = (string) $filters['date_from'];
+        $dateTo = (string) $filters['date_to'];
+        $branchId = $this->resolveBranchId($filters, $user);
+
+        $summary = $this->buildSummary($dateFrom, $dateTo, $branchId);
+        $charts = $this->buildCharts($dateFrom, $dateTo, $branchId, $user);
+        $warnings = $this->buildWarnings($dateTo, $branchId);
+
+        return [
+            'data' => [
+                'summary' => $summary,
+                'charts' => $charts,
+                'warnings' => $warnings,
+            ],
+            'meta' => [
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'branch_id' => $branchId,
+                'basis' => 'posted',
+            ],
+        ];
+    }
+
+    private function buildSummary(string $dateFrom, string $dateTo, ?string $branchId): array
+    {
+        $cashTotal = $this->accountBalanceAsOf(
+            $dateTo,
+            $branchId,
+            fn ($query) => $query->where('accounts.is_cash_account', true)
+        );
+
+        $receivableTotal = $this->accountBalanceAsOf(
+            $dateTo,
+            $branchId,
+            fn ($query) => $query
+                ->where('accounts.type', 'ASSET')
+                ->where(function ($q) {
+                    $q->where('accounts.code', '1100')
+                        ->orWhere('accounts.name', 'like', '%Piutang%');
+                })
+        );
+
+        $revenueTotal = $this->periodAccountBalance(
+            $dateFrom,
+            $dateTo,
+            $branchId,
+            fn ($query) => $query->where('accounts.type', 'REVENUE')
+        );
+
+        $expenseTotal = $this->periodAccountBalance(
+            $dateFrom,
+            $dateTo,
+            $branchId,
+            fn ($query) => $query->where('accounts.type', 'EXPENSE')
+        );
+
+        $netProfit = round($revenueTotal - $expenseTotal, 2);
+
+        $assetTotal = $this->accountBalanceAsOf(
+            $dateTo,
+            $branchId,
+            fn ($query) => $query->where('accounts.type', 'ASSET')
+        );
+
+        $liabilityTotal = $this->accountBalanceAsOf(
+            $dateTo,
+            $branchId,
+            fn ($query) => $query->where('accounts.type', 'LIABILITY')
+        );
+
+        $equityBalance = $this->accountBalanceAsOf(
+            $dateTo,
+            $branchId,
+            fn ($query) => $query->where('accounts.type', 'EQUITY')
+        );
+
+        $profitUntilDate = $this->profitUntilDate($dateTo, $branchId);
+        $equityTotal = round($equityBalance + $profitUntilDate, 2);
+        $liabilityAndEquityTotal = round($liabilityTotal + $equityTotal, 2);
+        $difference = round($assetTotal - $liabilityAndEquityTotal, 2);
+
+        return [
+            'total_cash' => round($cashTotal, 2),
+            'total_receivables' => round($receivableTotal, 2),
+            'total_revenue' => round($revenueTotal, 2),
+            'total_expense' => round($expenseTotal, 2),
+            'net_profit' => $netProfit,
+            'total_assets' => round($assetTotal, 2),
+            'total_liabilities' => round($liabilityTotal, 2),
+            'total_equities' => round($equityTotal, 2),
+            'total_liabilities_and_equities' => $liabilityAndEquityTotal,
+            'balance_difference' => $difference,
+            'is_balance_sheet_balanced' => abs($difference) < 0.01,
+            'balance_status' => abs($difference) < 0.01 ? 'BALANCED' : 'NOT_BALANCED',
+        ];
+    }
+
+    private function buildCharts(string $dateFrom, string $dateTo, ?string $branchId, User $user): array
+    {
+        return [
+            'revenue_vs_expense' => $this->revenueExpenseTrend($dateFrom, $dateTo, $branchId),
+            'cash_in_vs_cash_out' => $this->cashFlowTrend($dateFrom, $dateTo, $branchId),
+            'net_profit_by_branch' => $user->hasRole('Superadmin')
+                ? $this->netProfitByBranch($dateFrom, $dateTo, $branchId)
+                : [],
+            'receivables_trend' => $this->receivablesTrend($dateFrom, $dateTo, $branchId),
+        ];
+    }
+
+    private function buildWarnings(string $dateTo, ?string $branchId): array
+    {
+        $mappingIssueCount = $this->mappingIssueCount($branchId);
+        $unbalancedJournalCount = $this->unbalancedJournalCount($branchId);
+        $draftJournalCount = $this->draftJournalCount($branchId);
+
+        $assetTotal = $this->accountBalanceAsOf(
+            $dateTo,
+            $branchId,
+            fn ($query) => $query->where('accounts.type', 'ASSET')
+        );
+
+        $liabilityTotal = $this->accountBalanceAsOf(
+            $dateTo,
+            $branchId,
+            fn ($query) => $query->where('accounts.type', 'LIABILITY')
+        );
+
+        $equityTotal = $this->accountBalanceAsOf(
+            $dateTo,
+            $branchId,
+            fn ($query) => $query->where('accounts.type', 'EQUITY')
+        );
+
+        $profitUntilDate = $this->profitUntilDate($dateTo, $branchId);
+        $finalEquity = round($equityTotal + $profitUntilDate, 2);
+        $balanceDifference = round($assetTotal - ($liabilityTotal + $finalEquity), 2);
+
+        $items = [];
+
+        if ($mappingIssueCount > 0) {
+            $items[] = [
+                'key' => 'MAPPING_INCOMPLETE',
+                'label' => 'Mapping akun bermasalah',
+                'message' => 'Ada mapping akun yang belum lengkap, memakai akun tidak aktif, atau akun debit dan kredit sama.',
+                'count' => $mappingIssueCount,
+                'severity' => 'warning',
+            ];
+        }
+
+        if ($unbalancedJournalCount > 0) {
+            $items[] = [
+                'key' => 'UNBALANCED_JOURNALS',
+                'label' => 'Jurnal belum balance',
+                'message' => 'Ada jurnal non-void dengan total debit dan kredit tidak sama.',
+                'count' => $unbalancedJournalCount,
+                'severity' => 'danger',
+            ];
+        }
+
+        if ($draftJournalCount > 0) {
+            $items[] = [
+                'key' => 'DRAFT_JOURNALS',
+                'label' => 'Jurnal draft',
+                'message' => 'Ada jurnal draft yang belum diposting sehingga belum masuk laporan.',
+                'count' => $draftJournalCount,
+                'severity' => 'info',
+            ];
+        }
+
+        if (abs($balanceDifference) >= 0.01) {
+            $items[] = [
+                'key' => 'BALANCE_SHEET_NOT_BALANCED',
+                'label' => 'Neraca tidak seimbang',
+                'message' => 'Total aset belum sama dengan total liabilitas dan ekuitas.',
+                'count' => 1,
+                'severity' => 'danger',
+            ];
+        }
+
+        return [
+            'items' => $items,
+            'summary' => [
+                'mapping_issue_count' => $mappingIssueCount,
+                'unbalanced_journal_count' => $unbalancedJournalCount,
+                'draft_journal_count' => $draftJournalCount,
+                'balance_difference' => $balanceDifference,
+                'has_warning' => count($items) > 0,
+            ],
+        ];
+    }
+
+    private function accountBalanceAsOf(string $dateTo, ?string $branchId, callable $accountFilter): float
+    {
+        $query = DB::table('accounting_journal_lines as lines')
+            ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
+            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
+            ->where('entries.status', 'POSTED')
+            ->whereDate('entries.journal_date', '<=', $dateTo);
+
+        if ($branchId) {
+            $query->where('entries.branch_id', $branchId);
+        }
+
+        $accountFilter($query);
+
+        $rows = $query
+            ->select([
+                'accounts.normal_balance',
+                DB::raw('SUM(lines.debit) as total_debit'),
+                DB::raw('SUM(lines.credit) as total_credit'),
+            ])
+            ->groupBy('accounts.normal_balance')
+            ->get();
+
+        $total = 0.0;
+
+        foreach ($rows as $row) {
+            $debit = (float) $row->total_debit;
+            $credit = (float) $row->total_credit;
+
+            $total += $row->normal_balance === 'DEBIT'
+                ? $debit - $credit
+                : $credit - $debit;
+        }
+
+        return round($total, 2);
+    }
+
+    private function periodAccountBalance(string $dateFrom, string $dateTo, ?string $branchId, callable $accountFilter): float
+    {
+        $query = DB::table('accounting_journal_lines as lines')
+            ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
+            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
+            ->where('entries.status', 'POSTED')
+            ->whereDate('entries.journal_date', '>=', $dateFrom)
+            ->whereDate('entries.journal_date', '<=', $dateTo);
+
+        if ($branchId) {
+            $query->where('entries.branch_id', $branchId);
+        }
+
+        $accountFilter($query);
+
+        $rows = $query
+            ->select([
+                'accounts.normal_balance',
+                DB::raw('SUM(lines.debit) as total_debit'),
+                DB::raw('SUM(lines.credit) as total_credit'),
+            ])
+            ->groupBy('accounts.normal_balance')
+            ->get();
+
+        $total = 0.0;
+
+        foreach ($rows as $row) {
+            $debit = (float) $row->total_debit;
+            $credit = (float) $row->total_credit;
+
+            $total += $row->normal_balance === 'DEBIT'
+                ? $debit - $credit
+                : $credit - $debit;
+        }
+
+        return round($total, 2);
+    }
+
+    private function profitUntilDate(string $dateTo, ?string $branchId): float
+    {
+        $revenue = $this->accountBalanceAsOf(
+            $dateTo,
+            $branchId,
+            fn ($query) => $query->where('accounts.type', 'REVENUE')
+        );
+
+        $expense = $this->accountBalanceAsOf(
+            $dateTo,
+            $branchId,
+            fn ($query) => $query->where('accounts.type', 'EXPENSE')
+        );
+
+        return round($revenue - $expense, 2);
+    }
+
+    private function revenueExpenseTrend(string $dateFrom, string $dateTo, ?string $branchId): array
+    {
+        $query = DB::table('accounting_journal_lines as lines')
+            ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
+            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
+            ->where('entries.status', 'POSTED')
+            ->whereIn('accounts.type', ['REVENUE', 'EXPENSE'])
+            ->whereDate('entries.journal_date', '>=', $dateFrom)
+            ->whereDate('entries.journal_date', '<=', $dateTo);
+
+        if ($branchId) {
+            $query->where('entries.branch_id', $branchId);
+        }
+
+        $rows = $query
+            ->select([
+                DB::raw('DATE(entries.journal_date) as period'),
+                'accounts.type',
+                'accounts.normal_balance',
+                DB::raw('SUM(lines.debit) as total_debit'),
+                DB::raw('SUM(lines.credit) as total_credit'),
+            ])
+            ->groupBy('period', 'accounts.type', 'accounts.normal_balance')
+            ->orderBy('period')
+            ->get();
+
+        $items = [];
+
+        foreach ($rows as $row) {
+            $period = (string) $row->period;
+
+            if (! isset($items[$period])) {
+                $items[$period] = [
+                    'period' => $period,
+                    'revenue' => 0.0,
+                    'expense' => 0.0,
+                    'net_profit' => 0.0,
+                ];
+            }
+
+            $debit = (float) $row->total_debit;
+            $credit = (float) $row->total_credit;
+            $amount = $row->normal_balance === 'DEBIT'
+                ? $debit - $credit
+                : $credit - $debit;
+
+            if ($row->type === 'REVENUE') {
+                $items[$period]['revenue'] += $amount;
+            }
+
+            if ($row->type === 'EXPENSE') {
+                $items[$period]['expense'] += $amount;
+            }
+        }
+
+        return array_values(array_map(function (array $item) {
+            $item['revenue'] = round($item['revenue'], 2);
+            $item['expense'] = round($item['expense'], 2);
+            $item['net_profit'] = round($item['revenue'] - $item['expense'], 2);
+
+            return $item;
+        }, $items));
+    }
+
+    private function cashFlowTrend(string $dateFrom, string $dateTo, ?string $branchId): array
+    {
+        $query = DB::table('accounting_journal_lines as lines')
+            ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
+            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
+            ->where('entries.status', 'POSTED')
+            ->where('accounts.is_cash_account', true)
+            ->whereDate('entries.journal_date', '>=', $dateFrom)
+            ->whereDate('entries.journal_date', '<=', $dateTo);
+
+        if ($branchId) {
+            $query->where('entries.branch_id', $branchId);
+        }
+
+        $rows = $query
+            ->select([
+                DB::raw('DATE(entries.journal_date) as period'),
+                'accounts.normal_balance',
+                DB::raw('SUM(lines.debit) as total_debit'),
+                DB::raw('SUM(lines.credit) as total_credit'),
+            ])
+            ->groupBy('period', 'accounts.normal_balance')
+            ->orderBy('period')
+            ->get();
+
+        $items = [];
+
+        foreach ($rows as $row) {
+            $period = (string) $row->period;
+
+            if (! isset($items[$period])) {
+                $items[$period] = [
+                    'period' => $period,
+                    'cash_in' => 0.0,
+                    'cash_out' => 0.0,
+                    'net_cash_flow' => 0.0,
+                ];
+            }
+
+            $debit = (float) $row->total_debit;
+            $credit = (float) $row->total_credit;
+
+            if ($row->normal_balance === 'DEBIT') {
+                $items[$period]['cash_in'] += $debit;
+                $items[$period]['cash_out'] += $credit;
+            } else {
+                $items[$period]['cash_in'] += $credit;
+                $items[$period]['cash_out'] += $debit;
+            }
+        }
+
+        return array_values(array_map(function (array $item) {
+            $item['cash_in'] = round($item['cash_in'], 2);
+            $item['cash_out'] = round($item['cash_out'], 2);
+            $item['net_cash_flow'] = round($item['cash_in'] - $item['cash_out'], 2);
+
+            return $item;
+        }, $items));
+    }
+
+    private function netProfitByBranch(string $dateFrom, string $dateTo, ?string $branchId): array
+    {
+        $query = DB::table('accounting_journal_lines as lines')
+            ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
+            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
+            ->leftJoin('branches', 'branches.id', '=', 'entries.branch_id')
+            ->where('entries.status', 'POSTED')
+            ->whereIn('accounts.type', ['REVENUE', 'EXPENSE'])
+            ->whereDate('entries.journal_date', '>=', $dateFrom)
+            ->whereDate('entries.journal_date', '<=', $dateTo);
+
+        if ($branchId) {
+            $query->where('entries.branch_id', $branchId);
+        }
+
+        $rows = $query
+            ->select([
+                'entries.branch_id',
+                'branches.code as branch_code',
+                'branches.name as branch_name',
+                'accounts.type',
+                'accounts.normal_balance',
+                DB::raw('SUM(lines.debit) as total_debit'),
+                DB::raw('SUM(lines.credit) as total_credit'),
+            ])
+            ->groupBy(
+                'entries.branch_id',
+                'branches.code',
+                'branches.name',
+                'accounts.type',
+                'accounts.normal_balance'
+            )
+            ->orderBy('branches.name')
+            ->get();
+
+        $items = [];
+
+        foreach ($rows as $row) {
+            $id = (string) $row->branch_id;
+
+            if (! isset($items[$id])) {
+                $items[$id] = [
+                    'branch_id' => $id,
+                    'branch_code' => $row->branch_code,
+                    'branch_name' => $row->branch_name,
+                    'revenue' => 0.0,
+                    'expense' => 0.0,
+                    'net_profit' => 0.0,
+                ];
+            }
+
+            $debit = (float) $row->total_debit;
+            $credit = (float) $row->total_credit;
+            $amount = $row->normal_balance === 'DEBIT'
+                ? $debit - $credit
+                : $credit - $debit;
+
+            if ($row->type === 'REVENUE') {
+                $items[$id]['revenue'] += $amount;
+            }
+
+            if ($row->type === 'EXPENSE') {
+                $items[$id]['expense'] += $amount;
+            }
+        }
+
+        return array_values(array_map(function (array $item) {
+            $item['revenue'] = round($item['revenue'], 2);
+            $item['expense'] = round($item['expense'], 2);
+            $item['net_profit'] = round($item['revenue'] - $item['expense'], 2);
+
+            return $item;
+        }, $items));
+    }
+
+    private function receivablesTrend(string $dateFrom, string $dateTo, ?string $branchId): array
+    {
+        $query = DB::table('accounting_journal_lines as lines')
+            ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
+            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
+            ->where('entries.status', 'POSTED')
+            ->where('accounts.type', 'ASSET')
+            ->where(function ($q) {
+                $q->where('accounts.code', '1100')
+                    ->orWhere('accounts.name', 'like', '%Piutang%');
+            })
+            ->whereDate('entries.journal_date', '>=', $dateFrom)
+            ->whereDate('entries.journal_date', '<=', $dateTo);
+
+        if ($branchId) {
+            $query->where('entries.branch_id', $branchId);
+        }
+
+        $rows = $query
+            ->select([
+                DB::raw('DATE(entries.journal_date) as period'),
+                'accounts.normal_balance',
+                DB::raw('SUM(lines.debit) as total_debit'),
+                DB::raw('SUM(lines.credit) as total_credit'),
+            ])
+            ->groupBy('period', 'accounts.normal_balance')
+            ->orderBy('period')
+            ->get();
+
+        $items = [];
+
+        foreach ($rows as $row) {
+            $period = (string) $row->period;
+
+            if (! isset($items[$period])) {
+                $items[$period] = [
+                    'period' => $period,
+                    'receivables_in' => 0.0,
+                    'receivables_out' => 0.0,
+                    'net_receivables' => 0.0,
+                ];
+            }
+
+            $debit = (float) $row->total_debit;
+            $credit = (float) $row->total_credit;
+
+            if ($row->normal_balance === 'DEBIT') {
+                $items[$period]['receivables_in'] += $debit;
+                $items[$period]['receivables_out'] += $credit;
+            } else {
+                $items[$period]['receivables_in'] += $credit;
+                $items[$period]['receivables_out'] += $debit;
+            }
+        }
+
+        return array_values(array_map(function (array $item) {
+            $item['receivables_in'] = round($item['receivables_in'], 2);
+            $item['receivables_out'] = round($item['receivables_out'], 2);
+            $item['net_receivables'] = round($item['receivables_in'] - $item['receivables_out'], 2);
+
+            return $item;
+        }, $items));
+    }
+
+    private function mappingIssueCount(?string $branchId): int
+    {
+        $query = DB::table('accounting_account_mappings as mappings')
+            ->leftJoin('accounting_accounts as debit_accounts', 'debit_accounts.id', '=', 'mappings.debit_account_id')
+            ->leftJoin('accounting_accounts as credit_accounts', 'credit_accounts.id', '=', 'mappings.credit_account_id')
+            ->where(function ($q) {
+                $q->whereNull('debit_accounts.id')
+                    ->orWhereNull('credit_accounts.id')
+                    ->orWhere('debit_accounts.is_active', false)
+                    ->orWhere('credit_accounts.is_active', false)
+                    ->orWhereColumn('mappings.debit_account_id', 'mappings.credit_account_id');
+            });
+
+        if ($branchId) {
+            $query->where(function ($q) use ($branchId) {
+                $q->whereNull('mappings.branch_id')
+                    ->orWhere('mappings.branch_id', $branchId);
+            });
+        }
+
+        return (int) $query->count();
+    }
+
+    private function unbalancedJournalCount(?string $branchId): int
+    {
+        $query = DB::table('accounting_journal_entries')
+            ->where('status', '!=', 'VOID')
+            ->whereRaw('ROUND(total_debit, 2) <> ROUND(total_credit, 2)');
+
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        return (int) $query->count();
+    }
+
+    private function draftJournalCount(?string $branchId): int
+    {
+        $query = DB::table('accounting_journal_entries')
+            ->where('status', 'DRAFT');
+
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        return (int) $query->count();
+    }
+
+    private function resolveBranchId(array $filters, User $user): ?string
+    {
+        if ($user->hasRole('Superadmin')) {
+            return $filters['branch_id'] ?? null;
+        }
+
+        if (! $user->branch_id) {
+            throw ValidationException::withMessages([
+                'branch_id' => ['User belum terikat ke cabang.'],
+            ]);
+        }
+
+        return (string) $user->branch_id;
+    }
+}
+
+```
+</details>
+
+### app\Services\Accounting\AccountingJournalNumberService.php
+
+- SHA: `2bf74eddb703`  
+- Ukuran: 847 B  
+- Namespace: `App\Services\Accounting`
+
+**Class `AccountingJournalNumberService`**
+
+Metode Publik:
+- **next**(Carbon|string $journalDate) : *string*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Services\Accounting;
+
+use App\Models\AccountingJournalEntry;
+use Illuminate\Support\Carbon;
+
+class AccountingJournalNumberService
+{
+    public function next(Carbon|string $journalDate): string
+    {
+        $date = $journalDate instanceof Carbon
+            ? $journalDate
+            : Carbon::parse($journalDate);
+
+        $prefix = 'JRN-' . $date->format('Ymd');
+
+        $last = AccountingJournalEntry::query()
+            ->where('journal_no', 'like', $prefix . '-%')
+            ->lockForUpdate()
+            ->orderByDesc('journal_no')
+            ->value('journal_no');
+
+        $nextNumber = 1;
+
+        if ($last) {
+            $lastSeq = (int) substr((string) $last, -4);
+            $nextNumber = $lastSeq + 1;
+        }
+
+        return $prefix . '-' . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
+    }
+}
+
+```
+</details>
+
+### app\Services\Accounting\AccountingLedgerService.php
+
+- SHA: `6303fbf32465`  
+- Ukuran: 8 KB  
+- Namespace: `App\Services\Accounting`
+
+**Class `AccountingLedgerService`**
+
+Metode Publik:
+- **build**(array $filters, $user) : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Services\Accounting;
+
+use App\Models\AccountingAccount;
+use App\Models\AccountingJournalLine;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
+
+class AccountingLedgerService
+{
+    public function build(array $filters, $user): array
+    {
+        $account = $this->resolveAccount((string) $filters['account_id'], $user);
+
+        $branchId = $this->resolveBranchId($filters, $account, $user);
+        $dateFrom = (string) $filters['date_from'];
+        $dateTo = (string) $filters['date_to'];
+
+        $openingBalance = $this->calculateOpeningBalance($account, $branchId, $dateFrom);
+
+        $lines = $this->ledgerLinesQuery($account, $branchId, $dateFrom, $dateTo)
+            ->get();
+
+        $runningBalance = $openingBalance;
+        $totalDebit = 0.0;
+        $totalCredit = 0.0;
+
+        $rows = $lines->map(function (AccountingJournalLine $line) use ($account, &$runningBalance, &$totalDebit, &$totalCredit) {
+            $debit = (float) $line->debit;
+            $credit = (float) $line->credit;
+
+            $totalDebit += $debit;
+            $totalCredit += $credit;
+
+            $runningBalance = $this->applyMovement($account, $runningBalance, $debit, $credit);
+
+            return [
+                'id' => (string) $line->id,
+                'journal_entry_id' => (string) $line->journal_entry_id,
+                'journal_date' => optional($line->journalEntry?->journal_date)->format('Y-m-d'),
+                'journal_no' => $line->journalEntry?->journal_no,
+                'source_type' => $line->journalEntry?->source_type,
+                'source_no' => $line->journalEntry?->source_no,
+                'branch' => $line->journalEntry?->branch ? [
+                    'id' => (string) $line->journalEntry->branch->id,
+                    'name' => $line->journalEntry->branch->name,
+                    'code' => $line->journalEntry->branch->code,
+                ] : null,
+                'description' => $line->description ?: $line->journalEntry?->description,
+                'debit' => round($debit, 2),
+                'credit' => round($credit, 2),
+                'balance' => round($runningBalance, 2),
+            ];
+        });
+
+        $page = max((int) ($filters['page'] ?? 1), 1);
+        $perPage = max((int) ($filters['per_page'] ?? 50), 1);
+
+        $paginatedRows = $this->paginate($rows, $page, $perPage);
+
+        return [
+            'data' => $paginatedRows->items(),
+            'meta' => [
+                'current_page' => $paginatedRows->currentPage(),
+                'per_page' => $paginatedRows->perPage(),
+                'total' => $paginatedRows->total(),
+                'last_page' => $paginatedRows->lastPage(),
+                'account' => [
+                    'id' => (string) $account->id,
+                    'code' => $account->code,
+                    'name' => $account->name,
+                    'type' => $account->type,
+                    'normal_balance' => $account->normal_balance,
+                    'branch_id' => $account->branch_id,
+                ],
+                'branch_id' => $branchId,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'opening_balance' => round($openingBalance, 2),
+                'total_debit' => round($totalDebit, 2),
+                'total_credit' => round($totalCredit, 2),
+                'ending_balance' => round($runningBalance, 2),
+            ],
+        ];
+    }
+
+    private function resolveAccount(string $accountId, $user): AccountingAccount
+    {
+        $query = AccountingAccount::query()
+            ->where('id', $accountId)
+            ->where('is_active', true);
+
+        if (! $user->hasRole('Superadmin')) {
+            $query->where(function ($q) use ($user) {
+                $q->whereNull('branch_id')
+                    ->orWhere('branch_id', $user->branch_id);
+            });
+        }
+
+        $account = $query->first();
+
+        if (! $account) {
+            throw ValidationException::withMessages([
+                'account_id' => ['Akun tidak aktif atau tidak sesuai cabang user.'],
+            ]);
+        }
+
+        return $account;
+    }
+
+    private function resolveBranchId(array $filters, AccountingAccount $account, $user): ?string
+    {
+        if (! $user->hasRole('Superadmin')) {
+            if (! $user->branch_id) {
+                throw ValidationException::withMessages([
+                    'branch_id' => ['User belum terikat ke cabang.'],
+                ]);
+            }
+
+            return (string) $user->branch_id;
+        }
+
+        $requestedBranchId = $filters['branch_id'] ?? null;
+
+        if ($account->branch_id) {
+            if ($requestedBranchId && (string) $requestedBranchId !== (string) $account->branch_id) {
+                throw ValidationException::withMessages([
+                    'branch_id' => ['Cabang filter tidak sesuai dengan cabang akun.'],
+                ]);
+            }
+
+            return (string) $account->branch_id;
+        }
+
+        return $requestedBranchId ? (string) $requestedBranchId : null;
+    }
+
+    private function calculateOpeningBalance(AccountingAccount $account, ?string $branchId, string $dateFrom): float
+    {
+        $totals = AccountingJournalLine::query()
+            ->where('account_id', $account->id)
+            ->whereHas('journalEntry', function ($q) use ($branchId, $dateFrom) {
+                $q->where('status', 'POSTED')
+                    ->whereDate('journal_date', '<', $dateFrom);
+
+                if ($branchId) {
+                    $q->where('branch_id', $branchId);
+                }
+            })
+            ->selectRaw('COALESCE(SUM(debit), 0) as debit_total, COALESCE(SUM(credit), 0) as credit_total')
+            ->first();
+
+        return $this->balanceFromTotals(
+            $account,
+            (float) ($totals->debit_total ?? 0),
+            (float) ($totals->credit_total ?? 0)
+        );
+    }
+
+    private function ledgerLinesQuery(AccountingAccount $account, ?string $branchId, string $dateFrom, string $dateTo)
+    {
+        return AccountingJournalLine::query()
+            ->with([
+                'journalEntry:id,branch_id,journal_no,journal_date,source_type,source_no,description,status',
+                'journalEntry.branch:id,name,code',
+            ])
+            ->where('account_id', $account->id)
+            ->whereHas('journalEntry', function ($q) use ($branchId, $dateFrom, $dateTo) {
+                $q->where('status', 'POSTED')
+                    ->whereDate('journal_date', '>=', $dateFrom)
+                    ->whereDate('journal_date', '<=', $dateTo);
+
+                if ($branchId) {
+                    $q->where('branch_id', $branchId);
+                }
+            })
+            ->join('accounting_journal_entries', 'accounting_journal_entries.id', '=', 'accounting_journal_lines.journal_entry_id')
+            ->orderBy('accounting_journal_entries.journal_date')
+            ->orderBy('accounting_journal_entries.journal_no')
+            ->orderBy('accounting_journal_lines.line_order')
+            ->select('accounting_journal_lines.*');
+    }
+
+    private function applyMovement(AccountingAccount $account, float $currentBalance, float $debit, float $credit): float
+    {
+        if ((string) $account->normal_balance === 'DEBIT') {
+            return $currentBalance + $debit - $credit;
+        }
+
+        return $currentBalance + $credit - $debit;
+    }
+
+    private function balanceFromTotals(AccountingAccount $account, float $debit, float $credit): float
+    {
+        if ((string) $account->normal_balance === 'DEBIT') {
+            return $debit - $credit;
+        }
+
+        return $credit - $debit;
+    }
+
+    private function paginate(Collection $rows, int $page, int $perPage): LengthAwarePaginator
+    {
+        return new LengthAwarePaginator(
+            $rows->forPage($page, $perPage)->values()->all(),
+            $rows->count(),
+            $perPage,
+            $page,
+            [
+                'path' => request()->url(),
+                'query' => request()->query(),
+            ]
+        );
+    }
+}
+
+```
+</details>
+
+### app\Services\Accounting\AccountingMappingResolver.php
+
+- SHA: `643082b53ecf`  
+- Ukuran: 2 KB  
+- Namespace: `App\Services\Accounting`
+
+**Class `AccountingMappingResolver`**
+
+Metode Publik:
+- **resolve**(string $eventKey, ?string $branchId = null, ?string $paymentMethod = null, ?string $expenseCategory = null,) : *AccountingAccountMapping*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Services\Accounting;
+
+use App\Models\AccountingAccountMapping;
+use Illuminate\Validation\ValidationException;
+
+class AccountingMappingResolver
+{
+    public function resolve(
+        string $eventKey,
+        ?string $branchId = null,
+        ?string $paymentMethod = null,
+        ?string $expenseCategory = null,
+    ): AccountingAccountMapping {
+        $branchMapping = null;
+
+        if ($branchId) {
+            $branchMapping = $this->baseQuery($eventKey, $paymentMethod, $expenseCategory)
+                ->where('branch_id', $branchId)
+                ->first();
+        }
+
+        $mapping = $branchMapping
+            ?: $this->baseQuery($eventKey, $paymentMethod, $expenseCategory)
+                ->whereNull('branch_id')
+                ->first();
+
+        if (! $mapping) {
+            throw ValidationException::withMessages([
+                'mapping' => [
+                    "Mapping akun untuk event {$eventKey} belum tersedia atau belum aktif.",
+                ],
+            ]);
+        }
+
+        return $mapping;
+    }
+
+    private function baseQuery(
+        string $eventKey,
+        ?string $paymentMethod,
+        ?string $expenseCategory,
+    ) {
+        $query = AccountingAccountMapping::query()
+            ->with([
+                'debitAccount:id,code,name,type,normal_balance,is_active',
+                'creditAccount:id,code,name,type,normal_balance,is_active',
+            ])
+            ->where('event_key', $eventKey)
+            ->where('is_active', true);
+
+        if ($paymentMethod) {
+            $query->where('payment_method', $paymentMethod);
+        } else {
+            $query->whereNull('payment_method');
+        }
+
+        if ($expenseCategory) {
+            $query->where(function ($q) use ($expenseCategory) {
+                $q->where('expense_category', $expenseCategory)
+                    ->orWhereNull('expense_category');
+            })->orderByRaw('expense_category IS NULL ASC');
+        } else {
+            $query->whereNull('expense_category');
+        }
+
+        return $query;
+    }
+}
+
+```
+</details>
+
+### app\Services\Accounting\AccountingPostingService.php
+
+- SHA: `b122d6f098f8`  
+- Ukuran: 11 KB  
+- Namespace: `App\Services\Accounting`
+
+**Class `AccountingPostingService`**
+
+Metode Publik:
+- **__construct**(private AccountingMappingResolver $mappingResolver, private AccountingJournalNumberService $numberService,)
+- **postPayment**(Payment $payment, ?User $actor = null) : *?AccountingJournalEntry*
+- **postOrderDiscount**(Order $order, ?User $actor = null) : *?AccountingJournalEntry*
+- **postReceivableCreated**(Receivable $receivable, ?User $actor = null) : *?AccountingJournalEntry*
+- **postReceivableSettlement**(Payment $payment, ?User $actor = null) : *?AccountingJournalEntry*
+- **postExpense**(Expense $expense, ?User $actor = null) : *?AccountingJournalEntry*
+- **postCashMutation**(CashMutation $mutation, ?User $actor = null) : *?AccountingJournalEntry*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+namespace App\Services\Accounting;
+
+use App\Models\AccountingJournalEntry;
+use App\Models\AccountingJournalLine;
+use App\Models\CashMutation;
+use App\Models\Expense;
+use App\Models\Order;
+use App\Models\Payment;
+use App\Models\Receivable;
+use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+
+class AccountingPostingService
+{
+    public function __construct(
+        private AccountingMappingResolver $mappingResolver,
+        private AccountingJournalNumberService $numberService,
+    ) {}
+
+    public function postPayment(Payment $payment, ?User $actor = null): ?AccountingJournalEntry
+    {
+        $payment->loadMissing('order');
+
+        $order = $payment->order;
+
+        if (! $order || ! $order->branch_id) {
+            return null;
+        }
+
+        $method = (string) $payment->method;
+
+        $eventKey = match ($method) {
+            'DP'       => 'ORDER_PAID_DP',
+            'CASH'     => 'ORDER_PAID_CASH',
+            'QRIS'     => 'ORDER_PAID_QRIS',
+            'TRANSFER' => 'ORDER_PAID_TRANSFER',
+            default    => null,
+        };
+
+        if (! $eventKey) {
+            return null;
+        }
+
+        return $this->postSimpleEntry(
+            eventKey: $eventKey,
+            branchId: (string) $order->branch_id,
+            amount: (float) $payment->amount,
+            sourceType: 'payment',
+            sourceId: (string) $payment->id,
+            sourceNo: $order->invoice_no ?: $order->number,
+            journalDate: $payment->paid_at ? Carbon::parse($payment->paid_at) : now('Asia/Jakarta'),
+            description: 'Posting otomatis pembayaran order',
+            actorId: $actor?->id ?: $order->created_by,
+            paymentMethod: $method,
+        );
+    }
+
+    public function postOrderDiscount(Order $order, ?User $actor = null): ?AccountingJournalEntry
+    {
+        if (! $order->branch_id) {
+            return null;
+        }
+
+        $amount = (float) $order->discount;
+
+        if ($amount <= 0) {
+            return null;
+        }
+
+        return $this->postSimpleEntry(
+            eventKey: 'ORDER_DISCOUNT',
+            branchId: (string) $order->branch_id,
+            amount: $amount,
+            sourceType: 'order_discount',
+            sourceId: (string) $order->id,
+            sourceNo: $order->invoice_no ?: $order->number,
+            journalDate: $order->created_at ? Carbon::parse($order->created_at) : now('Asia/Jakarta'),
+            description: 'Posting otomatis diskon/voucher order',
+            actorId: $actor?->id ?: $order->created_by,
+        );
+    }
+
+    public function postReceivableCreated(Receivable $receivable, ?User $actor = null): ?AccountingJournalEntry
+    {
+        $receivable->loadMissing('order');
+
+        $order = $receivable->order;
+
+        if (! $order || ! $order->branch_id) {
+            return null;
+        }
+
+        $amount = (float) $receivable->remaining_amount;
+
+        if ($amount <= 0) {
+            return null;
+        }
+
+        return $this->postSimpleEntry(
+            eventKey: 'ORDER_RECEIVABLE_CREATED',
+            branchId: (string) $order->branch_id,
+            amount: $amount,
+            sourceType: 'receivable',
+            sourceId: (string) $receivable->id,
+            sourceNo: $order->invoice_no ?: $order->number,
+            journalDate: $receivable->created_at ? Carbon::parse($receivable->created_at) : now('Asia/Jakarta'),
+            description: 'Posting otomatis piutang order',
+            actorId: $actor?->id ?: $order->created_by,
+        );
+    }
+
+    public function postReceivableSettlement(Payment $payment, ?User $actor = null): ?AccountingJournalEntry
+    {
+        $payment->loadMissing('order');
+
+        $order = $payment->order;
+
+        if (! $order || ! $order->branch_id) {
+            return null;
+        }
+
+        if ((string) $payment->method !== 'CASH') {
+            return null;
+        }
+
+        return $this->postSimpleEntry(
+            eventKey: 'RECEIVABLE_SETTLED_CASH',
+            branchId: (string) $order->branch_id,
+            amount: (float) $payment->amount,
+            sourceType: 'payment',
+            sourceId: (string) $payment->id,
+            sourceNo: $order->invoice_no ?: $order->number,
+            journalDate: $payment->paid_at ? Carbon::parse($payment->paid_at) : now('Asia/Jakarta'),
+            description: 'Posting otomatis pelunasan piutang tunai',
+            actorId: $actor?->id ?: $order->created_by,
+            paymentMethod: 'CASH',
+        );
+    }
+
+    public function postExpense(Expense $expense, ?User $actor = null): ?AccountingJournalEntry
+    {
+        if (! $expense->branch_id) {
+            return null;
+        }
+
+        $paymentSource = (string) ($expense->payment_source ?? 'NON_CASH');
+
+        $eventKey = $paymentSource === 'CASH_BOX'
+            ? 'EXPENSE_CASH_BOX'
+            : 'EXPENSE_NON_CASH';
+
+        return $this->postSimpleEntry(
+            eventKey: $eventKey,
+            branchId: (string) $expense->branch_id,
+            amount: (float) $expense->amount,
+            sourceType: 'expense',
+            sourceId: (string) $expense->id,
+            sourceNo: null,
+            journalDate: $expense->created_at ? Carbon::parse($expense->created_at) : now('Asia/Jakarta'),
+            description: 'Posting otomatis pengeluaran: ' . (string) $expense->category,
+            actorId: $actor?->id,
+            expenseCategory: $expense->category,
+        );
+    }
+
+    public function postCashMutation(CashMutation $mutation, ?User $actor = null): ?AccountingJournalEntry
+    {
+        if (! $mutation->branch_id) {
+            return null;
+        }
+
+        $eventKey = match ((string) $mutation->type) {
+            'OPENING_FLOAT'  => 'CASH_OPENING_FLOAT',
+            'WITHDRAWAL'     => 'CASH_WITHDRAWAL',
+            'ADJUSTMENT_IN'  => 'CASH_ADJUSTMENT_IN',
+            'ADJUSTMENT_OUT' => 'CASH_ADJUSTMENT_OUT',
+            default          => null,
+        };
+
+        if (! $eventKey) {
+            return null;
+        }
+
+        return $this->postSimpleEntry(
+            eventKey: $eventKey,
+            branchId: (string) $mutation->branch_id,
+            amount: (float) $mutation->amount,
+            sourceType: 'cash_mutation',
+            sourceId: (string) $mutation->id,
+            sourceNo: $mutation->reference_no,
+            journalDate: $mutation->effective_at ? Carbon::parse($mutation->effective_at) : now('Asia/Jakarta'),
+            description: $mutation->note ?: 'Posting otomatis mutasi kas',
+            actorId: $actor?->id ?: $mutation->created_by,
+        );
+    }
+
+    private function postSimpleEntry(
+        string $eventKey,
+        string $branchId,
+        float $amount,
+        string $sourceType,
+        string $sourceId,
+        ?string $sourceNo,
+        Carbon | string $journalDate,
+        ?string $description,
+        int | string | null $actorId = null,
+        ?string $paymentMethod = null,
+        ?string $expenseCategory = null,
+    ): ?AccountingJournalEntry {
+        if ($amount <= 0) {
+            return null;
+        }
+
+        return DB::transaction(function () use (
+            $eventKey,
+            $branchId,
+            $amount,
+            $sourceType,
+            $sourceId,
+            $sourceNo,
+            $journalDate,
+            $description,
+            $actorId,
+            $paymentMethod,
+            $expenseCategory,
+        ) {
+            $existing = AccountingJournalEntry::query()
+                ->with(['lines.account'])
+                ->where('source_type', $sourceType)
+                ->where('source_id', $sourceId)
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing) {
+                return $existing;
+            }
+
+            $date = $journalDate instanceof Carbon
+                ? $journalDate
+                : Carbon::parse($journalDate);
+
+            $mapping = $this->mappingResolver->resolve(
+                eventKey: $eventKey,
+                branchId: $branchId,
+                paymentMethod: $paymentMethod,
+                expenseCategory: $expenseCategory,
+            );
+
+            $this->validateMappingAccounts($mapping);
+
+            $journal = AccountingJournalEntry::query()->create([
+                'id'           => (string) Str::uuid(),
+                'branch_id'    => $branchId,
+                'mapping_id'   => $mapping->id,
+                'journal_no'   => $this->numberService->next($date),
+                'journal_date' => $date->toDateString(),
+                'source_type'  => $sourceType,
+                'source_id'    => $sourceId,
+                'source_no'    => $sourceNo,
+                'status'       => 'POSTED',
+                'description'  => $description,
+                'total_debit'  => $amount,
+                'total_credit' => $amount,
+                'created_by'   => $actorId,
+                'posted_by'    => $actorId,
+                'posted_at'    => now(),
+            ]);
+
+            AccountingJournalLine::query()->create([
+                'id'               => (string) Str::uuid(),
+                'journal_entry_id' => $journal->id,
+                'account_id'       => $mapping->debit_account_id,
+                'description'      => $description,
+                'debit'            => $amount,
+                'credit'           => 0,
+                'line_order'       => 1,
+            ]);
+
+            AccountingJournalLine::query()->create([
+                'id'               => (string) Str::uuid(),
+                'journal_entry_id' => $journal->id,
+                'account_id'       => $mapping->credit_account_id,
+                'description'      => $description,
+                'debit'            => 0,
+                'credit'           => $amount,
+                'line_order'       => 2,
+            ]);
+
+            return $journal->load([
+                'mapping',
+                'lines.account:id,code,name,type,normal_balance',
+            ]);
+        });
+    }
+
+    private function validateMappingAccounts($mapping): void
+    {
+        if (! $mapping->debitAccount || ! $mapping->creditAccount) {
+            throw ValidationException::withMessages([
+                'mapping' => ['Mapping akun belum memiliki akun debit dan kredit yang valid.'],
+            ]);
+        }
+
+        if (! $mapping->debitAccount->is_active || ! $mapping->creditAccount->is_active) {
+            throw ValidationException::withMessages([
+                'mapping' => ['Akun debit atau kredit pada mapping sudah tidak aktif.'],
+            ]);
+        }
+
+        if ((string) $mapping->debit_account_id === (string) $mapping->credit_account_id) {
+            throw ValidationException::withMessages([
+                'mapping' => ['Akun debit dan kredit tidak boleh sama.'],
+            ]);
+        }
+    }
+}
+
+```
+</details>
+
+### app\Services\Accounting\BalanceSheetService.php
+
+- SHA: `7baa7c003a01`  
+- Ukuran: 6 KB  
+- Namespace: `App\Services\Accounting`
+
+**Class `BalanceSheetService`**
+
+Metode Publik:
+- **build**(array $filters, User $user) : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+namespace App\Services\Accounting;
+
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class BalanceSheetService
+{
+    public function build(array $filters, User $user): array
+    {
+        $dateFrom = (string) $filters['date_from'];
+        $dateTo   = (string) $filters['date_to'];
+        $branchId = $this->resolveBranchId($filters, $user);
+
+        $rows = DB::table('accounting_journal_lines as lines')
+            ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
+            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
+            ->leftJoin('branches', 'branches.id', '=', 'entries.branch_id')
+            ->where('entries.status', 'POSTED')
+            ->whereDate('entries.journal_date', '<=', $dateTo)
+            ->whereIn('accounts.type', ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'])
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->where('entries.branch_id', $branchId);
+            })
+            ->groupBy(
+                'accounts.id',
+                'accounts.code',
+                'accounts.name',
+                'accounts.type',
+                'accounts.normal_balance'
+            )
+            ->orderBy('accounts.code')
+            ->select([
+                'accounts.id',
+                'accounts.code',
+                'accounts.name',
+                'accounts.type',
+                'accounts.normal_balance',
+                DB::raw('COALESCE(SUM(lines.debit), 0) as total_debit'),
+                DB::raw('COALESCE(SUM(lines.credit), 0) as total_credit'),
+            ])
+            ->get();
+
+        $assets      = [];
+        $liabilities = [];
+        $equities    = [];
+
+        $totalAssets      = 0.0;
+        $totalLiabilities = 0.0;
+        $totalEquities    = 0.0;
+        $totalRevenue     = 0.0;
+        $totalExpense     = 0.0;
+
+        foreach ($rows as $row) {
+            $debit   = (float) $row->total_debit;
+            $credit  = (float) $row->total_credit;
+            $balance = $this->calculateAccountBalance(
+                (string) $row->normal_balance,
+                $debit,
+                $credit
+            );
+
+            $item = [
+                'id'             => (string) $row->id,
+                'code'           => (string) $row->code,
+                'name'           => (string) $row->name,
+                'type'           => (string) $row->type,
+                'normal_balance' => (string) $row->normal_balance,
+                'total_debit'    => round($debit, 2),
+                'total_credit'   => round($credit, 2),
+                'balance'        => round($balance, 2),
+            ];
+
+            if ($row->type === 'ASSET') {
+                $assets[]     = $item;
+                $totalAssets += $balance;
+            }
+
+            if ($row->type === 'LIABILITY') {
+                $liabilities[]     = $item;
+                $totalLiabilities += $balance;
+            }
+
+            if ($row->type === 'EQUITY') {
+                $equities[]     = $item;
+                $totalEquities += $balance;
+            }
+
+            if ($row->type === 'REVENUE') {
+                $totalRevenue += $balance;
+            }
+
+            if ($row->type === 'EXPENSE') {
+                $totalExpense += $balance;
+            }
+        }
+
+        $currentYearProfit = round($totalRevenue - $totalExpense, 2);
+
+        $currentYearProfitRow = [
+            'id'             => null,
+            'code'           => '3999',
+            'name'           => 'Laba Tahun Berjalan',
+            'type'           => 'EQUITY',
+            'normal_balance' => 'CREDIT',
+            'total_debit'    => 0.0,
+            'total_credit'   => 0.0,
+            'balance'        => $currentYearProfit,
+        ];
+
+        $equityWithProfit  = $equities;
+
+        if ($currentYearProfit !== 0.0) {
+            $equityWithProfit[] = $currentYearProfitRow;
+        }
+
+        $totalEquityWithProfit = round($totalEquities + $currentYearProfit, 2);
+        $rightSideTotal        = round($totalLiabilities + $totalEquityWithProfit, 2);
+        $totalAssets           = round($totalAssets, 2);
+        $difference            = round($totalAssets - $rightSideTotal, 2);
+
+        return [
+            'data' => [
+                'assets'              => $assets,
+                'liabilities'         => $liabilities,
+                'equities'            => $equityWithProfit,
+                'current_year_profit' => $currentYearProfit,
+                'summary'             => [
+                    'total_assets'                   => $totalAssets,
+                    'total_liabilities'              => round($totalLiabilities, 2),
+                    'total_equities'                 => $totalEquityWithProfit,
+                    'total_liabilities_and_equities' => $rightSideTotal,
+                    'difference'                     => $difference,
+                    'is_balanced'                    => bccomp((string) $totalAssets, (string) $rightSideTotal, 2) === 0,
+                    'status'                         => bccomp((string) $totalAssets, (string) $rightSideTotal, 2) === 0
+                        ? 'BALANCED'
+                        : 'NOT_BALANCED',
+                ],
+            ],
+            'meta' => [
+                'date_from'  => $dateFrom,
+                'date_to'    => $dateTo,
+                'as_of_date' => $dateTo,
+                'branch_id'  => $branchId,
+                'basis'      => 'posted',
+            ],
+        ];
+    }
+
+    private function resolveBranchId(array $filters, User $user): ?string
+    {
+        if ($user->hasRole('Superadmin')) {
+            return $filters['branch_id'] ?? null;
+        }
+
+        if (! $user->branch_id) {
+            throw ValidationException::withMessages([
+                'branch_id' => ['User admin cabang belum memiliki cabang.'],
+            ]);
+        }
+
+        if (! empty($filters['branch_id'])
+            && (string) $filters['branch_id'] !== (string) $user->branch_id) {
+            throw ValidationException::withMessages([
+                'branch_id' => ['Anda hanya dapat melihat Neraca cabang sendiri.'],
+            ]);
+        }
+
+        return (string) $user->branch_id;
+    }
+
+    private function calculateAccountBalance(string $normalBalance, float $debit, float $credit): float
+    {
+        if ($normalBalance === 'DEBIT') {
+            return round($debit - $credit, 2);
+        }
+
+        return round($credit - $debit, 2);
+    }
+}
+
+```
+</details>
+
+### app\Services\Accounting\CashFlowService.php
+
+- SHA: `2b27e5a723fd`  
+- Ukuran: 9 KB  
+- Namespace: `App\Services\Accounting`
+
+**Class `CashFlowService`**
+
+Metode Publik:
+- **build**(array $filters, User $user) : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Services\Accounting;
+
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class CashFlowService
+{
+    public function build(array $filters, User $user): array
+    {
+        $dateFrom = (string) $filters['date_from'];
+        $dateTo = (string) $filters['date_to'];
+        $branchId = $this->resolveBranchId($filters, $user);
+
+        $openingBalance = $this->calculateOpeningBalance($dateFrom, $branchId);
+        $rows = $this->getPeriodRows($dateFrom, $dateTo, $branchId);
+
+        $operating = [];
+        $investing = [];
+        $financing = [];
+
+        $totalCashIn = 0.0;
+        $totalCashOut = 0.0;
+
+        foreach ($rows as $row) {
+            $cashIn = (float) $row->cash_in;
+            $cashOut = (float) $row->cash_out;
+            $netAmount = $cashIn - $cashOut;
+
+            $item = [
+                'id' => (string) $row->id,
+                'journal_entry_id' => (string) $row->journal_entry_id,
+                'journal_date' => $row->journal_date,
+                'journal_no' => $row->journal_no,
+                'source_type' => $row->source_type,
+                'source_no' => $row->source_no,
+                'event_key' => $row->event_key,
+                'description' => $row->description,
+                'cash_account' => [
+                    'id' => (string) $row->account_id,
+                    'code' => $row->account_code,
+                    'name' => $row->account_name,
+                    'normal_balance' => $row->normal_balance,
+                ],
+                'branch' => [
+                    'id' => (string) $row->branch_id,
+                    'code' => $row->branch_code,
+                    'name' => $row->branch_name,
+                ],
+                'cash_in' => round($cashIn, 2),
+                'cash_out' => round($cashOut, 2),
+                'net_amount' => round($netAmount, 2),
+            ];
+
+            $activity = $this->classifyActivity(
+                $row->event_key,
+                $row->source_type
+            );
+
+            if ($activity === 'FINANCING') {
+                $financing[] = $item;
+            } elseif ($activity === 'INVESTING') {
+                $investing[] = $item;
+            } else {
+                $operating[] = $item;
+            }
+
+            $totalCashIn += $cashIn;
+            $totalCashOut += $cashOut;
+        }
+
+        $operatingTotal = $this->sumNetAmount($operating);
+        $investingTotal = $this->sumNetAmount($investing);
+        $financingTotal = $this->sumNetAmount($financing);
+        $netCashFlow = $operatingTotal + $investingTotal + $financingTotal;
+        $endingBalance = $openingBalance + $netCashFlow;
+
+        return [
+            'data' => [
+                'operating_activities' => [
+                    'label' => 'Aktivitas Operasional',
+                    'items' => $operating,
+                    'total' => round($operatingTotal, 2),
+                ],
+                'investing_activities' => [
+                    'label' => 'Aktivitas Investasi',
+                    'items' => $investing,
+                    'total' => round($investingTotal, 2),
+                ],
+                'financing_activities' => [
+                    'label' => 'Aktivitas Pendanaan',
+                    'items' => $financing,
+                    'total' => round($financingTotal, 2),
+                ],
+                'summary' => [
+                    'opening_balance' => round($openingBalance, 2),
+                    'total_cash_in' => round($totalCashIn, 2),
+                    'total_cash_out' => round($totalCashOut, 2),
+                    'net_cash_flow' => round($netCashFlow, 2),
+                    'ending_balance' => round($endingBalance, 2),
+                ],
+            ],
+            'meta' => [
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'branch_id' => $branchId,
+                'basis' => 'POSTED',
+                'source' => 'accounting_journal_lines',
+            ],
+        ];
+    }
+
+    private function calculateOpeningBalance(string $dateFrom, ?string $branchId): float
+    {
+        $row = DB::table('accounting_journal_lines as lines')
+            ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
+            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
+            ->where('entries.status', 'POSTED')
+            ->where('accounts.is_cash_account', true)
+            ->whereDate('entries.journal_date', '<', $dateFrom)
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->where('entries.branch_id', $branchId);
+            })
+            ->selectRaw("
+                COALESCE(SUM(
+                    CASE
+                        WHEN accounts.normal_balance = 'DEBIT'
+                            THEN lines.debit - lines.credit
+                        ELSE lines.credit - lines.debit
+                    END
+                ), 0) as opening_balance
+            ")
+            ->first();
+
+        return round((float) ($row->opening_balance ?? 0), 2);
+    }
+
+    private function getPeriodRows(string $dateFrom, string $dateTo, ?string $branchId)
+    {
+        return DB::table('accounting_journal_lines as lines')
+            ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
+            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
+            ->leftJoin('branches', 'branches.id', '=', 'entries.branch_id')
+            ->leftJoin('accounting_account_mappings as mappings', 'mappings.id', '=', 'entries.mapping_id')
+            ->where('entries.status', 'POSTED')
+            ->where('accounts.is_cash_account', true)
+            ->whereDate('entries.journal_date', '>=', $dateFrom)
+            ->whereDate('entries.journal_date', '<=', $dateTo)
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->where('entries.branch_id', $branchId);
+            })
+            ->orderBy('entries.journal_date')
+            ->orderBy('entries.created_at')
+            ->orderBy('lines.line_order')
+            ->select([
+                'lines.id',
+                'lines.journal_entry_id',
+                'lines.account_id',
+                'lines.description',
+                'lines.debit',
+                'lines.credit',
+                'entries.branch_id',
+                'entries.journal_date',
+                'entries.journal_no',
+                'entries.source_type',
+                'entries.source_no',
+                'entries.description as journal_description',
+                'accounts.code as account_code',
+                'accounts.name as account_name',
+                'accounts.normal_balance',
+                'branches.code as branch_code',
+                'branches.name as branch_name',
+                'mappings.event_key',
+                DB::raw("
+                    CASE
+                        WHEN accounts.normal_balance = 'DEBIT' AND lines.debit > lines.credit
+                            THEN lines.debit - lines.credit
+                        WHEN accounts.normal_balance = 'CREDIT' AND lines.credit > lines.debit
+                            THEN lines.credit - lines.debit
+                        ELSE 0
+                    END as cash_in
+                "),
+                DB::raw("
+                    CASE
+                        WHEN accounts.normal_balance = 'DEBIT' AND lines.credit > lines.debit
+                            THEN lines.credit - lines.debit
+                        WHEN accounts.normal_balance = 'CREDIT' AND lines.debit > lines.credit
+                            THEN lines.debit - lines.credit
+                        ELSE 0
+                    END as cash_out
+                "),
+            ])
+            ->get()
+            ->map(function ($row) {
+                $row->description = $row->description ?: $row->journal_description;
+                return $row;
+            });
+    }
+
+    private function classifyActivity(?string $eventKey, ?string $sourceType): string
+    {
+        $eventKey = strtoupper((string) $eventKey);
+        $sourceType = strtoupper((string) $sourceType);
+
+        if (in_array($eventKey, [
+            'CASH_OPENING_FLOAT',
+            'CASH_WITHDRAWAL',
+        ], true)) {
+            return 'FINANCING';
+        }
+
+        if (str_contains($sourceType, 'ASSET')) {
+            return 'INVESTING';
+        }
+
+        return 'OPERATING';
+    }
+
+    private function sumNetAmount(array $items): float
+    {
+        return round(array_sum(array_map(
+            fn (array $item) => (float) $item['net_amount'],
+            $items
+        )), 2);
+    }
+
+    private function resolveBranchId(array $filters, User $user): ?string
+    {
+        if ($user->hasRole('Superadmin')) {
+            return $filters['branch_id'] ?? null;
+        }
+
+        if (! $user->branch_id) {
+            throw ValidationException::withMessages([
+                'branch_id' => ['User belum terikat ke cabang.'],
+            ]);
+        }
+
+        return (string) $user->branch_id;
+    }
+}
+
+```
+</details>
+
+### app\Services\Accounting\ProfitLossService.php
+
+- SHA: `65e1da3c1f6d`  
+- Ukuran: 5 KB  
+- Namespace: `App\Services\Accounting`
+
+**Class `ProfitLossService`**
+
+Metode Publik:
+- **build**(array $filters, User $user) : *array*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace App\Services\Accounting;
+
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class ProfitLossService
+{
+    public function build(array $filters, User $user): array
+    {
+        $dateFrom = $filters['date_from'];
+        $dateTo = $filters['date_to'];
+        $branchId = $this->resolveBranchId($filters, $user);
+
+        $rows = DB::table('accounting_journal_lines as lines')
+            ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
+            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
+            ->leftJoin('branches', 'branches.id', '=', 'entries.branch_id')
+            ->where('entries.status', 'POSTED')
+            ->whereDate('entries.journal_date', '>=', $dateFrom)
+            ->whereDate('entries.journal_date', '<=', $dateTo)
+            ->whereIn('accounts.type', ['REVENUE', 'EXPENSE'])
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->where('entries.branch_id', $branchId);
+            })
+            ->groupBy(
+                'accounts.id',
+                'accounts.code',
+                'accounts.name',
+                'accounts.type',
+                'accounts.normal_balance'
+            )
+            ->orderBy('accounts.code')
+            ->select([
+                'accounts.id',
+                'accounts.code',
+                'accounts.name',
+                'accounts.type',
+                'accounts.normal_balance',
+                DB::raw('COALESCE(SUM(lines.debit), 0) as total_debit'),
+                DB::raw('COALESCE(SUM(lines.credit), 0) as total_credit'),
+            ])
+            ->get();
+
+        $revenues = [];
+        $contraRevenues = [];
+        $expenses = [];
+
+        $totalGrossRevenue = 0.0;
+        $totalContraRevenue = 0.0;
+        $totalExpense = 0.0;
+
+        foreach ($rows as $row) {
+            $debit = round((float) $row->total_debit, 2);
+            $credit = round((float) $row->total_credit, 2);
+
+            $amount = $this->calculateAccountAmount(
+                (string) $row->normal_balance,
+                $debit,
+                $credit
+            );
+
+            $item = [
+                'account_id' => (string) $row->id,
+                'code' => (string) $row->code,
+                'name' => (string) $row->name,
+                'type' => (string) $row->type,
+                'normal_balance' => (string) $row->normal_balance,
+                'debit' => $debit,
+                'credit' => $credit,
+                'amount' => $amount,
+            ];
+
+            if ($row->type === 'REVENUE' && $row->normal_balance === 'DEBIT') {
+                $contraRevenues[] = $item;
+                $totalContraRevenue += $amount;
+                continue;
+            }
+
+            if ($row->type === 'REVENUE') {
+                $revenues[] = $item;
+                $totalGrossRevenue += $amount;
+                continue;
+            }
+
+            if ($row->type === 'EXPENSE') {
+                $expenses[] = $item;
+                $totalExpense += $amount;
+            }
+        }
+
+        $totalGrossRevenue = round($totalGrossRevenue, 2);
+        $totalContraRevenue = round($totalContraRevenue, 2);
+        $netRevenue = round($totalGrossRevenue - $totalContraRevenue, 2);
+        $totalExpense = round($totalExpense, 2);
+        $netProfit = round($netRevenue - $totalExpense, 2);
+
+        return [
+            'data' => [
+                'revenues' => $revenues,
+                'contra_revenues' => $contraRevenues,
+                'expenses' => $expenses,
+                'summary' => [
+                    'total_gross_revenue' => $totalGrossRevenue,
+                    'total_contra_revenue' => $totalContraRevenue,
+                    'net_revenue' => $netRevenue,
+                    'total_expense' => $totalExpense,
+                    'net_profit' => $netProfit,
+                    'is_profit' => $netProfit >= 0,
+                ],
+            ],
+            'meta' => [
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+                'branch_id' => $branchId,
+                'basis' => 'POSTED',
+            ],
+        ];
+    }
+
+    private function resolveBranchId(array $filters, User $user): ?string
+    {
+        if ($user->hasRole('Superadmin')) {
+            return $filters['branch_id'] ?? null;
+        }
+
+        $branchId = $user->branch_id ?? null;
+
+        if (! $branchId) {
+            throw ValidationException::withMessages([
+                'branch_id' => ['User cabang tidak memiliki cabang.'],
+            ]);
+        }
+
+        return (string) $branchId;
+    }
+
+    private function calculateAccountAmount(string $normalBalance, float $debit, float $credit): float
+    {
+        if ($normalBalance === 'DEBIT') {
+            return round($debit - $credit, 2);
+        }
+
+        return round($credit - $debit, 2);
+    }
+}
+
+```
+</details>
+
 ### app\Services\AuthService.php
 
 - SHA: `6915c8873a9e`  
@@ -10224,13 +14526,14 @@ class AuthService
 
 ### app\Services\CashLedgerService.php
 
-- SHA: `eaf39738cd47`  
+- SHA: `b389448f70dc`  
 - Ukuran: 12 KB  
 - Namespace: `App\Services`
 
 **Class `CashLedgerService`**
 
 Metode Publik:
+- **__construct**(private AccountingPostingService $accountingPosting,)
 - **findOpenSession**(string $branchId, Carbon $businessDate) : *?CashSession*
 - **requireOpenSession**(string $branchId, Carbon $businessDate) : *CashSession*
 - **openSession**(string $branchId, Carbon $businessDate, float $openingCash, User $user, ?string $notes = null) : *CashSession*
@@ -10254,6 +14557,7 @@ use App\Models\Expense;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Accounting\AccountingPostingService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -10261,6 +14565,10 @@ use Illuminate\Validation\ValidationException;
 
 class CashLedgerService
 {
+    public function __construct(
+        private AccountingPostingService $accountingPosting,
+    ) {}
+
     public function findOpenSession(string $branchId, Carbon $businessDate): ?CashSession
     {
         return CashSession::query()
@@ -10305,7 +14613,7 @@ class CashLedgerService
                 'notes'         => $notes,
             ]);
 
-            CashMutation::query()->create([
+            $mutation = CashMutation::query()->create([
                 'id'              => (string) Str::uuid(),
                 'cash_session_id' => $session->id,
                 'branch_id'       => $branchId,
@@ -10319,6 +14627,8 @@ class CashLedgerService
                 'created_by'      => $user->id,
                 'effective_at'    => now(),
             ]);
+
+            $this->accountingPosting->postCashMutation($mutation, $user);
 
             return $session->load(['branch', 'opener']);
         });
@@ -10350,7 +14660,7 @@ class CashLedgerService
         });
     }
 
-        public function reopenSession(CashSession $session, User $user): CashSession
+    public function reopenSession(CashSession $session, User $user): CashSession
     {
         return DB::transaction(function () use ($session, $user) {
             $session = CashSession::query()
@@ -10396,7 +14706,7 @@ class CashLedgerService
                 abort(422, 'Tidak bisa melakukan penarikan karena sesi kas sudah ditutup.');
             }
 
-            return CashMutation::query()->create([
+            $mutation = CashMutation::query()->create([
                 'id'              => (string) Str::uuid(),
                 'cash_session_id' => $session->id,
                 'branch_id'       => $session->branch_id,
@@ -10410,6 +14720,10 @@ class CashLedgerService
                 'created_by'      => $user->id,
                 'effective_at'    => $effectiveAt ?: now(),
             ]);
+
+            $this->accountingPosting->postCashMutation($mutation, $user);
+
+            return $mutation;
         });
     }
 
@@ -11924,16 +16238,16 @@ class OrderService
 
 ### app\Services\PaymentService.php
 
-- SHA: `31dae3a0db3b`  
-- Ukuran: 8 KB  
+- SHA: `c5f704efda6c`  
+- Ukuran: 9 KB  
 - Namespace: `App\Services`
 
 **Class `PaymentService`**
 
 Metode Publik:
-- **__construct**(private CashLedgerService $cashLedger,)
-- **apply**(Order $order, string $method, float $amount, string | Carbon | null $paidAt = null, ?string $note = null) : *array*
-- **resetToPending**(Order $order, User $actor, string $reason) : *array*
+- **__construct**(private CashLedgerService $cashLedger, private AccountingPostingService $accountingPosting,)
+- **apply**(Order $order, string $method, float $amount, string | Carbon | null $paidAt = null, ?string $note = null, bool $fromReceivableSettlement = false) : *array*
+- **resetToPending**(Order $order, User $actor, string $reason) : *array* — @var User|null $actor
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
@@ -11943,7 +16257,9 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Accounting\AccountingPostingService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -11952,6 +16268,7 @@ class PaymentService
 {
     public function __construct(
         private CashLedgerService $cashLedger,
+        private AccountingPostingService $accountingPosting,
     ) {}
 
     public function apply(
@@ -11959,9 +16276,10 @@ class PaymentService
         string $method,
         float $amount,
         string | Carbon | null $paidAt = null,
-        ?string $note = null
+        ?string $note = null,
+        bool $fromReceivableSettlement = false
     ): array {
-        return DB::transaction(function () use ($order, $method, $amount, $paidAt, $note) {
+        return DB::transaction(function () use ($order, $method, $amount, $paidAt, $note, $fromReceivableSettlement) {
             $order   = Order::query()->lockForUpdate()->findOrFail($order->id);
             $orderId = (string) $order->id;
 
@@ -11969,7 +16287,10 @@ class PaymentService
                 ? ($paidAt instanceof Carbon ? $paidAt : Carbon::parse($paidAt))
                 : now();
 
-            // idempotency sederhana: payment identik sudah ada
+            /** @var User|null $actor */
+            $actor = Auth::user();
+
+// idempotency sederhana: payment identik sudah ada
             $exists = Payment::query()
                 ->where('order_id', $orderId)
                 ->where('method', $method)
@@ -11979,6 +16300,13 @@ class PaymentService
                 ->first();
 
             if ($exists) {
+                if (! $fromReceivableSettlement) {
+                    $this->accountingPosting->postPayment(
+                        $exists,
+                        $actor
+                    );
+                }
+
                 return [
                     'ok'         => true,
                     'order'      => $order->fresh(['items']),
@@ -12054,7 +16382,17 @@ class PaymentService
             }
 
             if ($method === 'CASH') {
-                $this->cashLedger->syncPayment($payment);
+                $this->cashLedger->syncPayment(
+                    $payment,
+                    $actor
+                );
+            }
+
+            if (! $fromReceivableSettlement) {
+                $this->accountingPosting->postPayment(
+                    $payment,
+                    $actor
+                );
             }
 
             return [
@@ -12748,13 +17086,14 @@ class ProductionTaskService
 
 ### app\Services\ReceivableService.php
 
-- SHA: `a74754d06ee8`  
-- Ukuran: 2 KB  
+- SHA: `74e65e417079`  
+- Ukuran: 3 KB  
 - Namespace: `App\Services`
 
 **Class `ReceivableService`**
 
 Metode Publik:
+- **__construct**(private AccountingPostingService $accountingPosting,)
 - **createForDP**(Order $order, ?Carbon $dueDate = null) : *Receivable*
 - **settle**(Order $order, string $method, float $amount, ?Carbon $paidAt = null, ?string $note = null) : *array*
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
@@ -12764,12 +17103,20 @@ Metode Publik:
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Receivable;
+use App\Models\User;
+use App\Services\Accounting\AccountingPostingService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ReceivableService
 {
+    public function __construct(
+        private AccountingPostingService $accountingPosting,
+    ) {}
+
     public function createForDP(Order $order, ?Carbon $dueDate = null): Receivable
     {
         return DB::transaction(function () use ($order, $dueDate) {
@@ -12783,7 +17130,11 @@ class ReceivableService
                 : ($rcv->remaining_amount < (float) $order->grand_total ? 'PARTIAL' : 'OPEN');
             $rcv->save();
 
-            return $rcv->refresh();
+            $rcv = $rcv->refresh();
+
+            $this->accountingPosting->postReceivableCreated($rcv);
+
+            return $rcv;
         });
     }
 
@@ -12793,11 +17144,37 @@ class ReceivableService
             /** @var \App\Services\PaymentService $pay */
             $pay = app(\App\Services\PaymentService::class);
 
-            $resultOrder = $pay->apply($order, $method, $amount, $paidAt, $note);
+            /** @var array{ok: bool, order: Order, payment?: Payment|null, idempotent: bool} $paymentResult */
+            $paymentResult = $pay->apply(
+                $order,
+                $method,
+                $amount,
+                $paidAt,
+                $note,
+                true
+            );
 
-            $rcv = Receivable::query()->where('order_id', $order->id)->first();
+            $payment = $paymentResult['payment'] ?? null;
 
-            return ['order' => $resultOrder, 'receivable' => $rcv];
+            /** @var User|null $actor */
+            $actor = Auth::user();
+
+            if ($payment instanceof Payment) {
+                $this->accountingPosting->postReceivableSettlement(
+                    $payment,
+                    $actor
+                );
+            }
+
+            $rcv = Receivable::query()
+                ->where('order_id', $order->id)
+                ->first();
+
+            return [
+                'order'      => $paymentResult['order'],
+                'payment'    => $payment,
+                'receivable' => $rcv,
+            ];
         });
     }
 }
@@ -13370,39 +17747,44 @@ class UserService
 
 ### app\Services\VoucherService.php
 
-- SHA: `9c61b4aaaa85`  
+- SHA: `1e99e6886320`  
 - Ukuran: 4 KB  
 - Namespace: `App\Services`
 
 **Class `VoucherService`**
 
 Metode Publik:
+- **__construct**(private AccountingPostingService $accountingPosting,)
 - **validate**(Order $order, Voucher $voucher) : *void* — Validasi bisnis: aktif, periode, cabang, min_total, usage_limit.
 - **apply**(Order $order, Voucher $voucher, User $actor) : *Order* — Validasi bisnis: aktif, periode, cabang, min_total, usage_limit.
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
 <?php
-
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\OrderVoucher;
 use App\Models\User;
 use App\Models\Voucher;
-use App\Models\OrderVoucher;
+use App\Services\Accounting\AccountingPostingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class VoucherService
 {
+    public function __construct(
+        private AccountingPostingService $accountingPosting,
+    ) {}
+
     /**
      * Validasi bisnis: aktif, periode, cabang, min_total, usage_limit.
      * Lempar ValidationException bila tidak valid.
      */
     public function validate(Order $order, Voucher $voucher): void
     {
-        if (!$voucher->active) {
+        if (! $voucher->active) {
             throw ValidationException::withMessages(['code' => 'Voucher tidak aktif.']);
         }
 
@@ -13452,30 +17834,33 @@ class VoucherService
 
             // Hitung nilai potongan
             $subtotal = (float) $order->subtotal;
-            $amount = match ($voucher->type) {
+            $amount   = match ($voucher->type) {
                 'PERCENT' => round($subtotal * ((float) $voucher->value / 100), 2),
-                default => (float) $voucher->value,
+                default   => (float) $voucher->value,
             };
             // Batasi tidak melebihi subtotal
             $amount = max(0.0, min($amount, $subtotal));
 
             // Simpan pivot
             OrderVoucher::query()->create([
-                'id' => (string) Str::uuid(),
-                'order_id' => $order->id,
-                'voucher_id' => $voucher->id,
+                'id'             => (string) Str::uuid(),
+                'order_id'       => $order->id,
+                'voucher_id'     => $voucher->id,
                 'applied_amount' => number_format($amount, 2, '.', ''),
-                'applied_by' => $actor->id ?? null,
-                'applied_at' => now(),
+                'applied_by'     => $actor->id ?? null,
+                'applied_at'     => now(),
             ]);
 
             // Update kolom diskon & total
-            $order->discount = number_format(((float) $order->discount) + $amount, 2, '.', '');
+            $order->discount    = number_format(((float) $order->discount) + $amount, 2, '.', '');
             $order->grand_total = number_format(((float) $order->subtotal) - ((float) $order->discount), 2, '.', '');
-            $order->due_amount = number_format(((float) $order->grand_total) - ((float) $order->paid_amount), 2, '.', '');
+            $order->due_amount  = number_format(((float) $order->grand_total) - ((float) $order->paid_amount), 2, '.', '');
             $order->save();
 
-            // TODO: audit('ORDER_VOUCHER_APPLY', ['order_id' => $order->id, 'voucher' => $voucher->code, 'amount' => $amount, 'actor' => $actor->id]);
+            $this->accountingPosting->postOrderDiscount(
+                $order->refresh(),
+                $actor
+            );
 
             return $order->load(['items.service', 'vouchers']);
         });
@@ -13488,6 +17873,141 @@ class VoucherService
 
 
 ## Database (seeders)
+
+### database\seeders\AccountingAccountSeeder.php
+
+- SHA: `097cde880928`  
+- Ukuran: 7 KB  
+- Namespace: `Database\Seeders`
+
+**Class `AccountingAccountSeeder` extends `Seeder`**
+
+Metode Publik:
+- **run**() : *void*
+<details><summary><strong>Lihat Kode Lengkap</strong></summary>
+
+```php
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\AccountingAccount;
+use App\Models\AccountingAccountMapping;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
+
+class AccountingAccountSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $accounts = [
+            ['code' => '1000', 'name' => 'Aset', 'type' => 'ASSET', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 10],
+            ['code' => '1010', 'name' => 'Kas Cabang', 'type' => 'ASSET', 'normal_balance' => 'DEBIT', 'is_cash_account' => true, 'sort_order' => 11],
+            ['code' => '1020', 'name' => 'Bank / Transfer', 'type' => 'ASSET', 'normal_balance' => 'DEBIT', 'is_cash_account' => true, 'sort_order' => 12],
+            ['code' => '1030', 'name' => 'QRIS', 'type' => 'ASSET', 'normal_balance' => 'DEBIT', 'is_cash_account' => true, 'sort_order' => 13],
+            ['code' => '1040', 'name' => 'Piutang Usaha', 'type' => 'ASSET', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 14],
+
+            ['code' => '2000', 'name' => 'Liabilitas', 'type' => 'LIABILITY', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 20],
+
+            ['code' => '2010', 'name' => 'Uang Muka Pelanggan', 'type' => 'LIABILITY', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 21],
+
+            ['code' => '3000', 'name' => 'Ekuitas', 'type' => 'EQUITY', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 30],
+            ['code' => '3010', 'name' => 'Modal Pemilik', 'type' => 'EQUITY', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 31],
+            ['code' => '3020', 'name' => 'Prive / Penarikan Pemilik', 'type' => 'EQUITY', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 32],
+
+            ['code' => '4000', 'name' => 'Pendapatan', 'type' => 'REVENUE', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 40],
+            ['code' => '4010', 'name' => 'Pendapatan Laundry', 'type' => 'REVENUE', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 41],
+            ['code' => '4090', 'name' => 'Diskon Penjualan', 'type' => 'REVENUE', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 49],
+
+            ['code' => '5000', 'name' => 'Beban', 'type' => 'EXPENSE', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 50],
+            ['code' => '5010', 'name' => 'Beban Operasional', 'type' => 'EXPENSE', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 51],
+            ['code' => '5020', 'name' => 'Beban Bahan Cuci', 'type' => 'EXPENSE', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 52],
+            ['code' => '5030', 'name' => 'Beban Listrik dan Air', 'type' => 'EXPENSE', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 53],
+            ['code' => '5040', 'name' => 'Beban Transport', 'type' => 'EXPENSE', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 54],
+            ['code' => '5090', 'name' => 'Beban Lain-lain', 'type' => 'EXPENSE', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 59],
+        ];
+
+        foreach ($accounts as $row) {
+            AccountingAccount::query()->updateOrCreate(
+                [
+                    'branch_id' => null,
+                    'code' => $row['code'],
+                ],
+                [
+                    'id' => AccountingAccount::query()
+                        ->whereNull('branch_id')
+                        ->where('code', $row['code'])
+                        ->value('id') ?? (string) Str::uuid(),
+                    'parent_id' => null,
+                    'name' => $row['name'],
+                    'type' => $row['type'],
+                    'normal_balance' => $row['normal_balance'],
+                    'is_cash_account' => $row['is_cash_account'],
+                    'is_active' => true,
+                    'sort_order' => $row['sort_order'],
+                ]
+            );
+        }
+
+        $this->seedDefaultMappings();
+    }
+
+    private function seedDefaultMappings(): void
+    {
+        $accountId = fn (string $code) => AccountingAccount::query()
+            ->whereNull('branch_id')
+            ->where('code', $code)
+            ->value('id');
+
+        $mappings = [
+            ['event_key' => 'ORDER_PAID_CASH', 'payment_method' => 'CASH', 'expense_category' => null, 'debit' => '1010', 'credit' => '4010'],
+            ['event_key' => 'ORDER_PAID_DP', 'payment_method' => 'DP', 'expense_category' => null, 'debit' => '1010', 'credit' => '2010'],
+            ['event_key' => 'ORDER_PAID_QRIS', 'payment_method' => 'QRIS', 'expense_category' => null, 'debit' => '1030', 'credit' => '4010'],
+            ['event_key' => 'ORDER_PAID_TRANSFER', 'payment_method' => 'TRANSFER', 'expense_category' => null, 'debit' => '1020', 'credit' => '4010'],
+            ['event_key' => 'ORDER_RECEIVABLE_CREATED', 'payment_method' => null, 'expense_category' => null, 'debit' => '1040', 'credit' => '4010'],
+            ['event_key' => 'RECEIVABLE_SETTLED_CASH', 'payment_method' => 'CASH', 'expense_category' => null, 'debit' => '1010', 'credit' => '1040'],
+            ['event_key' => 'EXPENSE_CASH_BOX', 'payment_method' => null, 'expense_category' => null, 'debit' => '5010', 'credit' => '1010'],
+            ['event_key' => 'EXPENSE_NON_CASH', 'payment_method' => null, 'expense_category' => null, 'debit' => '5010', 'credit' => '1020'],
+            ['event_key' => 'CASH_OPENING_FLOAT', 'payment_method' => null, 'expense_category' => null, 'debit' => '1010', 'credit' => '3010'],
+            ['event_key' => 'CASH_WITHDRAWAL', 'payment_method' => null, 'expense_category' => null, 'debit' => '3020', 'credit' => '1010'],
+            ['event_key' => 'CASH_ADJUSTMENT_IN', 'payment_method' => null, 'expense_category' => null, 'debit' => '1010', 'credit' => '3010'],
+            ['event_key' => 'CASH_ADJUSTMENT_OUT', 'payment_method' => null, 'expense_category' => null, 'debit' => '5090', 'credit' => '1010'],
+            ['event_key' => 'ORDER_DISCOUNT', 'payment_method' => null, 'expense_category' => null, 'debit' => '4090', 'credit' => '4010'],
+        ];
+
+        foreach ($mappings as $row) {
+            $debitId = $accountId($row['debit']);
+            $creditId = $accountId($row['credit']);
+
+            if (!$debitId || !$creditId) {
+                continue;
+            }
+
+            AccountingAccountMapping::query()->updateOrCreate(
+                [
+                    'branch_id' => null,
+                    'event_key' => $row['event_key'],
+                    'payment_method' => $row['payment_method'],
+                    'expense_category' => $row['expense_category'],
+                ],
+                [
+                    'id' => AccountingAccountMapping::query()
+                        ->whereNull('branch_id')
+                        ->where('event_key', $row['event_key'])
+                        ->where('payment_method', $row['payment_method'])
+                        ->where('expense_category', $row['expense_category'])
+                        ->value('id') ?? (string) Str::uuid(),
+                    'debit_account_id' => $debitId,
+                    'credit_account_id' => $creditId,
+                    'is_active' => true,
+                ]
+            );
+        }
+    }
+}
+
+```
+</details>
 
 ### database\seeders\BranchSeeder.php
 
@@ -13556,8 +18076,8 @@ class BranchSeeder extends Seeder
 
 ### database\seeders\DatabaseSeeder.php
 
-- SHA: `98af7f354a9a`  
-- Ukuran: 452 B  
+- SHA: `d3112dabf5c6`  
+- Ukuran: 475 B  
 - Namespace: `Database\Seeders`
 
 **Class `DatabaseSeeder` extends `Seeder`**
@@ -13571,7 +18091,6 @@ Metode Publik:
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -13588,6 +18107,7 @@ class DatabaseSeeder extends Seeder
             RolesTableSeeder::class,
             UserSeeder::class,
             BranchSeeder::class,
+            AccountingAccountSeeder::class,
         ]);
     }
 }
@@ -14670,8 +19190,8 @@ class UserSeeder extends Seeder
 
 ## routes/api.php
 
-- SHA: `4411ee1a6916`  
-- Ukuran: 11 KB
+- SHA: `3b8ba04b8dc8`  
+- Ukuran: 13 KB
 
 **Ringkasan Routes (deteksi heuristik):**
 
@@ -14774,12 +19294,31 @@ class UserSeeder extends Seeder
 | POST | `/cash-sessions/{cashSession}/close` | `CashSessionController` | `close` |
 | POST | `/cash-sessions/{cashSession}/reopen` | `CashSessionController` | `reopen` |
 | POST | `/cash-sessions/{cashSession}/withdrawals` | `CashSessionController` | `withdraw` |
+| GET | `/dashboard` | `AccountingDashboardController` | `index` |
+| GET | `/journals` | `JournalEntryController` | `index` |
+| POST | `/journals` | `JournalEntryController` | `store` |
+| GET | `/journals/{journal}` | `JournalEntryController` | `show` |
+| PUT | `/journals/{journal}` | `JournalEntryController` | `update` |
+| POST | `/journals/{journal}/post` | `JournalEntryController` | `post` |
+| POST | `/journals/{journal}/void` | `JournalEntryController` | `void` |
+| GET | `/ledger` | `LedgerController` | `index` |
+| GET | `/reports/profit-loss` | `ProfitLossController` | `index` |
+| GET | `/reports/balance-sheet` | `BalanceSheetController` | `index` |
+| GET | `/reports/cash-flow` | `CashFlowController` | `index` |
 
 <details><summary><strong>Lihat Kode Lengkap</strong></summary>
 
 ```php
 <?php
 
+use App\Http\Controllers\Api\Accounting\AccountController;
+use App\Http\Controllers\Api\Accounting\AccountMappingController;
+use App\Http\Controllers\Api\Accounting\AccountingDashboardController;
+use App\Http\Controllers\Api\Accounting\BalanceSheetController;
+use App\Http\Controllers\Api\Accounting\CashFlowController;
+use App\Http\Controllers\Api\Accounting\JournalEntryController;
+use App\Http\Controllers\Api\Accounting\LedgerController;
+use App\Http\Controllers\Api\Accounting\ProfitLossController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\CashSessionController;
@@ -14967,6 +19506,34 @@ Route::prefix('v1')->group(function () {
         Route::post('/cash-sessions/{cashSession}/reopen', [CashSessionController::class, 'reopen']);
         Route::post('/cash-sessions/{cashSession}/withdrawals', [CashSessionController::class, 'withdraw']);
 
+        // Accounting
+        Route::prefix('accounting')->group(function () {
+            Route::get('/dashboard', [AccountingDashboardController::class, 'index']);
+
+            Route::apiResource('accounts', AccountController::class)
+                ->parameters([
+                    'accounts' => 'account',
+                ]);
+
+            Route::apiResource('account-mappings', AccountMappingController::class)
+                ->parameters([
+                    'account-mappings' => 'accountMapping',
+                ]);
+
+            Route::get('/journals', [JournalEntryController::class, 'index']);
+            Route::post('/journals', [JournalEntryController::class, 'store']);
+            Route::get('/journals/{journal}', [JournalEntryController::class, 'show']);
+            Route::put('/journals/{journal}', [JournalEntryController::class, 'update']);
+            Route::post('/journals/{journal}/post', [JournalEntryController::class, 'post']);
+            Route::post('/journals/{journal}/void', [JournalEntryController::class, 'void']);
+
+            Route::get('/ledger', [LedgerController::class, 'index']);
+
+            Route::get('/reports/profit-loss', [ProfitLossController::class, 'index']);
+            Route::get('/reports/balance-sheet', [BalanceSheetController::class, 'index']);
+            Route::get('/reports/cash-flow', [CashFlowController::class, 'index']);
+        });
+
         // Tambahkan route lain di sini sesuai kebutuhan
     });
 });
@@ -14978,8 +19545,8 @@ Route::prefix('v1')->group(function () {
 
 ## AuthServiceProvider.php
 
-- SHA: `4541d789e3b7`  
-- Ukuran: 3 KB
+- SHA: `039006e39c31`  
+- Ukuran: 4 KB
 
 **$policies**
 - `User` => `UserPolicy`
@@ -14994,6 +19561,9 @@ Route::prefix('v1')->group(function () {
 - `Expense` => `ExpensePolicy`
 - `WashNote` => `WashNotePolicy`
 - `WhatsappTemplate` => `WhatsappTemplatePolicy`
+- `AccountingAccount` => `AccountingAccountPolicy`
+- `AccountingAccountMapping` => `AccountingAccountMappingPolicy`
+- `AccountingJournalEntry` => `AccountingJournalEntryPolicy`
 
 **Gate::define()**
 - `user.assignRole`
@@ -15008,52 +19578,60 @@ Route::prefix('v1')->group(function () {
 
 ```php
 <?php
-
 namespace App\Providers;
 
+use App\Models\AccountingAccount;
+use App\Models\AccountingAccountMapping;
+use App\Models\AccountingJournalEntry;
+use App\Policies\AccountingJournalEntryPolicy;
+use App\Models\Branch;
+use App\Models\Customer;
+use App\Models\Delivery;
+use App\Models\Expense;
+use App\Models\Order;
+use App\Models\Receivable;
+use App\Models\Service;
+use App\Models\ServiceCategory;
+use App\Models\User;
+use App\Models\Voucher;
+use App\Models\WashNote;
+use App\Models\WhatsappTemplate;
+use App\Policies\AccountingAccountMappingPolicy;
+use App\Policies\AccountingAccountPolicy;
+use App\Policies\BranchPolicy;
+use App\Policies\CategoryPolicy;
+use App\Policies\CustomerPolicy;
+use App\Policies\DeliveryPolicy;
+use App\Policies\ExpensePolicy;
+use App\Policies\OrderPolicy;
+use App\Policies\ReceivablePolicy;
+use App\Policies\ServicePolicy;
+use App\Policies\UserPolicy;
+use App\Policies\VoucherPolicy;
+use App\Policies\WashNotePolicy;
+use App\Policies\WhatsappTemplatePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
-use App\Models\User;
-use App\Policies\UserPolicy;
-use App\Models\Branch;
-use App\Policies\BranchPolicy;
-use App\Models\ServiceCategory;
-use App\Policies\CategoryPolicy;
-use App\Models\Service;
-use App\Policies\ServicePolicy;
-use App\Models\Customer;
-use App\Policies\CustomerPolicy;
-use App\Models\Order;
-use App\Policies\OrderPolicy;
-use App\Models\Delivery;
-use App\Policies\DeliveryPolicy;
-use App\Models\Voucher;
-use App\Policies\VoucherPolicy;
-use App\Models\Receivable;
-use App\Policies\ReceivablePolicy;
-use App\Models\Expense;
-use App\Policies\ExpensePolicy;
-use App\Models\WashNote;
-use App\Policies\WashNotePolicy;
-use App\Models\WhatsappTemplate;
-use App\Policies\WhatsappTemplatePolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
 
     protected $policies = [
-        User::class => UserPolicy::class,
-        Branch::class => BranchPolicy::class,
-        ServiceCategory::class => CategoryPolicy::class,
-        Service::class => ServicePolicy::class,
-        Customer::class => CustomerPolicy::class,
-        Order::class => OrderPolicy::class,
-        Delivery::class => DeliveryPolicy::class,
-        Voucher::class => VoucherPolicy::class,
-        Receivable::class => ReceivablePolicy::class,
-        Expense::class => ExpensePolicy::class,
-        WashNote::class => WashNotePolicy::class,
-        WhatsappTemplate::class => WhatsappTemplatePolicy::class,
+        User::class                     => UserPolicy::class,
+        Branch::class                   => BranchPolicy::class,
+        ServiceCategory::class          => CategoryPolicy::class,
+        Service::class                  => ServicePolicy::class,
+        Customer::class                 => CustomerPolicy::class,
+        Order::class                    => OrderPolicy::class,
+        Delivery::class                 => DeliveryPolicy::class,
+        Voucher::class                  => VoucherPolicy::class,
+        Receivable::class               => ReceivablePolicy::class,
+        Expense::class                  => ExpensePolicy::class,
+        WashNote::class                 => WashNotePolicy::class,
+        WhatsappTemplate::class         => WhatsappTemplatePolicy::class,
+        AccountingAccount::class        => AccountingAccountPolicy::class,
+        AccountingAccountMapping::class => AccountingAccountMappingPolicy::class,
+        AccountingJournalEntry::class   => AccountingJournalEntryPolicy::class,
     ];
 
     /**

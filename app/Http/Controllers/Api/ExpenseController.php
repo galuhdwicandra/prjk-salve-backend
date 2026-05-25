@@ -1,11 +1,11 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Expenses\ExpenseStoreRequest;
 use App\Http\Requests\Expenses\ExpenseUpdateRequest;
 use App\Models\Expense;
+use App\Services\Accounting\AccountingPostingService;
 use App\Services\CashLedgerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +15,7 @@ class ExpenseController extends Controller
 {
     public function __construct(
         private CashLedgerService $cashLedger,
+        private AccountingPostingService $accountingPosting,
     ) {}
 
     public function index(Request $request)
@@ -53,36 +54,38 @@ class ExpenseController extends Controller
     {
         $this->authorize('create', Expense::class);
 
-        $user = $request->user();
+        $user     = $request->user();
         $branchId = null;
 
         if ($user->hasRole('Superadmin')) {
             $branchId = $request->input('branch_id');
 
-            if (!$branchId) {
+            if (! $branchId) {
                 return response()->json(['message' => 'branch_id wajib diisi untuk Superadmin.'], 422);
             }
         } else {
             $branchId = $user->branch_id;
 
-            if (!$branchId) {
+            if (! $branchId) {
                 return response()->json(['message' => 'User tidak memiliki cabang yang terasosiasi.'], 422);
             }
         }
 
         $expense = DB::transaction(function () use ($request, $branchId, $user) {
-            $data = $request->validated();
-            $data['branch_id'] = $branchId;
+            $data                   = $request->validated();
+            $data['branch_id']      = $branchId;
             $data['payment_source'] = $data['payment_source'] ?? 'NON_CASH';
 
             if ($request->hasFile('proof')) {
-                $storedPath = $request->file('proof')->store('uploads/expenses', 'public');
+                $storedPath         = $request->file('proof')->store('uploads/expenses', 'public');
                 $data['proof_path'] = 'storage/' . $storedPath;
             }
 
             $expense = Expense::create($data);
 
             $this->cashLedger->syncExpense($expense, $user);
+
+            $this->accountingPosting->postExpense($expense, $user);
 
             return $expense;
         });
@@ -114,12 +117,13 @@ class ExpenseController extends Controller
                     $this->deleteProofFile($expense->proof_path);
                 }
 
-                $storedPath = $request->file('proof')->store('uploads/expenses', 'public');
+                $storedPath         = $request->file('proof')->store('uploads/expenses', 'public');
                 $data['proof_path'] = 'storage/' . $storedPath;
             }
 
             $expense->update($data);
             $this->cashLedger->syncExpense($expense->fresh(), $request->user());
+            $this->accountingPosting->postExpense($expense, $request->user());
 
             return $expense->fresh();
         });

@@ -1,5 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\Accounting\AccountController;
+use App\Http\Controllers\Api\Accounting\AccountMappingController;
+use App\Http\Controllers\Api\Accounting\AccountingDashboardController;
+use App\Http\Controllers\Api\Accounting\BalanceSheetController;
+use App\Http\Controllers\Api\Accounting\CashFlowController;
+use App\Http\Controllers\Api\Accounting\JournalEntryController;
+use App\Http\Controllers\Api\Accounting\LedgerController;
+use App\Http\Controllers\Api\Accounting\ProfitLossController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\CashSessionController;
@@ -186,6 +194,34 @@ Route::prefix('v1')->group(function () {
         Route::post('/cash-sessions/{cashSession}/close', [CashSessionController::class, 'close']);
         Route::post('/cash-sessions/{cashSession}/reopen', [CashSessionController::class, 'reopen']);
         Route::post('/cash-sessions/{cashSession}/withdrawals', [CashSessionController::class, 'withdraw']);
+
+        // Accounting
+        Route::prefix('accounting')->group(function () {
+            Route::get('/dashboard', [AccountingDashboardController::class, 'index']);
+
+            Route::apiResource('accounts', AccountController::class)
+                ->parameters([
+                    'accounts' => 'account',
+                ]);
+
+            Route::apiResource('account-mappings', AccountMappingController::class)
+                ->parameters([
+                    'account-mappings' => 'accountMapping',
+                ]);
+
+            Route::get('/journals', [JournalEntryController::class, 'index']);
+            Route::post('/journals', [JournalEntryController::class, 'store']);
+            Route::get('/journals/{journal}', [JournalEntryController::class, 'show']);
+            Route::put('/journals/{journal}', [JournalEntryController::class, 'update']);
+            Route::post('/journals/{journal}/post', [JournalEntryController::class, 'post']);
+            Route::post('/journals/{journal}/void', [JournalEntryController::class, 'void']);
+
+            Route::get('/ledger', [LedgerController::class, 'index']);
+
+            Route::get('/reports/profit-loss', [ProfitLossController::class, 'index']);
+            Route::get('/reports/balance-sheet', [BalanceSheetController::class, 'index']);
+            Route::get('/reports/cash-flow', [CashFlowController::class, 'index']);
+        });
 
         // Tambahkan route lain di sini sesuai kebutuhan
     });

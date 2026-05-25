@@ -2,12 +2,20 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\Receivable;
+use App\Models\User;
+use App\Services\Accounting\AccountingPostingService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ReceivableService
 {
+    public function __construct(
+        private AccountingPostingService $accountingPosting,
+    ) {}
+
     public function createForDP(Order $order, ?Carbon $dueDate = null): Receivable
     {
         return DB::transaction(function () use ($order, $dueDate) {
@@ -21,7 +29,11 @@ class ReceivableService
                 : ($rcv->remaining_amount < (float) $order->grand_total ? 'PARTIAL' : 'OPEN');
             $rcv->save();
 
-            return $rcv->refresh();
+            $rcv = $rcv->refresh();
+
+            $this->accountingPosting->postReceivableCreated($rcv);
+
+            return $rcv;
         });
     }
 
@@ -31,11 +43,37 @@ class ReceivableService
             /** @var \App\Services\PaymentService $pay */
             $pay = app(\App\Services\PaymentService::class);
 
-            $resultOrder = $pay->apply($order, $method, $amount, $paidAt, $note);
+            /** @var array{ok: bool, order: Order, payment?: Payment|null, idempotent: bool} $paymentResult */
+            $paymentResult = $pay->apply(
+                $order,
+                $method,
+                $amount,
+                $paidAt,
+                $note,
+                true
+            );
 
-            $rcv = Receivable::query()->where('order_id', $order->id)->first();
+            $payment = $paymentResult['payment'] ?? null;
 
-            return ['order' => $resultOrder, 'receivable' => $rcv];
+            /** @var User|null $actor */
+            $actor = Auth::user();
+
+            if ($payment instanceof Payment) {
+                $this->accountingPosting->postReceivableSettlement(
+                    $payment,
+                    $actor
+                );
+            }
+
+            $rcv = Receivable::query()
+                ->where('order_id', $order->id)
+                ->first();
+
+            return [
+                'order'      => $paymentResult['order'],
+                'payment'    => $payment,
+                'receivable' => $rcv,
+            ];
         });
     }
 }

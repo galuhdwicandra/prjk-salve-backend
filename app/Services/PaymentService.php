@@ -4,7 +4,9 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Accounting\AccountingPostingService;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -13,6 +15,7 @@ class PaymentService
 {
     public function __construct(
         private CashLedgerService $cashLedger,
+        private AccountingPostingService $accountingPosting,
     ) {}
 
     public function apply(
@@ -20,9 +23,10 @@ class PaymentService
         string $method,
         float $amount,
         string | Carbon | null $paidAt = null,
-        ?string $note = null
+        ?string $note = null,
+        bool $fromReceivableSettlement = false
     ): array {
-        return DB::transaction(function () use ($order, $method, $amount, $paidAt, $note) {
+        return DB::transaction(function () use ($order, $method, $amount, $paidAt, $note, $fromReceivableSettlement) {
             $order   = Order::query()->lockForUpdate()->findOrFail($order->id);
             $orderId = (string) $order->id;
 
@@ -30,7 +34,10 @@ class PaymentService
                 ? ($paidAt instanceof Carbon ? $paidAt : Carbon::parse($paidAt))
                 : now();
 
-            // idempotency sederhana: payment identik sudah ada
+            /** @var User|null $actor */
+            $actor = Auth::user();
+
+// idempotency sederhana: payment identik sudah ada
             $exists = Payment::query()
                 ->where('order_id', $orderId)
                 ->where('method', $method)
@@ -40,6 +47,13 @@ class PaymentService
                 ->first();
 
             if ($exists) {
+                if (! $fromReceivableSettlement) {
+                    $this->accountingPosting->postPayment(
+                        $exists,
+                        $actor
+                    );
+                }
+
                 return [
                     'ok'         => true,
                     'order'      => $order->fresh(['items']),
@@ -115,7 +129,17 @@ class PaymentService
             }
 
             if ($method === 'CASH') {
-                $this->cashLedger->syncPayment($payment);
+                $this->cashLedger->syncPayment(
+                    $payment,
+                    $actor
+                );
+            }
+
+            if (! $fromReceivableSettlement) {
+                $this->accountingPosting->postPayment(
+                    $payment,
+                    $actor
+                );
             }
 
             return [
