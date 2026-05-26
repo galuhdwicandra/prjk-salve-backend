@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-05-25 18:09:13_  
+_Dihasilkan otomatis: 2026-05-26 17:53:54_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -11252,8 +11252,8 @@ class OrderStoreRequest extends FormRequest
 
 ### app\Http\Requests\OrderUpdateRequest.php
 
-- SHA: `c5a61c36f30b`  
-- Ukuran: 3 KB  
+- SHA: `9bbf8bb60fdc`  
+- Ukuran: 4 KB  
 - Namespace: `App\Http\Requests`
 
 **Class `OrderUpdateRequest` extends `FormRequest`**
@@ -11269,6 +11269,7 @@ Metode Publik:
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class OrderUpdateRequest extends FormRequest
 {
@@ -11307,7 +11308,17 @@ class OrderUpdateRequest extends FormRequest
 
     public function rules(): array
     {
+        $order   = $this->route('order');
+        $orderId = $order instanceof \App\Models\Order  ? $order->getKey() : $order;
+
         return [
+            'invoice_no'         => [
+                'sometimes',
+                'required',
+                'string',
+                'max:40',
+                Rule::unique('orders', 'invoice_no')->ignore($orderId),
+            ],
             'customer_id'        => ['sometimes', 'nullable', 'uuid', 'exists:customers,id'],
             'discount'           => ['sometimes', 'numeric', 'min:0'],
             'notes'              => ['sometimes', 'nullable', 'string', 'max:500'],
@@ -11329,6 +11340,10 @@ class OrderUpdateRequest extends FormRequest
 
         if (array_key_exists('customer_id', $data) && $data['customer_id'] !== null) {
             $data['customer_id'] = trim((string) $data['customer_id']);
+        }
+
+        if (array_key_exists('invoice_no', $data)) {
+            $data['invoice_no'] = trim((string) $data['invoice_no']);
         }
 
         if (array_key_exists('notes', $data)) {
@@ -15752,7 +15767,7 @@ class OrderNumberService
 
 ### app\Services\OrderService.php
 
-- SHA: `bd6dabe1e11f`  
+- SHA: `3d57d478b56b`  
 - Ukuran: 18 KB  
 - Namespace: `App\Services`
 
@@ -16037,8 +16052,13 @@ class OrderService
             if (array_key_exists('customer_id', $data)) {
                 $order->customer_id = $data['customer_id'];
             }
+
             if (array_key_exists('notes', $data)) {
                 $order->notes = $data['notes'];
+            }
+
+            if (array_key_exists('invoice_no', $data)) {
+                $order->invoice_no = $data['invoice_no'];
             }
 
             if (array_key_exists('discount', $data)) {

@@ -2,6 +2,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class OrderUpdateRequest extends FormRequest
 {
@@ -40,7 +41,17 @@ class OrderUpdateRequest extends FormRequest
 
     public function rules(): array
     {
+        $order   = $this->route('order');
+        $orderId = $order instanceof \App\Models\Order  ? $order->getKey() : $order;
+
         return [
+            'invoice_no'         => [
+                'sometimes',
+                'required',
+                'string',
+                'max:40',
+                Rule::unique('orders', 'invoice_no')->ignore($orderId),
+            ],
             'customer_id'        => ['sometimes', 'nullable', 'uuid', 'exists:customers,id'],
             'discount'           => ['sometimes', 'numeric', 'min:0'],
             'notes'              => ['sometimes', 'nullable', 'string', 'max:500'],
@@ -62,6 +73,10 @@ class OrderUpdateRequest extends FormRequest
 
         if (array_key_exists('customer_id', $data) && $data['customer_id'] !== null) {
             $data['customer_id'] = trim((string) $data['customer_id']);
+        }
+
+        if (array_key_exists('invoice_no', $data)) {
+            $data['invoice_no'] = trim((string) $data['invoice_no']);
         }
 
         if (array_key_exists('notes', $data)) {

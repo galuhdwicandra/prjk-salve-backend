@@ -267,8 +267,13 @@ class OrderService
             if (array_key_exists('customer_id', $data)) {
                 $order->customer_id = $data['customer_id'];
             }
+
             if (array_key_exists('notes', $data)) {
                 $order->notes = $data['notes'];
+            }
+
+            if (array_key_exists('invoice_no', $data)) {
+                $order->invoice_no = $data['invoice_no'];
             }
 
             if (array_key_exists('discount', $data)) {
