@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Services\Accounting;
 
 use App\Models\User;
@@ -11,7 +10,7 @@ class ProfitLossService
     public function build(array $filters, User $user): array
     {
         $dateFrom = $filters['date_from'];
-        $dateTo = $filters['date_to'];
+        $dateTo   = $filters['date_to'];
         $branchId = $this->resolveBranchId($filters, $user);
 
         $rows = DB::table('accounting_journal_lines as lines')
@@ -44,16 +43,16 @@ class ProfitLossService
             ])
             ->get();
 
-        $revenues = [];
+        $revenues       = [];
         $contraRevenues = [];
-        $expenses = [];
+        $expenses       = [];
 
-        $totalGrossRevenue = 0.0;
+        $totalGrossRevenue  = 0.0;
         $totalContraRevenue = 0.0;
-        $totalExpense = 0.0;
+        $totalExpense       = 0.0;
 
         foreach ($rows as $row) {
-            $debit = round((float) $row->total_debit, 2);
+            $debit  = round((float) $row->total_debit, 2);
             $credit = round((float) $row->total_credit, 2);
 
             $amount = $this->calculateAccountAmount(
@@ -63,66 +62,66 @@ class ProfitLossService
             );
 
             $item = [
-                'account_id' => (string) $row->id,
-                'code' => (string) $row->code,
-                'name' => (string) $row->name,
-                'type' => (string) $row->type,
+                'account_id'     => (string) $row->id,
+                'code'           => (string) $row->code,
+                'name'           => (string) $row->name,
+                'type'           => (string) $row->type,
                 'normal_balance' => (string) $row->normal_balance,
-                'debit' => $debit,
-                'credit' => $credit,
-                'amount' => $amount,
+                'debit'          => $debit,
+                'credit'         => $credit,
+                'amount'         => $amount,
             ];
 
             if ($row->type === 'REVENUE' && $row->normal_balance === 'DEBIT') {
-                $contraRevenues[] = $item;
+                $contraRevenues[]    = $item;
                 $totalContraRevenue += $amount;
                 continue;
             }
 
             if ($row->type === 'REVENUE') {
-                $revenues[] = $item;
+                $revenues[]         = $item;
                 $totalGrossRevenue += $amount;
                 continue;
             }
 
             if ($row->type === 'EXPENSE') {
-                $expenses[] = $item;
+                $expenses[]    = $item;
                 $totalExpense += $amount;
             }
         }
 
-        $totalGrossRevenue = round($totalGrossRevenue, 2);
+        $totalGrossRevenue  = round($totalGrossRevenue, 2);
         $totalContraRevenue = round($totalContraRevenue, 2);
-        $netRevenue = round($totalGrossRevenue - $totalContraRevenue, 2);
-        $totalExpense = round($totalExpense, 2);
-        $netProfit = round($netRevenue - $totalExpense, 2);
+        $netRevenue         = round($totalGrossRevenue - $totalContraRevenue, 2);
+        $totalExpense       = round($totalExpense, 2);
+        $netProfit          = round($netRevenue - $totalExpense, 2);
 
         return [
             'data' => [
-                'revenues' => $revenues,
+                'revenues'        => $revenues,
                 'contra_revenues' => $contraRevenues,
-                'expenses' => $expenses,
-                'summary' => [
-                    'total_gross_revenue' => $totalGrossRevenue,
+                'expenses'        => $expenses,
+                'summary'         => [
+                    'total_gross_revenue'  => $totalGrossRevenue,
                     'total_contra_revenue' => $totalContraRevenue,
-                    'net_revenue' => $netRevenue,
-                    'total_expense' => $totalExpense,
-                    'net_profit' => $netProfit,
-                    'is_profit' => $netProfit >= 0,
+                    'net_revenue'          => $netRevenue,
+                    'total_expense'        => $totalExpense,
+                    'net_profit'           => $netProfit,
+                    'is_profit'            => $netProfit >= 0,
                 ],
             ],
             'meta' => [
                 'date_from' => $dateFrom,
-                'date_to' => $dateTo,
+                'date_to'   => $dateTo,
                 'branch_id' => $branchId,
-                'basis' => 'POSTED',
+                'basis'     => 'POSTED',
             ],
         ];
     }
 
     private function resolveBranchId(array $filters, User $user): ?string
     {
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             return $filters['branch_id'] ?? null;
         }
 

@@ -15,6 +15,7 @@ class RolesTableSeeder extends Seeder
             'Kasir',
             'Petugas Cuci',
             'Kurir',
+            'Akuntansi',
         ];
 
         foreach ($roles as $name) {

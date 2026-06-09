@@ -9,7 +9,7 @@ class AccountingAccountMappingPolicy
 {
     public function before(User $user, string $ability): bool|null
     {
-        return $user->hasRole('Superadmin') ? true : null;
+        return $user->hasAnyRole(['Superadmin', 'Akuntansi']) ? true : null;
     }
 
     public function viewAny(User $user): bool

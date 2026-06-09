@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Services\Accounting;
 
 use App\Models\User;
@@ -11,24 +10,24 @@ class AccountingDashboardService
     public function build(array $filters, User $user): array
     {
         $dateFrom = (string) $filters['date_from'];
-        $dateTo = (string) $filters['date_to'];
+        $dateTo   = (string) $filters['date_to'];
         $branchId = $this->resolveBranchId($filters, $user);
 
-        $summary = $this->buildSummary($dateFrom, $dateTo, $branchId);
-        $charts = $this->buildCharts($dateFrom, $dateTo, $branchId, $user);
+        $summary  = $this->buildSummary($dateFrom, $dateTo, $branchId);
+        $charts   = $this->buildCharts($dateFrom, $dateTo, $branchId, $user);
         $warnings = $this->buildWarnings($dateTo, $branchId);
 
         return [
             'data' => [
-                'summary' => $summary,
-                'charts' => $charts,
+                'summary'  => $summary,
+                'charts'   => $charts,
                 'warnings' => $warnings,
             ],
             'meta' => [
                 'date_from' => $dateFrom,
-                'date_to' => $dateTo,
+                'date_to'   => $dateTo,
                 'branch_id' => $branchId,
-                'basis' => 'posted',
+                'basis'     => 'posted',
             ],
         ];
     }
@@ -38,13 +37,13 @@ class AccountingDashboardService
         $cashTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.is_cash_account', true)
+            fn($query) => $query->where('accounts.is_cash_account', true)
         );
 
         $receivableTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query
+            fn($query) => $query
                 ->where('accounts.type', 'ASSET')
                 ->where(function ($q) {
                     $q->where('accounts.code', '1100')
@@ -56,14 +55,14 @@ class AccountingDashboardService
             $dateFrom,
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'REVENUE')
+            fn($query) => $query->where('accounts.type', 'REVENUE')
         );
 
         $expenseTotal = $this->periodAccountBalance(
             $dateFrom,
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'EXPENSE')
+            fn($query) => $query->where('accounts.type', 'EXPENSE')
         );
 
         $netProfit = round($revenueTotal - $expenseTotal, 2);
@@ -71,132 +70,132 @@ class AccountingDashboardService
         $assetTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'ASSET')
+            fn($query) => $query->where('accounts.type', 'ASSET')
         );
 
         $liabilityTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'LIABILITY')
+            fn($query) => $query->where('accounts.type', 'LIABILITY')
         );
 
         $equityBalance = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'EQUITY')
+            fn($query) => $query->where('accounts.type', 'EQUITY')
         );
 
-        $profitUntilDate = $this->profitUntilDate($dateTo, $branchId);
-        $equityTotal = round($equityBalance + $profitUntilDate, 2);
+        $profitUntilDate         = $this->profitUntilDate($dateTo, $branchId);
+        $equityTotal             = round($equityBalance + $profitUntilDate, 2);
         $liabilityAndEquityTotal = round($liabilityTotal + $equityTotal, 2);
-        $difference = round($assetTotal - $liabilityAndEquityTotal, 2);
+        $difference              = round($assetTotal - $liabilityAndEquityTotal, 2);
 
         return [
-            'total_cash' => round($cashTotal, 2),
-            'total_receivables' => round($receivableTotal, 2),
-            'total_revenue' => round($revenueTotal, 2),
-            'total_expense' => round($expenseTotal, 2),
-            'net_profit' => $netProfit,
-            'total_assets' => round($assetTotal, 2),
-            'total_liabilities' => round($liabilityTotal, 2),
-            'total_equities' => round($equityTotal, 2),
+            'total_cash'                     => round($cashTotal, 2),
+            'total_receivables'              => round($receivableTotal, 2),
+            'total_revenue'                  => round($revenueTotal, 2),
+            'total_expense'                  => round($expenseTotal, 2),
+            'net_profit'                     => $netProfit,
+            'total_assets'                   => round($assetTotal, 2),
+            'total_liabilities'              => round($liabilityTotal, 2),
+            'total_equities'                 => round($equityTotal, 2),
             'total_liabilities_and_equities' => $liabilityAndEquityTotal,
-            'balance_difference' => $difference,
-            'is_balance_sheet_balanced' => abs($difference) < 0.01,
-            'balance_status' => abs($difference) < 0.01 ? 'BALANCED' : 'NOT_BALANCED',
+            'balance_difference'             => $difference,
+            'is_balance_sheet_balanced'      => abs($difference) < 0.01,
+            'balance_status'                 => abs($difference) < 0.01 ? 'BALANCED' : 'NOT_BALANCED',
         ];
     }
 
     private function buildCharts(string $dateFrom, string $dateTo, ?string $branchId, User $user): array
     {
         return [
-            'revenue_vs_expense' => $this->revenueExpenseTrend($dateFrom, $dateTo, $branchId),
-            'cash_in_vs_cash_out' => $this->cashFlowTrend($dateFrom, $dateTo, $branchId),
+            'revenue_vs_expense'   => $this->revenueExpenseTrend($dateFrom, $dateTo, $branchId),
+            'cash_in_vs_cash_out'  => $this->cashFlowTrend($dateFrom, $dateTo, $branchId),
             'net_profit_by_branch' => $user->hasRole('Superadmin')
                 ? $this->netProfitByBranch($dateFrom, $dateTo, $branchId)
                 : [],
-            'receivables_trend' => $this->receivablesTrend($dateFrom, $dateTo, $branchId),
+            'receivables_trend'    => $this->receivablesTrend($dateFrom, $dateTo, $branchId),
         ];
     }
 
     private function buildWarnings(string $dateTo, ?string $branchId): array
     {
-        $mappingIssueCount = $this->mappingIssueCount($branchId);
+        $mappingIssueCount      = $this->mappingIssueCount($branchId);
         $unbalancedJournalCount = $this->unbalancedJournalCount($branchId);
-        $draftJournalCount = $this->draftJournalCount($branchId);
+        $draftJournalCount      = $this->draftJournalCount($branchId);
 
         $assetTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'ASSET')
+            fn($query) => $query->where('accounts.type', 'ASSET')
         );
 
         $liabilityTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'LIABILITY')
+            fn($query) => $query->where('accounts.type', 'LIABILITY')
         );
 
         $equityTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'EQUITY')
+            fn($query) => $query->where('accounts.type', 'EQUITY')
         );
 
-        $profitUntilDate = $this->profitUntilDate($dateTo, $branchId);
-        $finalEquity = round($equityTotal + $profitUntilDate, 2);
+        $profitUntilDate   = $this->profitUntilDate($dateTo, $branchId);
+        $finalEquity       = round($equityTotal + $profitUntilDate, 2);
         $balanceDifference = round($assetTotal - ($liabilityTotal + $finalEquity), 2);
 
         $items = [];
 
         if ($mappingIssueCount > 0) {
             $items[] = [
-                'key' => 'MAPPING_INCOMPLETE',
-                'label' => 'Mapping akun bermasalah',
-                'message' => 'Ada mapping akun yang belum lengkap, memakai akun tidak aktif, atau akun debit dan kredit sama.',
-                'count' => $mappingIssueCount,
+                'key'      => 'MAPPING_INCOMPLETE',
+                'label'    => 'Mapping akun bermasalah',
+                'message'  => 'Ada mapping akun yang belum lengkap, memakai akun tidak aktif, atau akun debit dan kredit sama.',
+                'count'    => $mappingIssueCount,
                 'severity' => 'warning',
             ];
         }
 
         if ($unbalancedJournalCount > 0) {
             $items[] = [
-                'key' => 'UNBALANCED_JOURNALS',
-                'label' => 'Jurnal belum balance',
-                'message' => 'Ada jurnal non-void dengan total debit dan kredit tidak sama.',
-                'count' => $unbalancedJournalCount,
+                'key'      => 'UNBALANCED_JOURNALS',
+                'label'    => 'Jurnal belum balance',
+                'message'  => 'Ada jurnal non-void dengan total debit dan kredit tidak sama.',
+                'count'    => $unbalancedJournalCount,
                 'severity' => 'danger',
             ];
         }
 
         if ($draftJournalCount > 0) {
             $items[] = [
-                'key' => 'DRAFT_JOURNALS',
-                'label' => 'Jurnal draft',
-                'message' => 'Ada jurnal draft yang belum diposting sehingga belum masuk laporan.',
-                'count' => $draftJournalCount,
+                'key'      => 'DRAFT_JOURNALS',
+                'label'    => 'Jurnal draft',
+                'message'  => 'Ada jurnal draft yang belum diposting sehingga belum masuk laporan.',
+                'count'    => $draftJournalCount,
                 'severity' => 'info',
             ];
         }
 
         if (abs($balanceDifference) >= 0.01) {
             $items[] = [
-                'key' => 'BALANCE_SHEET_NOT_BALANCED',
-                'label' => 'Neraca tidak seimbang',
-                'message' => 'Total aset belum sama dengan total liabilitas dan ekuitas.',
-                'count' => 1,
+                'key'      => 'BALANCE_SHEET_NOT_BALANCED',
+                'label'    => 'Neraca tidak seimbang',
+                'message'  => 'Total aset belum sama dengan total liabilitas dan ekuitas.',
+                'count'    => 1,
                 'severity' => 'danger',
             ];
         }
 
         return [
-            'items' => $items,
+            'items'   => $items,
             'summary' => [
-                'mapping_issue_count' => $mappingIssueCount,
+                'mapping_issue_count'      => $mappingIssueCount,
                 'unbalanced_journal_count' => $unbalancedJournalCount,
-                'draft_journal_count' => $draftJournalCount,
-                'balance_difference' => $balanceDifference,
-                'has_warning' => count($items) > 0,
+                'draft_journal_count'      => $draftJournalCount,
+                'balance_difference'       => $balanceDifference,
+                'has_warning'              => count($items) > 0,
             ],
         ];
     }
@@ -227,7 +226,7 @@ class AccountingDashboardService
         $total = 0.0;
 
         foreach ($rows as $row) {
-            $debit = (float) $row->total_debit;
+            $debit  = (float) $row->total_debit;
             $credit = (float) $row->total_credit;
 
             $total += $row->normal_balance === 'DEBIT'
@@ -265,7 +264,7 @@ class AccountingDashboardService
         $total = 0.0;
 
         foreach ($rows as $row) {
-            $debit = (float) $row->total_debit;
+            $debit  = (float) $row->total_debit;
             $credit = (float) $row->total_credit;
 
             $total += $row->normal_balance === 'DEBIT'
@@ -281,13 +280,13 @@ class AccountingDashboardService
         $revenue = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'REVENUE')
+            fn($query) => $query->where('accounts.type', 'REVENUE')
         );
 
         $expense = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'EXPENSE')
+            fn($query) => $query->where('accounts.type', 'EXPENSE')
         );
 
         return round($revenue - $expense, 2);
@@ -326,14 +325,14 @@ class AccountingDashboardService
 
             if (! isset($items[$period])) {
                 $items[$period] = [
-                    'period' => $period,
-                    'revenue' => 0.0,
-                    'expense' => 0.0,
+                    'period'     => $period,
+                    'revenue'    => 0.0,
+                    'expense'    => 0.0,
                     'net_profit' => 0.0,
                 ];
             }
 
-            $debit = (float) $row->total_debit;
+            $debit  = (float) $row->total_debit;
             $credit = (float) $row->total_credit;
             $amount = $row->normal_balance === 'DEBIT'
                 ? $debit - $credit
@@ -349,8 +348,8 @@ class AccountingDashboardService
         }
 
         return array_values(array_map(function (array $item) {
-            $item['revenue'] = round($item['revenue'], 2);
-            $item['expense'] = round($item['expense'], 2);
+            $item['revenue']    = round($item['revenue'], 2);
+            $item['expense']    = round($item['expense'], 2);
             $item['net_profit'] = round($item['revenue'] - $item['expense'], 2);
 
             return $item;
@@ -389,28 +388,28 @@ class AccountingDashboardService
 
             if (! isset($items[$period])) {
                 $items[$period] = [
-                    'period' => $period,
-                    'cash_in' => 0.0,
-                    'cash_out' => 0.0,
+                    'period'        => $period,
+                    'cash_in'       => 0.0,
+                    'cash_out'      => 0.0,
                     'net_cash_flow' => 0.0,
                 ];
             }
 
-            $debit = (float) $row->total_debit;
+            $debit  = (float) $row->total_debit;
             $credit = (float) $row->total_credit;
 
             if ($row->normal_balance === 'DEBIT') {
-                $items[$period]['cash_in'] += $debit;
+                $items[$period]['cash_in']  += $debit;
                 $items[$period]['cash_out'] += $credit;
             } else {
-                $items[$period]['cash_in'] += $credit;
+                $items[$period]['cash_in']  += $credit;
                 $items[$period]['cash_out'] += $debit;
             }
         }
 
         return array_values(array_map(function (array $item) {
-            $item['cash_in'] = round($item['cash_in'], 2);
-            $item['cash_out'] = round($item['cash_out'], 2);
+            $item['cash_in']       = round($item['cash_in'], 2);
+            $item['cash_out']      = round($item['cash_out'], 2);
             $item['net_cash_flow'] = round($item['cash_in'] - $item['cash_out'], 2);
 
             return $item;
@@ -459,16 +458,16 @@ class AccountingDashboardService
 
             if (! isset($items[$id])) {
                 $items[$id] = [
-                    'branch_id' => $id,
+                    'branch_id'   => $id,
                     'branch_code' => $row->branch_code,
                     'branch_name' => $row->branch_name,
-                    'revenue' => 0.0,
-                    'expense' => 0.0,
-                    'net_profit' => 0.0,
+                    'revenue'     => 0.0,
+                    'expense'     => 0.0,
+                    'net_profit'  => 0.0,
                 ];
             }
 
-            $debit = (float) $row->total_debit;
+            $debit  = (float) $row->total_debit;
             $credit = (float) $row->total_credit;
             $amount = $row->normal_balance === 'DEBIT'
                 ? $debit - $credit
@@ -484,8 +483,8 @@ class AccountingDashboardService
         }
 
         return array_values(array_map(function (array $item) {
-            $item['revenue'] = round($item['revenue'], 2);
-            $item['expense'] = round($item['expense'], 2);
+            $item['revenue']    = round($item['revenue'], 2);
+            $item['expense']    = round($item['expense'], 2);
             $item['net_profit'] = round($item['revenue'] - $item['expense'], 2);
 
             return $item;
@@ -528,27 +527,27 @@ class AccountingDashboardService
 
             if (! isset($items[$period])) {
                 $items[$period] = [
-                    'period' => $period,
-                    'receivables_in' => 0.0,
+                    'period'          => $period,
+                    'receivables_in'  => 0.0,
                     'receivables_out' => 0.0,
                     'net_receivables' => 0.0,
                 ];
             }
 
-            $debit = (float) $row->total_debit;
+            $debit  = (float) $row->total_debit;
             $credit = (float) $row->total_credit;
 
             if ($row->normal_balance === 'DEBIT') {
-                $items[$period]['receivables_in'] += $debit;
+                $items[$period]['receivables_in']  += $debit;
                 $items[$period]['receivables_out'] += $credit;
             } else {
-                $items[$period]['receivables_in'] += $credit;
+                $items[$period]['receivables_in']  += $credit;
                 $items[$period]['receivables_out'] += $debit;
             }
         }
 
         return array_values(array_map(function (array $item) {
-            $item['receivables_in'] = round($item['receivables_in'], 2);
+            $item['receivables_in']  = round($item['receivables_in'], 2);
             $item['receivables_out'] = round($item['receivables_out'], 2);
             $item['net_receivables'] = round($item['receivables_in'] - $item['receivables_out'], 2);
 
@@ -606,7 +605,7 @@ class AccountingDashboardService
 
     private function resolveBranchId(array $filters, User $user): ?string
     {
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             return $filters['branch_id'] ?? null;
         }
 

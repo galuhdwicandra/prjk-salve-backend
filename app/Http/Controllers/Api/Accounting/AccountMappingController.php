@@ -26,7 +26,7 @@ class AccountMappingController extends Controller
             ])
             ->orderBy('event_key');
 
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             if ($branchId = $request->query('branch_id')) {
                 $query->where(function ($q) use ($branchId) {
                     $q->whereNull('branch_id')
@@ -179,7 +179,7 @@ class AccountMappingController extends Controller
     {
         $user = $request->user();
 
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             $payload['branch_id'] = $payload['branch_id'] ?? null;
             return $payload;
         }

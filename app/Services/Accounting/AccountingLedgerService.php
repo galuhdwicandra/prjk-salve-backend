@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Services\Accounting;
 
 use App\Models\AccountingAccount;
@@ -16,7 +15,7 @@ class AccountingLedgerService
 
         $branchId = $this->resolveBranchId($filters, $account, $user);
         $dateFrom = (string) $filters['date_from'];
-        $dateTo = (string) $filters['date_to'];
+        $dateTo   = (string) $filters['date_to'];
 
         $openingBalance = $this->calculateOpeningBalance($account, $branchId, $dateFrom);
 
@@ -24,38 +23,38 @@ class AccountingLedgerService
             ->get();
 
         $runningBalance = $openingBalance;
-        $totalDebit = 0.0;
-        $totalCredit = 0.0;
+        $totalDebit     = 0.0;
+        $totalCredit    = 0.0;
 
         $rows = $lines->map(function (AccountingJournalLine $line) use ($account, &$runningBalance, &$totalDebit, &$totalCredit) {
-            $debit = (float) $line->debit;
+            $debit  = (float) $line->debit;
             $credit = (float) $line->credit;
 
-            $totalDebit += $debit;
+            $totalDebit  += $debit;
             $totalCredit += $credit;
 
             $runningBalance = $this->applyMovement($account, $runningBalance, $debit, $credit);
 
             return [
-                'id' => (string) $line->id,
+                'id'               => (string) $line->id,
                 'journal_entry_id' => (string) $line->journal_entry_id,
-                'journal_date' => optional($line->journalEntry?->journal_date)->format('Y-m-d'),
-                'journal_no' => $line->journalEntry?->journal_no,
-                'source_type' => $line->journalEntry?->source_type,
-                'source_no' => $line->journalEntry?->source_no,
-                'branch' => $line->journalEntry?->branch ? [
-                    'id' => (string) $line->journalEntry->branch->id,
+                'journal_date'     => optional($line->journalEntry?->journal_date)->format('Y-m-d'),
+                'journal_no'       => $line->journalEntry?->journal_no,
+                'source_type'      => $line->journalEntry?->source_type,
+                'source_no'        => $line->journalEntry?->source_no,
+                'branch'           => $line->journalEntry?->branch ? [
+                    'id'   => (string) $line->journalEntry->branch->id,
                     'name' => $line->journalEntry->branch->name,
                     'code' => $line->journalEntry->branch->code,
                 ] : null,
-                'description' => $line->description ?: $line->journalEntry?->description,
-                'debit' => round($debit, 2),
-                'credit' => round($credit, 2),
-                'balance' => round($runningBalance, 2),
+                'description'      => $line->description ?: $line->journalEntry?->description,
+                'debit'            => round($debit, 2),
+                'credit'           => round($credit, 2),
+                'balance'          => round($runningBalance, 2),
             ];
         });
 
-        $page = max((int) ($filters['page'] ?? 1), 1);
+        $page    = max((int) ($filters['page'] ?? 1), 1);
         $perPage = max((int) ($filters['per_page'] ?? 50), 1);
 
         $paginatedRows = $this->paginate($rows, $page, $perPage);
@@ -63,25 +62,25 @@ class AccountingLedgerService
         return [
             'data' => $paginatedRows->items(),
             'meta' => [
-                'current_page' => $paginatedRows->currentPage(),
-                'per_page' => $paginatedRows->perPage(),
-                'total' => $paginatedRows->total(),
-                'last_page' => $paginatedRows->lastPage(),
-                'account' => [
-                    'id' => (string) $account->id,
-                    'code' => $account->code,
-                    'name' => $account->name,
-                    'type' => $account->type,
+                'current_page'    => $paginatedRows->currentPage(),
+                'per_page'        => $paginatedRows->perPage(),
+                'total'           => $paginatedRows->total(),
+                'last_page'       => $paginatedRows->lastPage(),
+                'account'         => [
+                    'id'             => (string) $account->id,
+                    'code'           => $account->code,
+                    'name'           => $account->name,
+                    'type'           => $account->type,
                     'normal_balance' => $account->normal_balance,
-                    'branch_id' => $account->branch_id,
+                    'branch_id'      => $account->branch_id,
                 ],
-                'branch_id' => $branchId,
-                'date_from' => $dateFrom,
-                'date_to' => $dateTo,
+                'branch_id'       => $branchId,
+                'date_from'       => $dateFrom,
+                'date_to'         => $dateTo,
                 'opening_balance' => round($openingBalance, 2),
-                'total_debit' => round($totalDebit, 2),
-                'total_credit' => round($totalCredit, 2),
-                'ending_balance' => round($runningBalance, 2),
+                'total_debit'     => round($totalDebit, 2),
+                'total_credit'    => round($totalCredit, 2),
+                'ending_balance'  => round($runningBalance, 2),
             ],
         ];
     }
@@ -92,7 +91,7 @@ class AccountingLedgerService
             ->where('id', $accountId)
             ->where('is_active', true);
 
-        if (! $user->hasRole('Superadmin')) {
+        if (! $user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             $query->where(function ($q) use ($user) {
                 $q->whereNull('branch_id')
                     ->orWhere('branch_id', $user->branch_id);
@@ -112,7 +111,7 @@ class AccountingLedgerService
 
     private function resolveBranchId(array $filters, AccountingAccount $account, $user): ?string
     {
-        if (! $user->hasRole('Superadmin')) {
+        if (! $user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             if (! $user->branch_id) {
                 throw ValidationException::withMessages([
                     'branch_id' => ['User belum terikat ke cabang.'],
@@ -209,7 +208,7 @@ class AccountingLedgerService
             $perPage,
             $page,
             [
-                'path' => request()->url(),
+                'path'  => request()->url(),
                 'query' => request()->query(),
             ]
         );

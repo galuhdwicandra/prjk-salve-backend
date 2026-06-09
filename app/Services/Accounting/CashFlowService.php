@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Services\Accounting;
 
 use App\Models\User;
@@ -11,47 +10,47 @@ class CashFlowService
     public function build(array $filters, User $user): array
     {
         $dateFrom = (string) $filters['date_from'];
-        $dateTo = (string) $filters['date_to'];
+        $dateTo   = (string) $filters['date_to'];
         $branchId = $this->resolveBranchId($filters, $user);
 
         $openingBalance = $this->calculateOpeningBalance($dateFrom, $branchId);
-        $rows = $this->getPeriodRows($dateFrom, $dateTo, $branchId);
+        $rows           = $this->getPeriodRows($dateFrom, $dateTo, $branchId);
 
         $operating = [];
         $investing = [];
         $financing = [];
 
-        $totalCashIn = 0.0;
+        $totalCashIn  = 0.0;
         $totalCashOut = 0.0;
 
         foreach ($rows as $row) {
-            $cashIn = (float) $row->cash_in;
-            $cashOut = (float) $row->cash_out;
+            $cashIn    = (float) $row->cash_in;
+            $cashOut   = (float) $row->cash_out;
             $netAmount = $cashIn - $cashOut;
 
             $item = [
-                'id' => (string) $row->id,
+                'id'               => (string) $row->id,
                 'journal_entry_id' => (string) $row->journal_entry_id,
-                'journal_date' => $row->journal_date,
-                'journal_no' => $row->journal_no,
-                'source_type' => $row->source_type,
-                'source_no' => $row->source_no,
-                'event_key' => $row->event_key,
-                'description' => $row->description,
-                'cash_account' => [
-                    'id' => (string) $row->account_id,
-                    'code' => $row->account_code,
-                    'name' => $row->account_name,
+                'journal_date'     => $row->journal_date,
+                'journal_no'       => $row->journal_no,
+                'source_type'      => $row->source_type,
+                'source_no'        => $row->source_no,
+                'event_key'        => $row->event_key,
+                'description'      => $row->description,
+                'cash_account'     => [
+                    'id'             => (string) $row->account_id,
+                    'code'           => $row->account_code,
+                    'name'           => $row->account_name,
                     'normal_balance' => $row->normal_balance,
                 ],
-                'branch' => [
-                    'id' => (string) $row->branch_id,
+                'branch'           => [
+                    'id'   => (string) $row->branch_id,
                     'code' => $row->branch_code,
                     'name' => $row->branch_name,
                 ],
-                'cash_in' => round($cashIn, 2),
-                'cash_out' => round($cashOut, 2),
-                'net_amount' => round($netAmount, 2),
+                'cash_in'          => round($cashIn, 2),
+                'cash_out'         => round($cashOut, 2),
+                'net_amount'       => round($netAmount, 2),
             ];
 
             $activity = $this->classifyActivity(
@@ -67,15 +66,15 @@ class CashFlowService
                 $operating[] = $item;
             }
 
-            $totalCashIn += $cashIn;
+            $totalCashIn  += $cashIn;
             $totalCashOut += $cashOut;
         }
 
         $operatingTotal = $this->sumNetAmount($operating);
         $investingTotal = $this->sumNetAmount($investing);
         $financingTotal = $this->sumNetAmount($financing);
-        $netCashFlow = $operatingTotal + $investingTotal + $financingTotal;
-        $endingBalance = $openingBalance + $netCashFlow;
+        $netCashFlow    = $operatingTotal + $investingTotal + $financingTotal;
+        $endingBalance  = $openingBalance + $netCashFlow;
 
         return [
             'data' => [
@@ -94,20 +93,20 @@ class CashFlowService
                     'items' => $financing,
                     'total' => round($financingTotal, 2),
                 ],
-                'summary' => [
+                'summary'              => [
                     'opening_balance' => round($openingBalance, 2),
-                    'total_cash_in' => round($totalCashIn, 2),
-                    'total_cash_out' => round($totalCashOut, 2),
-                    'net_cash_flow' => round($netCashFlow, 2),
-                    'ending_balance' => round($endingBalance, 2),
+                    'total_cash_in'   => round($totalCashIn, 2),
+                    'total_cash_out'  => round($totalCashOut, 2),
+                    'net_cash_flow'   => round($netCashFlow, 2),
+                    'ending_balance'  => round($endingBalance, 2),
                 ],
             ],
             'meta' => [
                 'date_from' => $dateFrom,
-                'date_to' => $dateTo,
+                'date_to'   => $dateTo,
                 'branch_id' => $branchId,
-                'basis' => 'POSTED',
-                'source' => 'accounting_journal_lines',
+                'basis'     => 'POSTED',
+                'source'    => 'accounting_journal_lines',
             ],
         ];
     }
@@ -201,7 +200,7 @@ class CashFlowService
 
     private function classifyActivity(?string $eventKey, ?string $sourceType): string
     {
-        $eventKey = strtoupper((string) $eventKey);
+        $eventKey   = strtoupper((string) $eventKey);
         $sourceType = strtoupper((string) $sourceType);
 
         if (in_array($eventKey, [
@@ -221,14 +220,14 @@ class CashFlowService
     private function sumNetAmount(array $items): float
     {
         return round(array_sum(array_map(
-            fn (array $item) => (float) $item['net_amount'],
+            fn(array $item) => (float) $item['net_amount'],
             $items
         )), 2);
     }
 
     private function resolveBranchId(array $filters, User $user): ?string
     {
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             return $filters['branch_id'] ?? null;
         }
 

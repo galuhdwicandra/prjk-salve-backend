@@ -10,10 +10,7 @@ class BalanceSheetFilterRequest extends FormRequest
         $user = $this->user();
 
         return $user !== null
-            && (
-            $user->hasRole('Superadmin')
-            || $user->hasRole('Admin Cabang')
-        );
+        && $user->hasAnyRole(['Superadmin', 'Admin Cabang', 'Akuntansi']);
     }
 
     public function rules(): array

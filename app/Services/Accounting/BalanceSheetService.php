@@ -150,7 +150,7 @@ class BalanceSheetService
 
     private function resolveBranchId(array $filters, User $user): ?string
     {
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             return $filters['branch_id'] ?? null;
         }
 

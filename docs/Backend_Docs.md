@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-05-26 17:53:54_  
+_Dihasilkan otomatis: 2026-06-09 16:16:31_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -191,7 +191,7 @@ _Dihasilkan otomatis: 2026-05-26 17:53:54_
 
 ### app\Http\Controllers\Api\Accounting\AccountController.php
 
-- SHA: `fa498fcc7118`  
+- SHA: `3daddd3f3bce`  
 - Ukuran: 5 KB  
 - Namespace: `App\Http\Controllers\Api\Accounting`
 
@@ -207,7 +207,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Controllers\Api\Accounting;
 
 use App\Http\Controllers\Controller;
@@ -231,7 +230,7 @@ class AccountController extends Controller
             ->orderBy('sort_order')
             ->orderBy('code');
 
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             if ($branchId = $request->query('branch_id')) {
                 $query->where(function ($q) use ($branchId) {
                     $q->whereNull('branch_id')
@@ -263,15 +262,15 @@ class AccountController extends Controller
         $items = $query->paginate((int) $request->query('per_page', 20));
 
         return response()->json([
-            'data' => $items->items(),
-            'meta' => [
+            'data'    => $items->items(),
+            'meta'    => [
                 'current_page' => $items->currentPage(),
-                'per_page' => $items->perPage(),
-                'total' => $items->total(),
-                'last_page' => $items->lastPage(),
+                'per_page'     => $items->perPage(),
+                'total'        => $items->total(),
+                'last_page'    => $items->lastPage(),
             ],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -280,10 +279,10 @@ class AccountController extends Controller
         $this->authorize('view', $account);
 
         return response()->json([
-            'data' => $account->load(['branch:id,name,code', 'parent:id,code,name']),
-            'meta' => [],
+            'data'    => $account->load(['branch:id,name,code', 'parent:id,code,name']),
+            'meta'    => [],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -294,7 +293,7 @@ class AccountController extends Controller
         $payload = $this->payloadWithBranchScope($request->validated(), $request);
 
         $account = DB::transaction(function () use ($payload) {
-            $account = new AccountingAccount($payload);
+            $account     = new AccountingAccount($payload);
             $account->id = (string) Str::uuid();
             $account->save();
 
@@ -302,10 +301,10 @@ class AccountController extends Controller
         });
 
         return response()->json([
-            'data' => $account->load(['branch:id,name,code', 'parent:id,code,name']),
-            'meta' => [],
+            'data'    => $account->load(['branch:id,name,code', 'parent:id,code,name']),
+            'meta'    => [],
             'message' => 'Created',
-            'errors' => null,
+            'errors'  => null,
         ], 201);
     }
 
@@ -320,10 +319,10 @@ class AccountController extends Controller
         });
 
         return response()->json([
-            'data' => $account->refresh()->load(['branch:id,name,code', 'parent:id,code,name']),
-            'meta' => [],
+            'data'    => $account->refresh()->load(['branch:id,name,code', 'parent:id,code,name']),
+            'meta'    => [],
             'message' => 'Updated',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -333,10 +332,10 @@ class AccountController extends Controller
 
         if ($account->children()->exists()) {
             return response()->json([
-                'data' => null,
-                'meta' => [],
+                'data'    => null,
+                'meta'    => [],
                 'message' => 'Akun tidak dapat dihapus karena masih memiliki akun turunan.',
-                'errors' => [
+                'errors'  => [
                     'account' => ['Akun masih memiliki akun turunan.'],
                 ],
             ], 422);
@@ -344,10 +343,10 @@ class AccountController extends Controller
 
         if ($account->debitMappings()->exists() || $account->creditMappings()->exists()) {
             return response()->json([
-                'data' => null,
-                'meta' => [],
+                'data'    => null,
+                'meta'    => [],
                 'message' => 'Akun tidak dapat dihapus karena masih digunakan pada mapping akun.',
-                'errors' => [
+                'errors'  => [
                     'account' => ['Akun masih digunakan pada mapping akun.'],
                 ],
             ], 422);
@@ -356,10 +355,10 @@ class AccountController extends Controller
         $account->delete();
 
         return response()->json([
-            'data' => null,
-            'meta' => [],
+            'data'    => null,
+            'meta'    => [],
             'message' => 'Deleted',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -367,7 +366,7 @@ class AccountController extends Controller
     {
         $user = $request->user();
 
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             $payload['branch_id'] = $payload['branch_id'] ?? null;
             return $payload;
         }
@@ -430,7 +429,7 @@ class AccountingDashboardController extends Controller
 
 ### app\Http\Controllers\Api\Accounting\AccountMappingController.php
 
-- SHA: `60c800155205`  
+- SHA: `3149aa396763`  
 - Ukuran: 7 KB  
 - Namespace: `App\Http\Controllers\Api\Accounting`
 
@@ -473,7 +472,7 @@ class AccountMappingController extends Controller
             ])
             ->orderBy('event_key');
 
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             if ($branchId = $request->query('branch_id')) {
                 $query->where(function ($q) use ($branchId) {
                     $q->whereNull('branch_id')
@@ -626,7 +625,7 @@ class AccountMappingController extends Controller
     {
         $user = $request->user();
 
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             $payload['branch_id'] = $payload['branch_id'] ?? null;
             return $payload;
         }
@@ -751,7 +750,7 @@ class CashFlowController extends Controller
 
 ### app\Http\Controllers\Api\Accounting\JournalEntryController.php
 
-- SHA: `b04e104d3f4f`  
+- SHA: `bd79875e05ab`  
 - Ukuran: 14 KB  
 - Namespace: `App\Http\Controllers\Api\Accounting`
 
@@ -769,7 +768,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Controllers\Api\Accounting;
 
 use App\Http\Controllers\Controller;
@@ -808,7 +806,7 @@ class JournalEntryController extends Controller
             ->orderByDesc('journal_date')
             ->orderByDesc('created_at');
 
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             if ($branchId = $request->query('branch_id')) {
                 $query->where('branch_id', $branchId);
             }
@@ -843,15 +841,15 @@ class JournalEntryController extends Controller
         $items = $query->paginate((int) $request->query('per_page', 20));
 
         return response()->json([
-            'data' => $items->items(),
-            'meta' => [
+            'data'    => $items->items(),
+            'meta'    => [
                 'current_page' => $items->currentPage(),
-                'per_page' => $items->perPage(),
-                'total' => $items->total(),
-                'last_page' => $items->lastPage(),
+                'per_page'     => $items->perPage(),
+                'total'        => $items->total(),
+                'last_page'    => $items->lastPage(),
             ],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -860,18 +858,18 @@ class JournalEntryController extends Controller
         $this->authorize('view', $journal);
 
         return response()->json([
-            'data' => $journal->load([
+            'data'    => $journal->load([
                 'branch:id,name,code',
                 'mapping:id,event_key,payment_method,expense_category',
                 'creator:id,name',
                 'poster:id,name',
                 'voider:id,name',
-                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines' => fn($q) => $q->orderBy('line_order'),
                 'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
             ]),
-            'meta' => [],
+            'meta'    => [],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -879,29 +877,29 @@ class JournalEntryController extends Controller
     {
         $this->authorize('create', AccountingJournalEntry::class);
 
-        $payload = $request->validated();
+        $payload  = $request->validated();
         $branchId = $this->resolveBranchId($request, $payload);
-        $lines = $this->normalizeLines($payload['lines'], $branchId);
+        $lines    = $this->normalizeLines($payload['lines'], $branchId);
 
         $journal = DB::transaction(function () use ($request, $payload, $branchId, $lines) {
             $journal = new AccountingJournalEntry([
-                'branch_id' => $branchId,
-                'mapping_id' => null,
-                'journal_no' => $this->numberService->next($payload['journal_date']),
+                'branch_id'    => $branchId,
+                'mapping_id'   => null,
+                'journal_no'   => $this->numberService->next($payload['journal_date']),
                 'journal_date' => Carbon::parse($payload['journal_date'])->toDateString(),
-                'source_type' => 'manual',
-                'source_id' => null,
-                'source_no' => null,
-                'status' => 'DRAFT',
-                'description' => $payload['description'] ?? null,
-                'total_debit' => $lines['total_debit'],
+                'source_type'  => 'manual',
+                'source_id'    => null,
+                'source_no'    => null,
+                'status'       => 'DRAFT',
+                'description'  => $payload['description'] ?? null,
+                'total_debit'  => $lines['total_debit'],
                 'total_credit' => $lines['total_credit'],
-                'created_by' => $request->user()?->id,
-                'posted_by' => null,
-                'posted_at' => null,
-                'voided_by' => null,
-                'voided_at' => null,
-                'void_reason' => null,
+                'created_by'   => $request->user()?->id,
+                'posted_by'    => null,
+                'posted_at'    => null,
+                'voided_by'    => null,
+                'voided_at'    => null,
+                'void_reason'  => null,
             ]);
 
             $journal->id = (string) Str::uuid();
@@ -910,11 +908,11 @@ class JournalEntryController extends Controller
             foreach ($lines['items'] as $index => $line) {
                 $detail = new AccountingJournalLine([
                     'journal_entry_id' => $journal->id,
-                    'account_id' => $line['account_id'],
-                    'description' => $line['description'],
-                    'debit' => $line['debit'],
-                    'credit' => $line['credit'],
-                    'line_order' => $index + 1,
+                    'account_id'       => $line['account_id'],
+                    'description'      => $line['description'],
+                    'debit'            => $line['debit'],
+                    'credit'           => $line['credit'],
+                    'line_order'       => $index + 1,
                 ]);
 
                 $detail->id = (string) Str::uuid();
@@ -925,14 +923,14 @@ class JournalEntryController extends Controller
         });
 
         return response()->json([
-            'data' => $journal->load([
+            'data'    => $journal->load([
                 'branch:id,name,code',
-                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines' => fn($q) => $q->orderBy('line_order'),
                 'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
             ]),
-            'meta' => [],
+            'meta'    => [],
             'message' => 'Created',
-            'errors' => null,
+            'errors'  => null,
         ], 201);
     }
 
@@ -942,25 +940,25 @@ class JournalEntryController extends Controller
 
         if ((string) $journal->source_type !== 'manual') {
             return response()->json([
-                'data' => null,
-                'meta' => [],
+                'data'    => null,
+                'meta'    => [],
                 'message' => 'Jurnal otomatis tidak boleh diedit manual.',
-                'errors' => [
+                'errors'  => [
                     'journal' => ['Jurnal otomatis tidak boleh diedit manual. Gunakan jurnal koreksi.'],
                 ],
             ], 422);
         }
 
-        $payload = $request->validated();
+        $payload  = $request->validated();
         $branchId = $this->resolveBranchId($request, $payload);
-        $lines = $this->normalizeLines($payload['lines'], $branchId);
+        $lines    = $this->normalizeLines($payload['lines'], $branchId);
 
         DB::transaction(function () use ($journal, $payload, $branchId, $lines) {
             $journal->fill([
-                'branch_id' => $branchId,
+                'branch_id'    => $branchId,
                 'journal_date' => Carbon::parse($payload['journal_date'])->toDateString(),
-                'description' => $payload['description'] ?? null,
-                'total_debit' => $lines['total_debit'],
+                'description'  => $payload['description'] ?? null,
+                'total_debit'  => $lines['total_debit'],
                 'total_credit' => $lines['total_credit'],
             ])->save();
 
@@ -971,11 +969,11 @@ class JournalEntryController extends Controller
             foreach ($lines['items'] as $index => $line) {
                 $detail = new AccountingJournalLine([
                     'journal_entry_id' => $journal->id,
-                    'account_id' => $line['account_id'],
-                    'description' => $line['description'],
-                    'debit' => $line['debit'],
-                    'credit' => $line['credit'],
-                    'line_order' => $index + 1,
+                    'account_id'       => $line['account_id'],
+                    'description'      => $line['description'],
+                    'debit'            => $line['debit'],
+                    'credit'           => $line['credit'],
+                    'line_order'       => $index + 1,
                 ]);
 
                 $detail->id = (string) Str::uuid();
@@ -984,14 +982,14 @@ class JournalEntryController extends Controller
         });
 
         return response()->json([
-            'data' => $journal->refresh()->load([
+            'data'    => $journal->refresh()->load([
                 'branch:id,name,code',
-                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines' => fn($q) => $q->orderBy('line_order'),
                 'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
             ]),
-            'meta' => [],
+            'meta'    => [],
             'message' => 'Updated',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -1003,10 +1001,10 @@ class JournalEntryController extends Controller
 
         if ($journal->lines->count() < 2) {
             return response()->json([
-                'data' => null,
-                'meta' => [],
+                'data'    => null,
+                'meta'    => [],
                 'message' => 'Jurnal minimal memiliki dua baris.',
-                'errors' => [
+                'errors'  => [
                     'lines' => ['Jurnal minimal memiliki dua baris.'],
                 ],
             ], 422);
@@ -1014,10 +1012,10 @@ class JournalEntryController extends Controller
 
         if (bccomp((string) $journal->total_debit, (string) $journal->total_credit, 2) !== 0) {
             return response()->json([
-                'data' => null,
-                'meta' => [],
+                'data'    => null,
+                'meta'    => [],
                 'message' => 'Jurnal belum balance.',
-                'errors' => [
+                'errors'  => [
                     'total' => ['Total debit harus sama dengan total kredit.'],
                 ],
             ], 422);
@@ -1025,25 +1023,25 @@ class JournalEntryController extends Controller
 
         DB::transaction(function () use ($request, $journal) {
             $journal->fill([
-                'status' => 'POSTED',
-                'posted_by' => $request->user()?->id,
-                'posted_at' => now(),
-                'voided_by' => null,
-                'voided_at' => null,
+                'status'      => 'POSTED',
+                'posted_by'   => $request->user()?->id,
+                'posted_at'   => now(),
+                'voided_by'   => null,
+                'voided_at'   => null,
                 'void_reason' => null,
             ])->save();
         });
 
         return response()->json([
-            'data' => $journal->refresh()->load([
+            'data'    => $journal->refresh()->load([
                 'branch:id,name,code',
                 'poster:id,name',
-                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines' => fn($q) => $q->orderBy('line_order'),
                 'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
             ]),
-            'meta' => [],
+            'meta'    => [],
             'message' => 'Posted',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -1059,23 +1057,23 @@ class JournalEntryController extends Controller
 
         DB::transaction(function () use ($request, $journal) {
             $journal->fill([
-                'status' => 'VOID',
-                'voided_by' => $request->user()?->id,
-                'voided_at' => now(),
+                'status'      => 'VOID',
+                'voided_by'   => $request->user()?->id,
+                'voided_at'   => now(),
                 'void_reason' => $request->input('void_reason'),
             ])->save();
         });
 
         return response()->json([
-            'data' => $journal->refresh()->load([
+            'data'    => $journal->refresh()->load([
                 'branch:id,name,code',
                 'voider:id,name',
-                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines' => fn($q) => $q->orderBy('line_order'),
                 'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
             ]),
-            'meta' => [],
+            'meta'    => [],
             'message' => 'Voided',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -1083,7 +1081,7 @@ class JournalEntryController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->hasRole('Superadmin')) {
+        if (! $user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             if (! $user->branch_id) {
                 throw ValidationException::withMessages([
                     'branch_id' => ['User belum terikat ke cabang.'],
@@ -1106,12 +1104,12 @@ class JournalEntryController extends Controller
 
     private function normalizeLines(array $rows, string $branchId): array
     {
-        $items = [];
-        $totalDebit = 0.0;
+        $items       = [];
+        $totalDebit  = 0.0;
         $totalCredit = 0.0;
 
         foreach ($rows as $index => $row) {
-            $debit = round((float) ($row['debit'] ?? 0), 2);
+            $debit  = round((float) ($row['debit'] ?? 0), 2);
             $credit = round((float) ($row['credit'] ?? 0), 2);
 
             if ($debit <= 0 && $credit <= 0) {
@@ -1142,17 +1140,17 @@ class JournalEntryController extends Controller
             }
 
             $items[] = [
-                'account_id' => (string) $row['account_id'],
+                'account_id'  => (string) $row['account_id'],
                 'description' => $row['description'] ?? null,
-                'debit' => $debit,
-                'credit' => $credit,
+                'debit'       => $debit,
+                'credit'      => $credit,
             ];
 
-            $totalDebit += $debit;
+            $totalDebit  += $debit;
             $totalCredit += $credit;
         }
 
-        $totalDebit = round($totalDebit, 2);
+        $totalDebit  = round($totalDebit, 2);
         $totalCredit = round($totalCredit, 2);
 
         if ($totalDebit <= 0 || $totalCredit <= 0) {
@@ -1168,8 +1166,8 @@ class JournalEntryController extends Controller
         }
 
         return [
-            'items' => $items,
-            'total_debit' => $totalDebit,
+            'items'        => $items,
+            'total_debit'  => $totalDebit,
             'total_credit' => $totalCredit,
         ];
     }
@@ -7874,7 +7872,7 @@ class WhatsappTemplate extends Model
 
 ### app\Policies\AccountingAccountMappingPolicy.php
 
-- SHA: `3d072cb45c04`  
+- SHA: `24a9bde186aa`  
 - Ukuran: 1 KB  
 - Namespace: `App\Policies`
 
@@ -7901,7 +7899,7 @@ class AccountingAccountMappingPolicy
 {
     public function before(User $user, string $ability): bool|null
     {
-        return $user->hasRole('Superadmin') ? true : null;
+        return $user->hasAnyRole(['Superadmin', 'Akuntansi']) ? true : null;
     }
 
     public function viewAny(User $user): bool
@@ -7950,14 +7948,14 @@ class AccountingAccountMappingPolicy
 
 ### app\Policies\AccountingAccountPolicy.php
 
-- SHA: `8b1589857b23`  
+- SHA: `5a1c4b88f1ea`  
 - Ukuran: 1 KB  
 - Namespace: `App\Policies`
 
 **Class `AccountingAccountPolicy`**
 
 Metode Publik:
-- **before**(User $user, string $ability) : *bool|null*
+- **before**(User $user, string $ability) : *bool | null*
 - **viewAny**(User $user) : *bool*
 - **view**(User $user, AccountingAccount $account) : *bool*
 - **create**(User $user) : *bool*
@@ -7967,7 +7965,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Policies;
 
 use App\Models\AccountingAccount;
@@ -7975,9 +7972,9 @@ use App\Models\User;
 
 class AccountingAccountPolicy
 {
-    public function before(User $user, string $ability): bool|null
+    public function before(User $user, string $ability): bool | null
     {
-        return $user->hasRole('Superadmin') ? true : null;
+        return $user->hasAnyRole(['Superadmin', 'Akuntansi']) ? true : null;
     }
 
     public function viewAny(User $user): bool
@@ -7992,7 +7989,7 @@ class AccountingAccountPolicy
         }
 
         return $user->hasRole('Admin Cabang')
-            && (string) $account->branch_id === (string) $user->branch_id;
+        && (string) $account->branch_id === (string) $user->branch_id;
     }
 
     public function create(User $user): bool
@@ -8007,7 +8004,7 @@ class AccountingAccountPolicy
         }
 
         return $user->hasRole('Admin Cabang')
-            && (string) $account->branch_id === (string) $user->branch_id;
+        && (string) $account->branch_id === (string) $user->branch_id;
     }
 
     public function delete(User $user, AccountingAccount $account): bool
@@ -8017,7 +8014,7 @@ class AccountingAccountPolicy
         }
 
         return $user->hasRole('Admin Cabang')
-            && (string) $account->branch_id === (string) $user->branch_id;
+        && (string) $account->branch_id === (string) $user->branch_id;
     }
 }
 
@@ -8026,7 +8023,7 @@ class AccountingAccountPolicy
 
 ### app\Policies\AccountingJournalEntryPolicy.php
 
-- SHA: `9b4032e1c053`  
+- SHA: `97f16454ebe4`  
 - Ukuran: 2 KB  
 - Namespace: `App\Policies`
 
@@ -8054,7 +8051,7 @@ class AccountingJournalEntryPolicy
 {
     public function before(User $user, string $ability): bool|null
     {
-        return $user->hasRole('Superadmin') ? true : null;
+        return $user->hasAnyRole(['Superadmin', 'Akuntansi']) ? true : null;
     }
 
     public function viewAny(User $user): bool
@@ -9170,7 +9167,7 @@ class WhatsappTemplatePolicy
 
 ### app\Http\Requests\Accounting\AccountingReportFilterRequest.php
 
-- SHA: `10c076347afe`  
+- SHA: `62b4275934dc`  
 - Ukuran: 1 KB  
 - Namespace: `App\Http\Requests\Accounting`
 
@@ -9184,7 +9181,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Requests\Accounting;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -9194,32 +9190,29 @@ class AccountingReportFilterRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->user() !== null
-            && (
-                $this->user()->hasRole('Superadmin')
-                || $this->user()->hasRole('Admin Cabang')
-            );
+        && $this->user()->hasAnyRole(['Superadmin', 'Admin Cabang', 'Akuntansi']);
     }
 
     public function rules(): array
     {
         return [
             'date_from' => ['required', 'date'],
-            'date_to' => ['required', 'date', 'after_or_equal:date_from'],
+            'date_to'   => ['required', 'date', 'after_or_equal:date_from'],
             'branch_id' => ['nullable', 'uuid'],
-            'basis' => ['nullable', 'string', 'in:posted,journal_posted'],
+            'basis'     => ['nullable', 'string', 'in:posted,journal_posted'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'date_from.required' => 'Tanggal awal wajib diisi.',
-            'date_from.date' => 'Tanggal awal tidak valid.',
-            'date_to.required' => 'Tanggal akhir wajib diisi.',
-            'date_to.date' => 'Tanggal akhir tidak valid.',
+            'date_from.required'     => 'Tanggal awal wajib diisi.',
+            'date_from.date'         => 'Tanggal awal tidak valid.',
+            'date_to.required'       => 'Tanggal akhir wajib diisi.',
+            'date_to.date'           => 'Tanggal akhir tidak valid.',
             'date_to.after_or_equal' => 'Tanggal akhir tidak boleh lebih kecil dari tanggal awal.',
-            'branch_id.uuid' => 'Cabang tidak valid.',
-            'basis.in' => 'Basis laporan tidak valid.',
+            'branch_id.uuid'         => 'Cabang tidak valid.',
+            'basis.in'               => 'Basis laporan tidak valid.',
         ];
     }
 }
@@ -9560,7 +9553,7 @@ class AccountUpdateRequest extends FormRequest
 
 ### app\Http\Requests\Accounting\BalanceSheetFilterRequest.php
 
-- SHA: `55c24750c0d4`  
+- SHA: `99d6572a2443`  
 - Ukuran: 1 KB  
 - Namespace: `App\Http\Requests\Accounting`
 
@@ -9585,10 +9578,7 @@ class BalanceSheetFilterRequest extends FormRequest
         $user = $this->user();
 
         return $user !== null
-            && (
-            $user->hasRole('Superadmin')
-            || $user->hasRole('Admin Cabang')
-        );
+        && $user->hasAnyRole(['Superadmin', 'Admin Cabang', 'Akuntansi']);
     }
 
     public function rules(): array
@@ -9740,7 +9730,7 @@ class JournalEntryUpdateRequest extends FormRequest
 
 ### app\Http\Requests\Accounting\LedgerFilterRequest.php
 
-- SHA: `89ab73017487`  
+- SHA: `25c7f3b0d476`  
 - Ukuran: 1 KB  
 - Namespace: `App\Http\Requests\Accounting`
 
@@ -9754,11 +9744,9 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Requests\Accounting;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class LedgerFilterRequest extends FormRequest
 {
@@ -9767,31 +9755,28 @@ class LedgerFilterRequest extends FormRequest
         $user = $this->user();
 
         return $user !== null
-            && (
-                $user->hasRole('Superadmin')
-                || $user->hasRole('Admin Cabang')
-            );
+        && $user->hasAnyRole(['Superadmin', 'Admin Cabang', 'Akuntansi']);
     }
 
     public function rules(): array
     {
         return [
             'account_id' => ['required', 'uuid', 'exists:accounting_accounts,id'],
-            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
-            'date_from' => ['required', 'date'],
-            'date_to' => ['required', 'date', 'after_or_equal:date_from'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
-            'page' => ['nullable', 'integer', 'min:1'],
+            'branch_id'  => ['nullable', 'uuid', 'exists:branches,id'],
+            'date_from'  => ['required', 'date'],
+            'date_to'    => ['required', 'date', 'after_or_equal:date_from'],
+            'per_page'   => ['nullable', 'integer', 'min:1', 'max:500'],
+            'page'       => ['nullable', 'integer', 'min:1'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'account_id.required' => 'Akun wajib dipilih.',
-            'account_id.exists' => 'Akun tidak ditemukan.',
-            'date_from.required' => 'Tanggal awal wajib diisi.',
-            'date_to.required' => 'Tanggal akhir wajib diisi.',
+            'account_id.required'    => 'Akun wajib dipilih.',
+            'account_id.exists'      => 'Akun tidak ditemukan.',
+            'date_from.required'     => 'Tanggal awal wajib diisi.',
+            'date_to.required'       => 'Tanggal akhir wajib diisi.',
             'date_to.after_or_equal' => 'Tanggal akhir tidak boleh lebih kecil dari tanggal awal.',
         ];
     }
@@ -11604,7 +11589,7 @@ class ReceivableSettleRequest extends FormRequest
 
 ### app\Http\Requests\Reports\ReportFilterRequest.php
 
-- SHA: `4ffa0fb25f12`  
+- SHA: `299f8d4438c1`  
 - Ukuran: 2 KB  
 - Namespace: `App\Http\Requests\Reports`
 
@@ -11620,7 +11605,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Http\Requests\Reports;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -11630,31 +11614,42 @@ class ReportFilterRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // Selaras dengan DashboardSummaryRequest (gate/ability yang sama)
-        return $this->user()?->can('dashboard.summary') === true;
+        $user = $this->user();
+
+        return $user !== null
+        && $user->hasAnyRole(['Superadmin', 'Admin Cabang', 'Kasir', 'Akuntansi']);
     }
 
     public function rules(): array
     {
         return [
-            'from' => ['required', 'date_format:Y-m-d'],
-            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+            'from'      => ['required', 'date_format:Y-m-d'],
+            'to'        => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
             'branch_id' => ['nullable', 'uuid'],
-            // filter spesifik opsional
-            'method' => ['nullable', 'string', 'max:32'], // untuk sales (payments)
-            'status' => ['nullable', 'string', 'max:32'], // untuk orders/receivables
-            'format' => ['nullable', 'in:csv'],
+                                                             // filter spesifik opsional
+            'method'    => ['nullable', 'string', 'max:32'], // untuk sales (payments)
+            'status'    => ['nullable', 'string', 'max:32'], // untuk orders/receivables
+            'format'    => ['nullable', 'in:csv'],
             'delimiter' => ['nullable', 'in:comma,semicolon,tab'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page'  => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
     }
 
     protected function prepareForValidation(): void
     {
         $u = $this->user();
-        if ($u && !$u->hasRole('Superadmin') && !$this->input('branch_id')) {
-            $this->merge(['branch_id' => $u->branch_id]);
+
+        if (! $u) {
+            return;
         }
+
+        if ($u->hasAnyRole(['Superadmin', 'Akuntansi'])) {
+            return;
+        }
+
+        $this->merge([
+            'branch_id' => $u->branch_id,
+        ]);
     }
 
     public function fromDate(): Carbon
@@ -12476,7 +12471,7 @@ class WhatsappTemplateUpdateRequest extends FormRequest
 
 ### app\Services\Accounting\AccountingDashboardService.php
 
-- SHA: `13df33179314`  
+- SHA: `d092161c28e0`  
 - Ukuran: 22 KB  
 - Namespace: `App\Services\Accounting`
 
@@ -12488,7 +12483,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Services\Accounting;
 
 use App\Models\User;
@@ -12500,24 +12494,24 @@ class AccountingDashboardService
     public function build(array $filters, User $user): array
     {
         $dateFrom = (string) $filters['date_from'];
-        $dateTo = (string) $filters['date_to'];
+        $dateTo   = (string) $filters['date_to'];
         $branchId = $this->resolveBranchId($filters, $user);
 
-        $summary = $this->buildSummary($dateFrom, $dateTo, $branchId);
-        $charts = $this->buildCharts($dateFrom, $dateTo, $branchId, $user);
+        $summary  = $this->buildSummary($dateFrom, $dateTo, $branchId);
+        $charts   = $this->buildCharts($dateFrom, $dateTo, $branchId, $user);
         $warnings = $this->buildWarnings($dateTo, $branchId);
 
         return [
             'data' => [
-                'summary' => $summary,
-                'charts' => $charts,
+                'summary'  => $summary,
+                'charts'   => $charts,
                 'warnings' => $warnings,
             ],
             'meta' => [
                 'date_from' => $dateFrom,
-                'date_to' => $dateTo,
+                'date_to'   => $dateTo,
                 'branch_id' => $branchId,
-                'basis' => 'posted',
+                'basis'     => 'posted',
             ],
         ];
     }
@@ -12527,13 +12521,13 @@ class AccountingDashboardService
         $cashTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.is_cash_account', true)
+            fn($query) => $query->where('accounts.is_cash_account', true)
         );
 
         $receivableTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query
+            fn($query) => $query
                 ->where('accounts.type', 'ASSET')
                 ->where(function ($q) {
                     $q->where('accounts.code', '1100')
@@ -12545,14 +12539,14 @@ class AccountingDashboardService
             $dateFrom,
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'REVENUE')
+            fn($query) => $query->where('accounts.type', 'REVENUE')
         );
 
         $expenseTotal = $this->periodAccountBalance(
             $dateFrom,
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'EXPENSE')
+            fn($query) => $query->where('accounts.type', 'EXPENSE')
         );
 
         $netProfit = round($revenueTotal - $expenseTotal, 2);
@@ -12560,132 +12554,132 @@ class AccountingDashboardService
         $assetTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'ASSET')
+            fn($query) => $query->where('accounts.type', 'ASSET')
         );
 
         $liabilityTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'LIABILITY')
+            fn($query) => $query->where('accounts.type', 'LIABILITY')
         );
 
         $equityBalance = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'EQUITY')
+            fn($query) => $query->where('accounts.type', 'EQUITY')
         );
 
-        $profitUntilDate = $this->profitUntilDate($dateTo, $branchId);
-        $equityTotal = round($equityBalance + $profitUntilDate, 2);
+        $profitUntilDate         = $this->profitUntilDate($dateTo, $branchId);
+        $equityTotal             = round($equityBalance + $profitUntilDate, 2);
         $liabilityAndEquityTotal = round($liabilityTotal + $equityTotal, 2);
-        $difference = round($assetTotal - $liabilityAndEquityTotal, 2);
+        $difference              = round($assetTotal - $liabilityAndEquityTotal, 2);
 
         return [
-            'total_cash' => round($cashTotal, 2),
-            'total_receivables' => round($receivableTotal, 2),
-            'total_revenue' => round($revenueTotal, 2),
-            'total_expense' => round($expenseTotal, 2),
-            'net_profit' => $netProfit,
-            'total_assets' => round($assetTotal, 2),
-            'total_liabilities' => round($liabilityTotal, 2),
-            'total_equities' => round($equityTotal, 2),
+            'total_cash'                     => round($cashTotal, 2),
+            'total_receivables'              => round($receivableTotal, 2),
+            'total_revenue'                  => round($revenueTotal, 2),
+            'total_expense'                  => round($expenseTotal, 2),
+            'net_profit'                     => $netProfit,
+            'total_assets'                   => round($assetTotal, 2),
+            'total_liabilities'              => round($liabilityTotal, 2),
+            'total_equities'                 => round($equityTotal, 2),
             'total_liabilities_and_equities' => $liabilityAndEquityTotal,
-            'balance_difference' => $difference,
-            'is_balance_sheet_balanced' => abs($difference) < 0.01,
-            'balance_status' => abs($difference) < 0.01 ? 'BALANCED' : 'NOT_BALANCED',
+            'balance_difference'             => $difference,
+            'is_balance_sheet_balanced'      => abs($difference) < 0.01,
+            'balance_status'                 => abs($difference) < 0.01 ? 'BALANCED' : 'NOT_BALANCED',
         ];
     }
 
     private function buildCharts(string $dateFrom, string $dateTo, ?string $branchId, User $user): array
     {
         return [
-            'revenue_vs_expense' => $this->revenueExpenseTrend($dateFrom, $dateTo, $branchId),
-            'cash_in_vs_cash_out' => $this->cashFlowTrend($dateFrom, $dateTo, $branchId),
+            'revenue_vs_expense'   => $this->revenueExpenseTrend($dateFrom, $dateTo, $branchId),
+            'cash_in_vs_cash_out'  => $this->cashFlowTrend($dateFrom, $dateTo, $branchId),
             'net_profit_by_branch' => $user->hasRole('Superadmin')
                 ? $this->netProfitByBranch($dateFrom, $dateTo, $branchId)
                 : [],
-            'receivables_trend' => $this->receivablesTrend($dateFrom, $dateTo, $branchId),
+            'receivables_trend'    => $this->receivablesTrend($dateFrom, $dateTo, $branchId),
         ];
     }
 
     private function buildWarnings(string $dateTo, ?string $branchId): array
     {
-        $mappingIssueCount = $this->mappingIssueCount($branchId);
+        $mappingIssueCount      = $this->mappingIssueCount($branchId);
         $unbalancedJournalCount = $this->unbalancedJournalCount($branchId);
-        $draftJournalCount = $this->draftJournalCount($branchId);
+        $draftJournalCount      = $this->draftJournalCount($branchId);
 
         $assetTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'ASSET')
+            fn($query) => $query->where('accounts.type', 'ASSET')
         );
 
         $liabilityTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'LIABILITY')
+            fn($query) => $query->where('accounts.type', 'LIABILITY')
         );
 
         $equityTotal = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'EQUITY')
+            fn($query) => $query->where('accounts.type', 'EQUITY')
         );
 
-        $profitUntilDate = $this->profitUntilDate($dateTo, $branchId);
-        $finalEquity = round($equityTotal + $profitUntilDate, 2);
+        $profitUntilDate   = $this->profitUntilDate($dateTo, $branchId);
+        $finalEquity       = round($equityTotal + $profitUntilDate, 2);
         $balanceDifference = round($assetTotal - ($liabilityTotal + $finalEquity), 2);
 
         $items = [];
 
         if ($mappingIssueCount > 0) {
             $items[] = [
-                'key' => 'MAPPING_INCOMPLETE',
-                'label' => 'Mapping akun bermasalah',
-                'message' => 'Ada mapping akun yang belum lengkap, memakai akun tidak aktif, atau akun debit dan kredit sama.',
-                'count' => $mappingIssueCount,
+                'key'      => 'MAPPING_INCOMPLETE',
+                'label'    => 'Mapping akun bermasalah',
+                'message'  => 'Ada mapping akun yang belum lengkap, memakai akun tidak aktif, atau akun debit dan kredit sama.',
+                'count'    => $mappingIssueCount,
                 'severity' => 'warning',
             ];
         }
 
         if ($unbalancedJournalCount > 0) {
             $items[] = [
-                'key' => 'UNBALANCED_JOURNALS',
-                'label' => 'Jurnal belum balance',
-                'message' => 'Ada jurnal non-void dengan total debit dan kredit tidak sama.',
-                'count' => $unbalancedJournalCount,
+                'key'      => 'UNBALANCED_JOURNALS',
+                'label'    => 'Jurnal belum balance',
+                'message'  => 'Ada jurnal non-void dengan total debit dan kredit tidak sama.',
+                'count'    => $unbalancedJournalCount,
                 'severity' => 'danger',
             ];
         }
 
         if ($draftJournalCount > 0) {
             $items[] = [
-                'key' => 'DRAFT_JOURNALS',
-                'label' => 'Jurnal draft',
-                'message' => 'Ada jurnal draft yang belum diposting sehingga belum masuk laporan.',
-                'count' => $draftJournalCount,
+                'key'      => 'DRAFT_JOURNALS',
+                'label'    => 'Jurnal draft',
+                'message'  => 'Ada jurnal draft yang belum diposting sehingga belum masuk laporan.',
+                'count'    => $draftJournalCount,
                 'severity' => 'info',
             ];
         }
 
         if (abs($balanceDifference) >= 0.01) {
             $items[] = [
-                'key' => 'BALANCE_SHEET_NOT_BALANCED',
-                'label' => 'Neraca tidak seimbang',
-                'message' => 'Total aset belum sama dengan total liabilitas dan ekuitas.',
-                'count' => 1,
+                'key'      => 'BALANCE_SHEET_NOT_BALANCED',
+                'label'    => 'Neraca tidak seimbang',
+                'message'  => 'Total aset belum sama dengan total liabilitas dan ekuitas.',
+                'count'    => 1,
                 'severity' => 'danger',
             ];
         }
 
         return [
-            'items' => $items,
+            'items'   => $items,
             'summary' => [
-                'mapping_issue_count' => $mappingIssueCount,
+                'mapping_issue_count'      => $mappingIssueCount,
                 'unbalanced_journal_count' => $unbalancedJournalCount,
-                'draft_journal_count' => $draftJournalCount,
-                'balance_difference' => $balanceDifference,
-                'has_warning' => count($items) > 0,
+                'draft_journal_count'      => $draftJournalCount,
+                'balance_difference'       => $balanceDifference,
+                'has_warning'              => count($items) > 0,
             ],
         ];
     }
@@ -12716,7 +12710,7 @@ class AccountingDashboardService
         $total = 0.0;
 
         foreach ($rows as $row) {
-            $debit = (float) $row->total_debit;
+            $debit  = (float) $row->total_debit;
             $credit = (float) $row->total_credit;
 
             $total += $row->normal_balance === 'DEBIT'
@@ -12754,7 +12748,7 @@ class AccountingDashboardService
         $total = 0.0;
 
         foreach ($rows as $row) {
-            $debit = (float) $row->total_debit;
+            $debit  = (float) $row->total_debit;
             $credit = (float) $row->total_credit;
 
             $total += $row->normal_balance === 'DEBIT'
@@ -12770,13 +12764,13 @@ class AccountingDashboardService
         $revenue = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'REVENUE')
+            fn($query) => $query->where('accounts.type', 'REVENUE')
         );
 
         $expense = $this->accountBalanceAsOf(
             $dateTo,
             $branchId,
-            fn ($query) => $query->where('accounts.type', 'EXPENSE')
+            fn($query) => $query->where('accounts.type', 'EXPENSE')
         );
 
         return round($revenue - $expense, 2);
@@ -12815,14 +12809,14 @@ class AccountingDashboardService
 
             if (! isset($items[$period])) {
                 $items[$period] = [
-                    'period' => $period,
-                    'revenue' => 0.0,
-                    'expense' => 0.0,
+                    'period'     => $period,
+                    'revenue'    => 0.0,
+                    'expense'    => 0.0,
                     'net_profit' => 0.0,
                 ];
             }
 
-            $debit = (float) $row->total_debit;
+            $debit  = (float) $row->total_debit;
             $credit = (float) $row->total_credit;
             $amount = $row->normal_balance === 'DEBIT'
                 ? $debit - $credit
@@ -12838,8 +12832,8 @@ class AccountingDashboardService
         }
 
         return array_values(array_map(function (array $item) {
-            $item['revenue'] = round($item['revenue'], 2);
-            $item['expense'] = round($item['expense'], 2);
+            $item['revenue']    = round($item['revenue'], 2);
+            $item['expense']    = round($item['expense'], 2);
             $item['net_profit'] = round($item['revenue'] - $item['expense'], 2);
 
             return $item;
@@ -12878,28 +12872,28 @@ class AccountingDashboardService
 
             if (! isset($items[$period])) {
                 $items[$period] = [
-                    'period' => $period,
-                    'cash_in' => 0.0,
-                    'cash_out' => 0.0,
+                    'period'        => $period,
+                    'cash_in'       => 0.0,
+                    'cash_out'      => 0.0,
                     'net_cash_flow' => 0.0,
                 ];
             }
 
-            $debit = (float) $row->total_debit;
+            $debit  = (float) $row->total_debit;
             $credit = (float) $row->total_credit;
 
             if ($row->normal_balance === 'DEBIT') {
-                $items[$period]['cash_in'] += $debit;
+                $items[$period]['cash_in']  += $debit;
                 $items[$period]['cash_out'] += $credit;
             } else {
-                $items[$period]['cash_in'] += $credit;
+                $items[$period]['cash_in']  += $credit;
                 $items[$period]['cash_out'] += $debit;
             }
         }
 
         return array_values(array_map(function (array $item) {
-            $item['cash_in'] = round($item['cash_in'], 2);
-            $item['cash_out'] = round($item['cash_out'], 2);
+            $item['cash_in']       = round($item['cash_in'], 2);
+            $item['cash_out']      = round($item['cash_out'], 2);
             $item['net_cash_flow'] = round($item['cash_in'] - $item['cash_out'], 2);
 
             return $item;
@@ -12948,16 +12942,16 @@ class AccountingDashboardService
 
             if (! isset($items[$id])) {
                 $items[$id] = [
-                    'branch_id' => $id,
+                    'branch_id'   => $id,
                     'branch_code' => $row->branch_code,
                     'branch_name' => $row->branch_name,
-                    'revenue' => 0.0,
-                    'expense' => 0.0,
-                    'net_profit' => 0.0,
+                    'revenue'     => 0.0,
+                    'expense'     => 0.0,
+                    'net_profit'  => 0.0,
                 ];
             }
 
-            $debit = (float) $row->total_debit;
+            $debit  = (float) $row->total_debit;
             $credit = (float) $row->total_credit;
             $amount = $row->normal_balance === 'DEBIT'
                 ? $debit - $credit
@@ -12973,8 +12967,8 @@ class AccountingDashboardService
         }
 
         return array_values(array_map(function (array $item) {
-            $item['revenue'] = round($item['revenue'], 2);
-            $item['expense'] = round($item['expense'], 2);
+            $item['revenue']    = round($item['revenue'], 2);
+            $item['expense']    = round($item['expense'], 2);
             $item['net_profit'] = round($item['revenue'] - $item['expense'], 2);
 
             return $item;
@@ -13017,27 +13011,27 @@ class AccountingDashboardService
 
             if (! isset($items[$period])) {
                 $items[$period] = [
-                    'period' => $period,
-                    'receivables_in' => 0.0,
+                    'period'          => $period,
+                    'receivables_in'  => 0.0,
                     'receivables_out' => 0.0,
                     'net_receivables' => 0.0,
                 ];
             }
 
-            $debit = (float) $row->total_debit;
+            $debit  = (float) $row->total_debit;
             $credit = (float) $row->total_credit;
 
             if ($row->normal_balance === 'DEBIT') {
-                $items[$period]['receivables_in'] += $debit;
+                $items[$period]['receivables_in']  += $debit;
                 $items[$period]['receivables_out'] += $credit;
             } else {
-                $items[$period]['receivables_in'] += $credit;
+                $items[$period]['receivables_in']  += $credit;
                 $items[$period]['receivables_out'] += $debit;
             }
         }
 
         return array_values(array_map(function (array $item) {
-            $item['receivables_in'] = round($item['receivables_in'], 2);
+            $item['receivables_in']  = round($item['receivables_in'], 2);
             $item['receivables_out'] = round($item['receivables_out'], 2);
             $item['net_receivables'] = round($item['receivables_in'] - $item['receivables_out'], 2);
 
@@ -13095,7 +13089,7 @@ class AccountingDashboardService
 
     private function resolveBranchId(array $filters, User $user): ?string
     {
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             return $filters['branch_id'] ?? null;
         }
 
@@ -13164,7 +13158,7 @@ class AccountingJournalNumberService
 
 ### app\Services\Accounting\AccountingLedgerService.php
 
-- SHA: `6303fbf32465`  
+- SHA: `b2b35077f9fb`  
 - Ukuran: 8 KB  
 - Namespace: `App\Services\Accounting`
 
@@ -13176,7 +13170,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Services\Accounting;
 
 use App\Models\AccountingAccount;
@@ -13193,7 +13186,7 @@ class AccountingLedgerService
 
         $branchId = $this->resolveBranchId($filters, $account, $user);
         $dateFrom = (string) $filters['date_from'];
-        $dateTo = (string) $filters['date_to'];
+        $dateTo   = (string) $filters['date_to'];
 
         $openingBalance = $this->calculateOpeningBalance($account, $branchId, $dateFrom);
 
@@ -13201,38 +13194,38 @@ class AccountingLedgerService
             ->get();
 
         $runningBalance = $openingBalance;
-        $totalDebit = 0.0;
-        $totalCredit = 0.0;
+        $totalDebit     = 0.0;
+        $totalCredit    = 0.0;
 
         $rows = $lines->map(function (AccountingJournalLine $line) use ($account, &$runningBalance, &$totalDebit, &$totalCredit) {
-            $debit = (float) $line->debit;
+            $debit  = (float) $line->debit;
             $credit = (float) $line->credit;
 
-            $totalDebit += $debit;
+            $totalDebit  += $debit;
             $totalCredit += $credit;
 
             $runningBalance = $this->applyMovement($account, $runningBalance, $debit, $credit);
 
             return [
-                'id' => (string) $line->id,
+                'id'               => (string) $line->id,
                 'journal_entry_id' => (string) $line->journal_entry_id,
-                'journal_date' => optional($line->journalEntry?->journal_date)->format('Y-m-d'),
-                'journal_no' => $line->journalEntry?->journal_no,
-                'source_type' => $line->journalEntry?->source_type,
-                'source_no' => $line->journalEntry?->source_no,
-                'branch' => $line->journalEntry?->branch ? [
-                    'id' => (string) $line->journalEntry->branch->id,
+                'journal_date'     => optional($line->journalEntry?->journal_date)->format('Y-m-d'),
+                'journal_no'       => $line->journalEntry?->journal_no,
+                'source_type'      => $line->journalEntry?->source_type,
+                'source_no'        => $line->journalEntry?->source_no,
+                'branch'           => $line->journalEntry?->branch ? [
+                    'id'   => (string) $line->journalEntry->branch->id,
                     'name' => $line->journalEntry->branch->name,
                     'code' => $line->journalEntry->branch->code,
                 ] : null,
-                'description' => $line->description ?: $line->journalEntry?->description,
-                'debit' => round($debit, 2),
-                'credit' => round($credit, 2),
-                'balance' => round($runningBalance, 2),
+                'description'      => $line->description ?: $line->journalEntry?->description,
+                'debit'            => round($debit, 2),
+                'credit'           => round($credit, 2),
+                'balance'          => round($runningBalance, 2),
             ];
         });
 
-        $page = max((int) ($filters['page'] ?? 1), 1);
+        $page    = max((int) ($filters['page'] ?? 1), 1);
         $perPage = max((int) ($filters['per_page'] ?? 50), 1);
 
         $paginatedRows = $this->paginate($rows, $page, $perPage);
@@ -13240,25 +13233,25 @@ class AccountingLedgerService
         return [
             'data' => $paginatedRows->items(),
             'meta' => [
-                'current_page' => $paginatedRows->currentPage(),
-                'per_page' => $paginatedRows->perPage(),
-                'total' => $paginatedRows->total(),
-                'last_page' => $paginatedRows->lastPage(),
-                'account' => [
-                    'id' => (string) $account->id,
-                    'code' => $account->code,
-                    'name' => $account->name,
-                    'type' => $account->type,
+                'current_page'    => $paginatedRows->currentPage(),
+                'per_page'        => $paginatedRows->perPage(),
+                'total'           => $paginatedRows->total(),
+                'last_page'       => $paginatedRows->lastPage(),
+                'account'         => [
+                    'id'             => (string) $account->id,
+                    'code'           => $account->code,
+                    'name'           => $account->name,
+                    'type'           => $account->type,
                     'normal_balance' => $account->normal_balance,
-                    'branch_id' => $account->branch_id,
+                    'branch_id'      => $account->branch_id,
                 ],
-                'branch_id' => $branchId,
-                'date_from' => $dateFrom,
-                'date_to' => $dateTo,
+                'branch_id'       => $branchId,
+                'date_from'       => $dateFrom,
+                'date_to'         => $dateTo,
                 'opening_balance' => round($openingBalance, 2),
-                'total_debit' => round($totalDebit, 2),
-                'total_credit' => round($totalCredit, 2),
-                'ending_balance' => round($runningBalance, 2),
+                'total_debit'     => round($totalDebit, 2),
+                'total_credit'    => round($totalCredit, 2),
+                'ending_balance'  => round($runningBalance, 2),
             ],
         ];
     }
@@ -13269,7 +13262,7 @@ class AccountingLedgerService
             ->where('id', $accountId)
             ->where('is_active', true);
 
-        if (! $user->hasRole('Superadmin')) {
+        if (! $user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             $query->where(function ($q) use ($user) {
                 $q->whereNull('branch_id')
                     ->orWhere('branch_id', $user->branch_id);
@@ -13289,7 +13282,7 @@ class AccountingLedgerService
 
     private function resolveBranchId(array $filters, AccountingAccount $account, $user): ?string
     {
-        if (! $user->hasRole('Superadmin')) {
+        if (! $user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             if (! $user->branch_id) {
                 throw ValidationException::withMessages([
                     'branch_id' => ['User belum terikat ke cabang.'],
@@ -13386,7 +13379,7 @@ class AccountingLedgerService
             $perPage,
             $page,
             [
-                'path' => request()->url(),
+                'path'  => request()->url(),
                 'query' => request()->query(),
             ]
         );
@@ -13828,7 +13821,7 @@ class AccountingPostingService
 
 ### app\Services\Accounting\BalanceSheetService.php
 
-- SHA: `7baa7c003a01`  
+- SHA: `449ea653d1a3`  
 - Ukuran: 6 KB  
 - Namespace: `App\Services\Accounting`
 
@@ -13991,7 +13984,7 @@ class BalanceSheetService
 
     private function resolveBranchId(array $filters, User $user): ?string
     {
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             return $filters['branch_id'] ?? null;
         }
 
@@ -14026,7 +14019,7 @@ class BalanceSheetService
 
 ### app\Services\Accounting\CashFlowService.php
 
-- SHA: `2b27e5a723fd`  
+- SHA: `fc17110070c8`  
 - Ukuran: 9 KB  
 - Namespace: `App\Services\Accounting`
 
@@ -14038,7 +14031,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Services\Accounting;
 
 use App\Models\User;
@@ -14050,47 +14042,47 @@ class CashFlowService
     public function build(array $filters, User $user): array
     {
         $dateFrom = (string) $filters['date_from'];
-        $dateTo = (string) $filters['date_to'];
+        $dateTo   = (string) $filters['date_to'];
         $branchId = $this->resolveBranchId($filters, $user);
 
         $openingBalance = $this->calculateOpeningBalance($dateFrom, $branchId);
-        $rows = $this->getPeriodRows($dateFrom, $dateTo, $branchId);
+        $rows           = $this->getPeriodRows($dateFrom, $dateTo, $branchId);
 
         $operating = [];
         $investing = [];
         $financing = [];
 
-        $totalCashIn = 0.0;
+        $totalCashIn  = 0.0;
         $totalCashOut = 0.0;
 
         foreach ($rows as $row) {
-            $cashIn = (float) $row->cash_in;
-            $cashOut = (float) $row->cash_out;
+            $cashIn    = (float) $row->cash_in;
+            $cashOut   = (float) $row->cash_out;
             $netAmount = $cashIn - $cashOut;
 
             $item = [
-                'id' => (string) $row->id,
+                'id'               => (string) $row->id,
                 'journal_entry_id' => (string) $row->journal_entry_id,
-                'journal_date' => $row->journal_date,
-                'journal_no' => $row->journal_no,
-                'source_type' => $row->source_type,
-                'source_no' => $row->source_no,
-                'event_key' => $row->event_key,
-                'description' => $row->description,
-                'cash_account' => [
-                    'id' => (string) $row->account_id,
-                    'code' => $row->account_code,
-                    'name' => $row->account_name,
+                'journal_date'     => $row->journal_date,
+                'journal_no'       => $row->journal_no,
+                'source_type'      => $row->source_type,
+                'source_no'        => $row->source_no,
+                'event_key'        => $row->event_key,
+                'description'      => $row->description,
+                'cash_account'     => [
+                    'id'             => (string) $row->account_id,
+                    'code'           => $row->account_code,
+                    'name'           => $row->account_name,
                     'normal_balance' => $row->normal_balance,
                 ],
-                'branch' => [
-                    'id' => (string) $row->branch_id,
+                'branch'           => [
+                    'id'   => (string) $row->branch_id,
                     'code' => $row->branch_code,
                     'name' => $row->branch_name,
                 ],
-                'cash_in' => round($cashIn, 2),
-                'cash_out' => round($cashOut, 2),
-                'net_amount' => round($netAmount, 2),
+                'cash_in'          => round($cashIn, 2),
+                'cash_out'         => round($cashOut, 2),
+                'net_amount'       => round($netAmount, 2),
             ];
 
             $activity = $this->classifyActivity(
@@ -14106,15 +14098,15 @@ class CashFlowService
                 $operating[] = $item;
             }
 
-            $totalCashIn += $cashIn;
+            $totalCashIn  += $cashIn;
             $totalCashOut += $cashOut;
         }
 
         $operatingTotal = $this->sumNetAmount($operating);
         $investingTotal = $this->sumNetAmount($investing);
         $financingTotal = $this->sumNetAmount($financing);
-        $netCashFlow = $operatingTotal + $investingTotal + $financingTotal;
-        $endingBalance = $openingBalance + $netCashFlow;
+        $netCashFlow    = $operatingTotal + $investingTotal + $financingTotal;
+        $endingBalance  = $openingBalance + $netCashFlow;
 
         return [
             'data' => [
@@ -14133,20 +14125,20 @@ class CashFlowService
                     'items' => $financing,
                     'total' => round($financingTotal, 2),
                 ],
-                'summary' => [
+                'summary'              => [
                     'opening_balance' => round($openingBalance, 2),
-                    'total_cash_in' => round($totalCashIn, 2),
-                    'total_cash_out' => round($totalCashOut, 2),
-                    'net_cash_flow' => round($netCashFlow, 2),
-                    'ending_balance' => round($endingBalance, 2),
+                    'total_cash_in'   => round($totalCashIn, 2),
+                    'total_cash_out'  => round($totalCashOut, 2),
+                    'net_cash_flow'   => round($netCashFlow, 2),
+                    'ending_balance'  => round($endingBalance, 2),
                 ],
             ],
             'meta' => [
                 'date_from' => $dateFrom,
-                'date_to' => $dateTo,
+                'date_to'   => $dateTo,
                 'branch_id' => $branchId,
-                'basis' => 'POSTED',
-                'source' => 'accounting_journal_lines',
+                'basis'     => 'POSTED',
+                'source'    => 'accounting_journal_lines',
             ],
         ];
     }
@@ -14240,7 +14232,7 @@ class CashFlowService
 
     private function classifyActivity(?string $eventKey, ?string $sourceType): string
     {
-        $eventKey = strtoupper((string) $eventKey);
+        $eventKey   = strtoupper((string) $eventKey);
         $sourceType = strtoupper((string) $sourceType);
 
         if (in_array($eventKey, [
@@ -14260,14 +14252,14 @@ class CashFlowService
     private function sumNetAmount(array $items): float
     {
         return round(array_sum(array_map(
-            fn (array $item) => (float) $item['net_amount'],
+            fn(array $item) => (float) $item['net_amount'],
             $items
         )), 2);
     }
 
     private function resolveBranchId(array $filters, User $user): ?string
     {
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             return $filters['branch_id'] ?? null;
         }
 
@@ -14286,7 +14278,7 @@ class CashFlowService
 
 ### app\Services\Accounting\ProfitLossService.php
 
-- SHA: `65e1da3c1f6d`  
+- SHA: `792f53290ace`  
 - Ukuran: 5 KB  
 - Namespace: `App\Services\Accounting`
 
@@ -14298,7 +14290,6 @@ Metode Publik:
 
 ```php
 <?php
-
 namespace App\Services\Accounting;
 
 use App\Models\User;
@@ -14310,7 +14301,7 @@ class ProfitLossService
     public function build(array $filters, User $user): array
     {
         $dateFrom = $filters['date_from'];
-        $dateTo = $filters['date_to'];
+        $dateTo   = $filters['date_to'];
         $branchId = $this->resolveBranchId($filters, $user);
 
         $rows = DB::table('accounting_journal_lines as lines')
@@ -14343,16 +14334,16 @@ class ProfitLossService
             ])
             ->get();
 
-        $revenues = [];
+        $revenues       = [];
         $contraRevenues = [];
-        $expenses = [];
+        $expenses       = [];
 
-        $totalGrossRevenue = 0.0;
+        $totalGrossRevenue  = 0.0;
         $totalContraRevenue = 0.0;
-        $totalExpense = 0.0;
+        $totalExpense       = 0.0;
 
         foreach ($rows as $row) {
-            $debit = round((float) $row->total_debit, 2);
+            $debit  = round((float) $row->total_debit, 2);
             $credit = round((float) $row->total_credit, 2);
 
             $amount = $this->calculateAccountAmount(
@@ -14362,66 +14353,66 @@ class ProfitLossService
             );
 
             $item = [
-                'account_id' => (string) $row->id,
-                'code' => (string) $row->code,
-                'name' => (string) $row->name,
-                'type' => (string) $row->type,
+                'account_id'     => (string) $row->id,
+                'code'           => (string) $row->code,
+                'name'           => (string) $row->name,
+                'type'           => (string) $row->type,
                 'normal_balance' => (string) $row->normal_balance,
-                'debit' => $debit,
-                'credit' => $credit,
-                'amount' => $amount,
+                'debit'          => $debit,
+                'credit'         => $credit,
+                'amount'         => $amount,
             ];
 
             if ($row->type === 'REVENUE' && $row->normal_balance === 'DEBIT') {
-                $contraRevenues[] = $item;
+                $contraRevenues[]    = $item;
                 $totalContraRevenue += $amount;
                 continue;
             }
 
             if ($row->type === 'REVENUE') {
-                $revenues[] = $item;
+                $revenues[]         = $item;
                 $totalGrossRevenue += $amount;
                 continue;
             }
 
             if ($row->type === 'EXPENSE') {
-                $expenses[] = $item;
+                $expenses[]    = $item;
                 $totalExpense += $amount;
             }
         }
 
-        $totalGrossRevenue = round($totalGrossRevenue, 2);
+        $totalGrossRevenue  = round($totalGrossRevenue, 2);
         $totalContraRevenue = round($totalContraRevenue, 2);
-        $netRevenue = round($totalGrossRevenue - $totalContraRevenue, 2);
-        $totalExpense = round($totalExpense, 2);
-        $netProfit = round($netRevenue - $totalExpense, 2);
+        $netRevenue         = round($totalGrossRevenue - $totalContraRevenue, 2);
+        $totalExpense       = round($totalExpense, 2);
+        $netProfit          = round($netRevenue - $totalExpense, 2);
 
         return [
             'data' => [
-                'revenues' => $revenues,
+                'revenues'        => $revenues,
                 'contra_revenues' => $contraRevenues,
-                'expenses' => $expenses,
-                'summary' => [
-                    'total_gross_revenue' => $totalGrossRevenue,
+                'expenses'        => $expenses,
+                'summary'         => [
+                    'total_gross_revenue'  => $totalGrossRevenue,
                     'total_contra_revenue' => $totalContraRevenue,
-                    'net_revenue' => $netRevenue,
-                    'total_expense' => $totalExpense,
-                    'net_profit' => $netProfit,
-                    'is_profit' => $netProfit >= 0,
+                    'net_revenue'          => $netRevenue,
+                    'total_expense'        => $totalExpense,
+                    'net_profit'           => $netProfit,
+                    'is_profit'            => $netProfit >= 0,
                 ],
             ],
             'meta' => [
                 'date_from' => $dateFrom,
-                'date_to' => $dateTo,
+                'date_to'   => $dateTo,
                 'branch_id' => $branchId,
-                'basis' => 'POSTED',
+                'basis'     => 'POSTED',
             ],
         ];
     }
 
     private function resolveBranchId(array $filters, User $user): ?string
     {
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             return $filters['branch_id'] ?? null;
         }
 
@@ -18137,8 +18128,8 @@ class DatabaseSeeder extends Seeder
 
 ### database\seeders\RolesTableSeeder.php
 
-- SHA: `ce7284d0c443`  
-- Ukuran: 542 B  
+- SHA: `63555d711f54`  
+- Ukuran: 567 B  
 - Namespace: `Database\Seeders`
 
 **Class `RolesTableSeeder` extends `Seeder`**
@@ -18165,6 +18156,7 @@ class RolesTableSeeder extends Seeder
             'Kasir',
             'Petugas Cuci',
             'Kurir',
+            'Akuntansi',
         ];
 
         foreach ($roles as $name) {
@@ -18181,7 +18173,7 @@ class RolesTableSeeder extends Seeder
 
 ### database\seeders\UserSeeder.php
 
-- SHA: `1c813fc84ec2`  
+- SHA: `1b75f4b8c68a`  
 - Ukuran: 5 KB  
 - Namespace: `Database\Seeders`
 
@@ -18209,7 +18201,7 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // --- Pastikan roles tersedia (sesuai dump & guard 'web') ---
-        $roleNames = ['Superadmin', 'Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir'];
+        $roleNames = ['Superadmin', 'Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir', 'Akuntansi'];
         foreach ($roleNames as $r) {
             Role::query()->firstOrCreate(['name' => $r, 'guard_name' => 'web']);
         }

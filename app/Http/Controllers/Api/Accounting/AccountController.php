@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Api\Accounting;
 
 use App\Http\Controllers\Controller;
@@ -23,7 +22,7 @@ class AccountController extends Controller
             ->orderBy('sort_order')
             ->orderBy('code');
 
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             if ($branchId = $request->query('branch_id')) {
                 $query->where(function ($q) use ($branchId) {
                     $q->whereNull('branch_id')
@@ -55,15 +54,15 @@ class AccountController extends Controller
         $items = $query->paginate((int) $request->query('per_page', 20));
 
         return response()->json([
-            'data' => $items->items(),
-            'meta' => [
+            'data'    => $items->items(),
+            'meta'    => [
                 'current_page' => $items->currentPage(),
-                'per_page' => $items->perPage(),
-                'total' => $items->total(),
-                'last_page' => $items->lastPage(),
+                'per_page'     => $items->perPage(),
+                'total'        => $items->total(),
+                'last_page'    => $items->lastPage(),
             ],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -72,10 +71,10 @@ class AccountController extends Controller
         $this->authorize('view', $account);
 
         return response()->json([
-            'data' => $account->load(['branch:id,name,code', 'parent:id,code,name']),
-            'meta' => [],
+            'data'    => $account->load(['branch:id,name,code', 'parent:id,code,name']),
+            'meta'    => [],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -86,7 +85,7 @@ class AccountController extends Controller
         $payload = $this->payloadWithBranchScope($request->validated(), $request);
 
         $account = DB::transaction(function () use ($payload) {
-            $account = new AccountingAccount($payload);
+            $account     = new AccountingAccount($payload);
             $account->id = (string) Str::uuid();
             $account->save();
 
@@ -94,10 +93,10 @@ class AccountController extends Controller
         });
 
         return response()->json([
-            'data' => $account->load(['branch:id,name,code', 'parent:id,code,name']),
-            'meta' => [],
+            'data'    => $account->load(['branch:id,name,code', 'parent:id,code,name']),
+            'meta'    => [],
             'message' => 'Created',
-            'errors' => null,
+            'errors'  => null,
         ], 201);
     }
 
@@ -112,10 +111,10 @@ class AccountController extends Controller
         });
 
         return response()->json([
-            'data' => $account->refresh()->load(['branch:id,name,code', 'parent:id,code,name']),
-            'meta' => [],
+            'data'    => $account->refresh()->load(['branch:id,name,code', 'parent:id,code,name']),
+            'meta'    => [],
             'message' => 'Updated',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -125,10 +124,10 @@ class AccountController extends Controller
 
         if ($account->children()->exists()) {
             return response()->json([
-                'data' => null,
-                'meta' => [],
+                'data'    => null,
+                'meta'    => [],
                 'message' => 'Akun tidak dapat dihapus karena masih memiliki akun turunan.',
-                'errors' => [
+                'errors'  => [
                     'account' => ['Akun masih memiliki akun turunan.'],
                 ],
             ], 422);
@@ -136,10 +135,10 @@ class AccountController extends Controller
 
         if ($account->debitMappings()->exists() || $account->creditMappings()->exists()) {
             return response()->json([
-                'data' => null,
-                'meta' => [],
+                'data'    => null,
+                'meta'    => [],
                 'message' => 'Akun tidak dapat dihapus karena masih digunakan pada mapping akun.',
-                'errors' => [
+                'errors'  => [
                     'account' => ['Akun masih digunakan pada mapping akun.'],
                 ],
             ], 422);
@@ -148,10 +147,10 @@ class AccountController extends Controller
         $account->delete();
 
         return response()->json([
-            'data' => null,
-            'meta' => [],
+            'data'    => null,
+            'meta'    => [],
             'message' => 'Deleted',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -159,7 +158,7 @@ class AccountController extends Controller
     {
         $user = $request->user();
 
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             $payload['branch_id'] = $payload['branch_id'] ?? null;
             return $payload;
         }

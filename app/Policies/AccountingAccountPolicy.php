@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Policies;
 
 use App\Models\AccountingAccount;
@@ -7,9 +6,9 @@ use App\Models\User;
 
 class AccountingAccountPolicy
 {
-    public function before(User $user, string $ability): bool|null
+    public function before(User $user, string $ability): bool | null
     {
-        return $user->hasRole('Superadmin') ? true : null;
+        return $user->hasAnyRole(['Superadmin', 'Akuntansi']) ? true : null;
     }
 
     public function viewAny(User $user): bool
@@ -24,7 +23,7 @@ class AccountingAccountPolicy
         }
 
         return $user->hasRole('Admin Cabang')
-            && (string) $account->branch_id === (string) $user->branch_id;
+        && (string) $account->branch_id === (string) $user->branch_id;
     }
 
     public function create(User $user): bool
@@ -39,7 +38,7 @@ class AccountingAccountPolicy
         }
 
         return $user->hasRole('Admin Cabang')
-            && (string) $account->branch_id === (string) $user->branch_id;
+        && (string) $account->branch_id === (string) $user->branch_id;
     }
 
     public function delete(User $user, AccountingAccount $account): bool
@@ -49,6 +48,6 @@ class AccountingAccountPolicy
         }
 
         return $user->hasRole('Admin Cabang')
-            && (string) $account->branch_id === (string) $user->branch_id;
+        && (string) $account->branch_id === (string) $user->branch_id;
     }
 }

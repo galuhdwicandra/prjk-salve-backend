@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Api\Accounting;
 
 use App\Http\Controllers\Controller;
@@ -38,7 +37,7 @@ class JournalEntryController extends Controller
             ->orderByDesc('journal_date')
             ->orderByDesc('created_at');
 
-        if ($user->hasRole('Superadmin')) {
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             if ($branchId = $request->query('branch_id')) {
                 $query->where('branch_id', $branchId);
             }
@@ -73,15 +72,15 @@ class JournalEntryController extends Controller
         $items = $query->paginate((int) $request->query('per_page', 20));
 
         return response()->json([
-            'data' => $items->items(),
-            'meta' => [
+            'data'    => $items->items(),
+            'meta'    => [
                 'current_page' => $items->currentPage(),
-                'per_page' => $items->perPage(),
-                'total' => $items->total(),
-                'last_page' => $items->lastPage(),
+                'per_page'     => $items->perPage(),
+                'total'        => $items->total(),
+                'last_page'    => $items->lastPage(),
             ],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -90,18 +89,18 @@ class JournalEntryController extends Controller
         $this->authorize('view', $journal);
 
         return response()->json([
-            'data' => $journal->load([
+            'data'    => $journal->load([
                 'branch:id,name,code',
                 'mapping:id,event_key,payment_method,expense_category',
                 'creator:id,name',
                 'poster:id,name',
                 'voider:id,name',
-                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines' => fn($q) => $q->orderBy('line_order'),
                 'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
             ]),
-            'meta' => [],
+            'meta'    => [],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -109,29 +108,29 @@ class JournalEntryController extends Controller
     {
         $this->authorize('create', AccountingJournalEntry::class);
 
-        $payload = $request->validated();
+        $payload  = $request->validated();
         $branchId = $this->resolveBranchId($request, $payload);
-        $lines = $this->normalizeLines($payload['lines'], $branchId);
+        $lines    = $this->normalizeLines($payload['lines'], $branchId);
 
         $journal = DB::transaction(function () use ($request, $payload, $branchId, $lines) {
             $journal = new AccountingJournalEntry([
-                'branch_id' => $branchId,
-                'mapping_id' => null,
-                'journal_no' => $this->numberService->next($payload['journal_date']),
+                'branch_id'    => $branchId,
+                'mapping_id'   => null,
+                'journal_no'   => $this->numberService->next($payload['journal_date']),
                 'journal_date' => Carbon::parse($payload['journal_date'])->toDateString(),
-                'source_type' => 'manual',
-                'source_id' => null,
-                'source_no' => null,
-                'status' => 'DRAFT',
-                'description' => $payload['description'] ?? null,
-                'total_debit' => $lines['total_debit'],
+                'source_type'  => 'manual',
+                'source_id'    => null,
+                'source_no'    => null,
+                'status'       => 'DRAFT',
+                'description'  => $payload['description'] ?? null,
+                'total_debit'  => $lines['total_debit'],
                 'total_credit' => $lines['total_credit'],
-                'created_by' => $request->user()?->id,
-                'posted_by' => null,
-                'posted_at' => null,
-                'voided_by' => null,
-                'voided_at' => null,
-                'void_reason' => null,
+                'created_by'   => $request->user()?->id,
+                'posted_by'    => null,
+                'posted_at'    => null,
+                'voided_by'    => null,
+                'voided_at'    => null,
+                'void_reason'  => null,
             ]);
 
             $journal->id = (string) Str::uuid();
@@ -140,11 +139,11 @@ class JournalEntryController extends Controller
             foreach ($lines['items'] as $index => $line) {
                 $detail = new AccountingJournalLine([
                     'journal_entry_id' => $journal->id,
-                    'account_id' => $line['account_id'],
-                    'description' => $line['description'],
-                    'debit' => $line['debit'],
-                    'credit' => $line['credit'],
-                    'line_order' => $index + 1,
+                    'account_id'       => $line['account_id'],
+                    'description'      => $line['description'],
+                    'debit'            => $line['debit'],
+                    'credit'           => $line['credit'],
+                    'line_order'       => $index + 1,
                 ]);
 
                 $detail->id = (string) Str::uuid();
@@ -155,14 +154,14 @@ class JournalEntryController extends Controller
         });
 
         return response()->json([
-            'data' => $journal->load([
+            'data'    => $journal->load([
                 'branch:id,name,code',
-                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines' => fn($q) => $q->orderBy('line_order'),
                 'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
             ]),
-            'meta' => [],
+            'meta'    => [],
             'message' => 'Created',
-            'errors' => null,
+            'errors'  => null,
         ], 201);
     }
 
@@ -172,25 +171,25 @@ class JournalEntryController extends Controller
 
         if ((string) $journal->source_type !== 'manual') {
             return response()->json([
-                'data' => null,
-                'meta' => [],
+                'data'    => null,
+                'meta'    => [],
                 'message' => 'Jurnal otomatis tidak boleh diedit manual.',
-                'errors' => [
+                'errors'  => [
                     'journal' => ['Jurnal otomatis tidak boleh diedit manual. Gunakan jurnal koreksi.'],
                 ],
             ], 422);
         }
 
-        $payload = $request->validated();
+        $payload  = $request->validated();
         $branchId = $this->resolveBranchId($request, $payload);
-        $lines = $this->normalizeLines($payload['lines'], $branchId);
+        $lines    = $this->normalizeLines($payload['lines'], $branchId);
 
         DB::transaction(function () use ($journal, $payload, $branchId, $lines) {
             $journal->fill([
-                'branch_id' => $branchId,
+                'branch_id'    => $branchId,
                 'journal_date' => Carbon::parse($payload['journal_date'])->toDateString(),
-                'description' => $payload['description'] ?? null,
-                'total_debit' => $lines['total_debit'],
+                'description'  => $payload['description'] ?? null,
+                'total_debit'  => $lines['total_debit'],
                 'total_credit' => $lines['total_credit'],
             ])->save();
 
@@ -201,11 +200,11 @@ class JournalEntryController extends Controller
             foreach ($lines['items'] as $index => $line) {
                 $detail = new AccountingJournalLine([
                     'journal_entry_id' => $journal->id,
-                    'account_id' => $line['account_id'],
-                    'description' => $line['description'],
-                    'debit' => $line['debit'],
-                    'credit' => $line['credit'],
-                    'line_order' => $index + 1,
+                    'account_id'       => $line['account_id'],
+                    'description'      => $line['description'],
+                    'debit'            => $line['debit'],
+                    'credit'           => $line['credit'],
+                    'line_order'       => $index + 1,
                 ]);
 
                 $detail->id = (string) Str::uuid();
@@ -214,14 +213,14 @@ class JournalEntryController extends Controller
         });
 
         return response()->json([
-            'data' => $journal->refresh()->load([
+            'data'    => $journal->refresh()->load([
                 'branch:id,name,code',
-                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines' => fn($q) => $q->orderBy('line_order'),
                 'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
             ]),
-            'meta' => [],
+            'meta'    => [],
             'message' => 'Updated',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -233,10 +232,10 @@ class JournalEntryController extends Controller
 
         if ($journal->lines->count() < 2) {
             return response()->json([
-                'data' => null,
-                'meta' => [],
+                'data'    => null,
+                'meta'    => [],
                 'message' => 'Jurnal minimal memiliki dua baris.',
-                'errors' => [
+                'errors'  => [
                     'lines' => ['Jurnal minimal memiliki dua baris.'],
                 ],
             ], 422);
@@ -244,10 +243,10 @@ class JournalEntryController extends Controller
 
         if (bccomp((string) $journal->total_debit, (string) $journal->total_credit, 2) !== 0) {
             return response()->json([
-                'data' => null,
-                'meta' => [],
+                'data'    => null,
+                'meta'    => [],
                 'message' => 'Jurnal belum balance.',
-                'errors' => [
+                'errors'  => [
                     'total' => ['Total debit harus sama dengan total kredit.'],
                 ],
             ], 422);
@@ -255,25 +254,25 @@ class JournalEntryController extends Controller
 
         DB::transaction(function () use ($request, $journal) {
             $journal->fill([
-                'status' => 'POSTED',
-                'posted_by' => $request->user()?->id,
-                'posted_at' => now(),
-                'voided_by' => null,
-                'voided_at' => null,
+                'status'      => 'POSTED',
+                'posted_by'   => $request->user()?->id,
+                'posted_at'   => now(),
+                'voided_by'   => null,
+                'voided_at'   => null,
                 'void_reason' => null,
             ])->save();
         });
 
         return response()->json([
-            'data' => $journal->refresh()->load([
+            'data'    => $journal->refresh()->load([
                 'branch:id,name,code',
                 'poster:id,name',
-                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines' => fn($q) => $q->orderBy('line_order'),
                 'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
             ]),
-            'meta' => [],
+            'meta'    => [],
             'message' => 'Posted',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -289,23 +288,23 @@ class JournalEntryController extends Controller
 
         DB::transaction(function () use ($request, $journal) {
             $journal->fill([
-                'status' => 'VOID',
-                'voided_by' => $request->user()?->id,
-                'voided_at' => now(),
+                'status'      => 'VOID',
+                'voided_by'   => $request->user()?->id,
+                'voided_at'   => now(),
                 'void_reason' => $request->input('void_reason'),
             ])->save();
         });
 
         return response()->json([
-            'data' => $journal->refresh()->load([
+            'data'    => $journal->refresh()->load([
                 'branch:id,name,code',
                 'voider:id,name',
-                'lines' => fn ($q) => $q->orderBy('line_order'),
+                'lines' => fn($q) => $q->orderBy('line_order'),
                 'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
             ]),
-            'meta' => [],
+            'meta'    => [],
             'message' => 'Voided',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -313,7 +312,7 @@ class JournalEntryController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->hasRole('Superadmin')) {
+        if (! $user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             if (! $user->branch_id) {
                 throw ValidationException::withMessages([
                     'branch_id' => ['User belum terikat ke cabang.'],
@@ -336,12 +335,12 @@ class JournalEntryController extends Controller
 
     private function normalizeLines(array $rows, string $branchId): array
     {
-        $items = [];
-        $totalDebit = 0.0;
+        $items       = [];
+        $totalDebit  = 0.0;
         $totalCredit = 0.0;
 
         foreach ($rows as $index => $row) {
-            $debit = round((float) ($row['debit'] ?? 0), 2);
+            $debit  = round((float) ($row['debit'] ?? 0), 2);
             $credit = round((float) ($row['credit'] ?? 0), 2);
 
             if ($debit <= 0 && $credit <= 0) {
@@ -372,17 +371,17 @@ class JournalEntryController extends Controller
             }
 
             $items[] = [
-                'account_id' => (string) $row['account_id'],
+                'account_id'  => (string) $row['account_id'],
                 'description' => $row['description'] ?? null,
-                'debit' => $debit,
-                'credit' => $credit,
+                'debit'       => $debit,
+                'credit'      => $credit,
             ];
 
-            $totalDebit += $debit;
+            $totalDebit  += $debit;
             $totalCredit += $credit;
         }
 
-        $totalDebit = round($totalDebit, 2);
+        $totalDebit  = round($totalDebit, 2);
         $totalCredit = round($totalCredit, 2);
 
         if ($totalDebit <= 0 || $totalCredit <= 0) {
@@ -398,8 +397,8 @@ class JournalEntryController extends Controller
         }
 
         return [
-            'items' => $items,
-            'total_debit' => $totalDebit,
+            'items'        => $items,
+            'total_debit'  => $totalDebit,
             'total_credit' => $totalCredit,
         ];
     }
