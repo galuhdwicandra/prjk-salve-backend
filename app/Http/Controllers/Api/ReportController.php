@@ -84,6 +84,8 @@ class ReportController extends Controller
                     'customer_name',
                     'customer_whatsapp',
                     'customer_address',
+                    'services',
+                    'qty',
                     'order_status',
                     'payment_status',
                     'payment_method',

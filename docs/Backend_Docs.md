@@ -1,6 +1,6 @@
 # Dokumentasi Backend (FULL Source)
 
-_Dihasilkan otomatis: 2026-06-09 16:16:31_  
+_Dihasilkan otomatis: 2026-06-09 16:33:55_  
 **Root:** `G:\.galuh\latihanlaravel\A-Portfolio-Project\2026\clone_salve\backend`
 
 
@@ -4475,7 +4475,7 @@ class ReceivableController extends Controller
 
 ### app\Http\Controllers\Api\ReportController.php
 
-- SHA: `61a2f84e64f7`  
+- SHA: `13f33854e84e`  
 - Ukuran: 7 KB  
 - Namespace: `App\Http\Controllers\Api`
 
@@ -4574,6 +4574,8 @@ class ReportController extends Controller
                     'customer_name',
                     'customer_whatsapp',
                     'customer_address',
+                    'services',
+                    'qty',
                     'order_status',
                     'payment_status',
                     'payment_method',
@@ -17195,8 +17197,8 @@ class ReceivableService
 
 ### app\Services\ReportService.php
 
-- SHA: `d60ec096375e`  
-- Ukuran: 13 KB  
+- SHA: `087d3d512f10`  
+- Ukuran: 14 KB  
 - Namespace: `App\Services`
 
 **Class `ReportService`**
@@ -17283,11 +17285,27 @@ class ReportService
     /** SALES (basis kas) – window: payments.paid_at */
     public function buildSalesQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $method = null)
     {
+        $serviceSummary = DB::table('order_items as oi')
+            ->join('services as s', 's.id', '=', 'oi.service_id')
+            ->selectRaw("
+            oi.order_id,
+            GROUP_CONCAT(
+                CONCAT(s.name, ' x', CAST(oi.qty AS CHAR))
+                ORDER BY s.name
+                SEPARATOR '; '
+            ) AS services,
+            TRIM(TRAILING '.00' FROM CAST(SUM(oi.qty) AS CHAR)) AS qty
+        ")
+            ->groupBy('oi.order_id');
+
         $q = DB::table('payments')
             ->join('orders', 'orders.id', '=', 'payments.order_id')
             ->leftJoin('branches', 'branches.id', '=', 'orders.branch_id')
             ->leftJoin('users', 'users.id', '=', 'orders.created_by')
             ->leftJoin('customers', 'customers.id', '=', 'orders.customer_id')
+            ->leftJoinSub($serviceSummary, 'service_summary', function ($join) {
+                $join->on('service_summary.order_id', '=', 'orders.id');
+            })
             ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
             ->whereBetween('payments.paid_at', [$from, $to])
             ->selectRaw("
@@ -17302,18 +17320,20 @@ class ReportService
             customers.name AS customer_name,
             customers.whatsapp AS customer_whatsapp,
             customers.address AS customer_address,
+            service_summary.services AS services,
+            service_summary.qty AS qty,
             orders.status AS order_status,
             orders.payment_status,
             payments.method AS payment_method,
-            payments.amount AS payment_amount,
+            TRIM(TRAILING '.00' FROM CAST(payments.amount AS CHAR)) AS payment_amount,
             DATE_FORMAT(payments.paid_at, '%Y-%m-%d %H:%i:%s') AS paid_at,
             payments.note AS payment_note,
-            orders.subtotal,
-            orders.discount,
-            orders.dp_amount,
-            orders.grand_total,
-            orders.paid_amount,
-            orders.due_amount,
+            TRIM(TRAILING '.00' FROM CAST(orders.subtotal AS CHAR)) AS subtotal,
+            TRIM(TRAILING '.00' FROM CAST(orders.discount AS CHAR)) AS discount,
+            TRIM(TRAILING '.00' FROM CAST(orders.dp_amount AS CHAR)) AS dp_amount,
+            TRIM(TRAILING '.00' FROM CAST(orders.grand_total AS CHAR)) AS grand_total,
+            TRIM(TRAILING '.00' FROM CAST(orders.paid_amount AS CHAR)) AS paid_amount,
+            TRIM(TRAILING '.00' FROM CAST(orders.due_amount AS CHAR)) AS due_amount,
             users.name AS cashier
         ");
 
