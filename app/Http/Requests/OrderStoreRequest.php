@@ -47,6 +47,12 @@ class OrderStoreRequest extends FormRequest
             $data['notes'] = ($this->input('notes') === null) ? null : trim((string) $this->input('notes'));
         }
 
+        if ($this->has('discount')) {
+            $data['discount'] = is_numeric($this->input('discount'))
+                ? (float) $this->input('discount')
+                : $this->input('discount');
+        }
+
         if ($this->has('received_at')) {
             $data['received_at'] = $this->normalizeLocal($this->input('received_at'));
         }
@@ -72,6 +78,7 @@ class OrderStoreRequest extends FormRequest
                 Rule::exists('customers', 'id')->where(fn($q) => $q->where('branch_id', $branchId)),
             ],
             'notes'              => ['nullable', 'string'],
+            'discount'           => ['nullable', 'numeric', 'min:0'],
 
             'items'              => ['required', 'array', 'min:1'],
             'items.*.service_id' => ['required', 'uuid', 'exists:services,id'],

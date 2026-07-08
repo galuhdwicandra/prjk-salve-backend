@@ -80,8 +80,12 @@ class OrderService
                 ]);
             }
 
+            $manualDiscount = (float) max(0, (float) ($data['discount'] ?? 0));
+            $manualDiscount = min($manualDiscount, $subtotal);
+
             $order->subtotal = $this->dec($subtotal);
-            $order->discount = $this->dec(0);
+            $order->discount = $this->dec($manualDiscount);
+
             $this->loyalty->applyToOrder($order, $branchId);
             $order->save();
 
@@ -264,6 +268,9 @@ class OrderService
                 abort(403, 'Order pada status ini terkunci dan tidak dapat diedit.');
             }
 
+            $currentLoyaltyReward   = (string) ($order->loyalty_reward ?: 'NONE');
+            $currentLoyaltyDiscount = (float) ($order->loyalty_discount ?? 0);
+
             if (array_key_exists('customer_id', $data)) {
                 $order->customer_id = $data['customer_id'];
             }
@@ -274,11 +281,6 @@ class OrderService
 
             if (array_key_exists('invoice_no', $data)) {
                 $order->invoice_no = $data['invoice_no'];
-            }
-
-            if (array_key_exists('discount', $data)) {
-                // normalisasi di Request; di sini cukup set
-                $order->discount = $this->dec((float) max(0, (float) $data['discount']));
             }
 
             // ===== Tambahan: tanggal masuk & tanggal selesai =====
@@ -316,13 +318,18 @@ class OrderService
             }
 
             $effectiveSubtotal = $recalcSubtotal !== null ? $recalcSubtotal : (float) $order->subtotal;
-            $baseDiscount      = (float) max(0, (float) $order->discount);
 
-            // Re-preview loyalti berdasarkan subtotal terbaru
-            $preview                  = $this->loyalty->previewReward($order->customer_id, (string) $order->branch_id, $effectiveSubtotal);
-            $order->loyalty_reward    = $preview['reward'];
-            $order->loyalty_discount  = $this->dec($preview['discount']);
-            $effectiveDiscount        = $baseDiscount + (float) $preview['discount'];
+            $manualDiscount  = array_key_exists('discount', $data)
+                ? (float) max(0, (float) $data['discount'])
+                : (float) max(0, (float) $order->discount - (float) $order->loyalty_discount);
+
+            $baseDiscount = min($manualDiscount, $effectiveSubtotal);
+
+            $order->loyalty_reward   = $currentLoyaltyReward;
+            $order->loyalty_discount = $this->dec($currentLoyaltyDiscount);
+            $loyaltyDiscount         = $currentLoyaltyDiscount;
+
+            $effectiveDiscount = $baseDiscount + $loyaltyDiscount;
 
             $grand = max(0, $effectiveSubtotal - $effectiveDiscount);
             $due   = max(0, $grand - (float) $order->paid_amount);
