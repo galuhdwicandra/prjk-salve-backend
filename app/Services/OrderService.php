@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Models\Delivery;
 use App\Models\Order;
+use App\Models\OrderAuditLog;
 use App\Models\OrderItem;
 use App\Models\OrderPhoto;
 use App\Models\Receivable;
@@ -28,9 +29,11 @@ class OrderService
      *   branch_id?:string|null,
      *   customer_id?:string|null,
      *   notes?:string|null,
+     *   discount_type?:string|null,
+     *   discount_value?:float|int|null,
      *   received_at?:string|\DateTimeInterface|null,
      *   ready_at?:string|\DateTimeInterface|null,
-     *   items: array<int, array{service_id:string, qty:float|int, note?:string|null}>
+     *   items: array<int, array{service_id:string, qty:float|int, note?:string|null, discount_type?:string|null, discount_value?:float|int|null}>
      * } $data
      */
     public function createDraft(array $data, User $actor): Order
@@ -43,45 +46,68 @@ class OrderService
             $number = $ids['number'];
 
             $order = new Order([
-                'id'          => (string) Str::uuid(),
-                'branch_id'   => $branchId,
-                'customer_id' => $data['customer_id'] ?? null,
-                'number'      => $ids['number'],
-                'invoice_no'  => $ids['invoice_no'],
-                'status'      => 'QUEUE',
-                'subtotal'    => $this->dec(0),
-                'discount'    => $this->dec(0),
-                'grand_total' => $this->dec(0),
-                'paid_amount' => $this->dec(0),
-                'due_amount'  => $this->dec(0),
-                'notes'       => $data['notes'] ?? null,
-                'created_by'  => $actor->id,
+                'id'                     => (string) Str::uuid(),
+                'branch_id'              => $branchId,
+                'customer_id'            => $data['customer_id'] ?? null,
+                'customer_name'          => $data['customer_id']
+                    ? optional(\App\Models\Customer::find($data['customer_id']))->name
+                    : null,
+                'number'                 => $ids['number'],
+                'invoice_no'             => $ids['invoice_no'],
+                'status'                 => 'QUEUE',
+                'processing_destination' => $data['processing_destination'] ?? null,
+                'destination_branch_id'  => $data['destination_branch_id'] ?? null,
+                'subtotal'               => $this->dec(0),
+                'discount'               => $this->dec(0),
+                'discount_type'          => $data['discount_type'] ?? null,
+                'discount_value'         => $this->dec($data['discount_value'] ?? 0),
+                'grand_total'            => $this->dec(0),
+                'paid_amount'            => $this->dec(0),
+                'due_amount'             => $this->dec(0),
+                'notes'                  => $data['notes'] ?? null,
+                'created_by'             => $actor->id,
             ]);
             $order->received_at = $data['received_at'] ?? now(); // default: sekarang
             $order->ready_at    = $data['ready_at'] ?? null;
             $order->save();
 
-            $subtotal = 0.0;
+            $subtotal          = 0.0;
+            $itemDiscountTotal = 0.0;
 
             foreach ($data['items'] as $row) {
-                $price     = (float) $this->pricing->getPrice($row['service_id'], $branchId);
-                $qty       = (float) $row['qty'];
-                $line      = $price * $qty;
-                $subtotal += $line;
+                $price        = $this->resolvePrice($row, $actor, $branchId);
+                $qty          = (float) $row['qty'];
+                $lineGross    = $price * $qty;
+                $itemDiscount = $this->computeDiscountAmount(
+                    $row['discount_type'] ?? null,
+                    (float) ($row['discount_value'] ?? 0),
+                    $lineGross
+                );
+                $lineTotal = $lineGross - $itemDiscount;
+
+                $subtotal          += $lineGross;
+                $itemDiscountTotal += $itemDiscount;
 
                 OrderItem::query()->create([
-                    'id'         => (string) Str::uuid(),
-                    'order_id'   => $order->id,
-                    'service_id' => $row['service_id'],
-                    'qty'        => $this->dec($qty),
-                    'price'      => $this->dec($price),
-                    'total'      => $this->dec($line),
-                    'note'       => $row['note'] ?? null,
+                    'id'              => (string) Str::uuid(),
+                    'order_id'        => $order->id,
+                    'service_id'      => $row['service_id'],
+                    'qty'             => $this->dec($qty),
+                    'price'           => $this->dec($price),
+                    'discount_type'   => $row['discount_type'] ?? null,
+                    'discount_value'  => $this->dec($row['discount_value'] ?? 0),
+                    'discount_amount' => $this->dec($itemDiscount),
+                    'total'           => $this->dec($lineTotal),
+                    'note'            => $row['note'] ?? null,
                 ]);
             }
 
-            $manualDiscount = (float) max(0, (float) ($data['discount'] ?? 0));
-            $manualDiscount = min($manualDiscount, $subtotal);
+            $orderDiscount = $this->computeDiscountAmount(
+                $data['discount_type'] ?? null,
+                (float) ($data['discount_value'] ?? 0),
+                max(0, $subtotal - $itemDiscountTotal)
+            );
+            $manualDiscount = $itemDiscountTotal + $orderDiscount;
 
             $order->subtotal = $this->dec($subtotal);
             $order->discount = $this->dec($manualDiscount);
@@ -212,6 +238,16 @@ class OrderService
             // ===========================================================
             $order->save();
 
+            if ($next === 'CANCELED' && $order->customer_id) {
+                $this->loyalty->adjustManual(
+                    (string) $order->customer_id,
+                    (string) $order->branch_id,
+                    'subtract',
+                    1,
+                    'VOID ' . $order->number
+                );
+            }
+
             if (Schema::hasTable('receivables')) {
                 DB::table('receivables')
                     ->where('order_id', (string) $order->getKey())
@@ -244,7 +280,12 @@ class OrderService
                 app(DeliveryService::class)->autoAssign($order->id);
             }
 
-            // TODO: audit('ORDER_STATUS', ['order_id' => $order->id, 'from' => $from, 'to' => $next, 'actor' => $actor->id]);
+            OrderAuditLog::query()->create([
+                'order_id' => (string) $order->getKey(),
+                'action'   => $next === 'CANCELED' ? 'VOID' : 'STATUS_' . $next,
+                'actor_id' => $actor->id,
+                'snapshot' => ['from' => $from, 'to' => $next],
+            ]);
         });
 
         return $order;
@@ -255,8 +296,9 @@ class OrderService
      * @param array{
      *   customer_id?:string|null,
      *   notes?:string|null,
-     *   discount?:float|int|null,
-     *   items?: array<int, array{id?:string, service_id:string, qty:float|int, note?:string|null}>
+     *   discount_type?:string|null,
+     *   discount_value?:float|int|null,
+     *   items?: array<int, array{id?:string, service_id:string, qty:float|int, note?:string|null, discount_type?:string|null, discount_value?:float|int|null}>
      * } $data
      */
     public function update(Order $order, array $data, User $actor): Order
@@ -272,7 +314,10 @@ class OrderService
             $currentLoyaltyDiscount = (float) ($order->loyalty_discount ?? 0);
 
             if (array_key_exists('customer_id', $data)) {
-                $order->customer_id = $data['customer_id'];
+                $order->customer_id   = $data['customer_id'];
+                $order->customer_name = $data['customer_id']
+                    ? optional(\App\Models\Customer::find($data['customer_id']))->name
+                    : null;
             }
 
             if (array_key_exists('notes', $data)) {
@@ -281,6 +326,21 @@ class OrderService
 
             if (array_key_exists('invoice_no', $data)) {
                 $order->invoice_no = $data['invoice_no'];
+            }
+
+            if (array_key_exists('discount_type', $data)) {
+                $order->discount_type = $data['discount_type'];
+            }
+
+            if (array_key_exists('discount_value', $data)) {
+                $order->discount_value = $this->dec($data['discount_value']);
+            }
+
+            if (array_key_exists('processing_destination', $data)) {
+                $order->processing_destination = $data['processing_destination'];
+            }
+            if (array_key_exists('destination_branch_id', $data)) {
+                $order->destination_branch_id = $data['destination_branch_id'];
             }
 
             // ===== Tambahan: tanggal masuk & tanggal selesai =====
@@ -292,36 +352,62 @@ class OrderService
             }
             // =====================================================
 
-            $recalcSubtotal = null;
+            $recalcSubtotal          = null;
+            $recalcItemDiscountTotal = null;
             if (! empty($data['items'])) {
                 // strategi sederhana: hapus & tulis ulang
                 $order->items()->delete();
 
-                $subtotal = 0.0;
+                $subtotal          = 0.0;
+                $itemDiscountTotal = 0.0;
                 foreach ($data['items'] as $row) {
-                    $price     = (float) $this->pricing->getPrice($row['service_id'], $order->branch_id);
-                    $qty       = (float) $row['qty'];
-                    $line      = $price * $qty;
-                    $subtotal += $line;
+                    $price        = $this->resolvePrice($row, $actor, (string) $order->branch_id);
+                    $qty          = (float) $row['qty'];
+                    $lineGross    = $price * $qty;
+                    $itemDiscount = $this->computeDiscountAmount(
+                        $row['discount_type'] ?? null,
+                        (float) ($row['discount_value'] ?? 0),
+                        $lineGross
+                    );
+                    $lineTotal = $lineGross - $itemDiscount;
+
+                    $subtotal          += $lineGross;
+                    $itemDiscountTotal += $itemDiscount;
 
                     OrderItem::query()->create([
-                        'id'         => (string) Str::uuid(),
-                        'order_id'   => $order->id,
-                        'service_id' => $row['service_id'],
-                        'qty'        => $this->dec($qty),
-                        'price'      => $this->dec($price),
-                        'total'      => $this->dec($line),
-                        'note'       => $row['note'] ?? null,
+                        'id'              => (string) Str::uuid(),
+                        'order_id'        => $order->id,
+                        'service_id'      => $row['service_id'],
+                        'qty'             => $this->dec($qty),
+                        'price'           => $this->dec($price),
+                        'discount_type'   => $row['discount_type'] ?? null,
+                        'discount_value'  => $this->dec($row['discount_value'] ?? 0),
+                        'discount_amount' => $this->dec($itemDiscount),
+                        'total'           => $this->dec($lineTotal),
+                        'note'            => $row['note'] ?? null,
                     ]);
                 }
-                $recalcSubtotal = $subtotal;
+                $recalcSubtotal           = $subtotal;
+                $recalcItemDiscountTotal  = $itemDiscountTotal;
             }
 
             $effectiveSubtotal = $recalcSubtotal !== null ? $recalcSubtotal : (float) $order->subtotal;
 
-            $manualDiscount  = array_key_exists('discount', $data)
-                ? (float) max(0, (float) $data['discount'])
-                : (float) max(0, (float) $order->discount - (float) $order->loyalty_discount);
+            $hasOrderDiscountInput = array_key_exists('discount_type', $data) || array_key_exists('discount_value', $data);
+
+            if ($hasOrderDiscountInput) {
+                $itemDiscountTotal = $recalcItemDiscountTotal !== null
+                    ? $recalcItemDiscountTotal
+                    : (float) $order->items()->sum('discount_amount');
+
+                $manualDiscount = $itemDiscountTotal + $this->computeDiscountAmount(
+                    $order->discount_type,
+                    (float) ($order->discount_value ?? 0),
+                    max(0, $effectiveSubtotal - $itemDiscountTotal)
+                );
+            } else {
+                $manualDiscount = (float) max(0, (float) $order->discount - (float) $order->loyalty_discount);
+            }
 
             $baseDiscount = min($manualDiscount, $effectiveSubtotal);
 
@@ -338,6 +424,15 @@ class OrderService
             $order->discount    = $this->dec($effectiveDiscount);
             $order->grand_total = $this->dec($grand);
             $order->due_amount  = $this->dec($due);
+
+            $paidAmount            = (float) $order->paid_amount;
+            $order->payment_status = ($due <= 0 && $grand > 0)
+                ? 'PAID'
+                : ($paidAmount > 0 ? 'DP' : 'PENDING');
+
+            if ($order->payment_status !== 'PAID') {
+                $order->paid_at = null;
+            }
 
             $order->save();
 
@@ -463,6 +558,33 @@ class OrderService
 
             return $locked->fresh(['items.service', 'customer', 'receivable']);
         });
+    }
+
+    /**
+     * Hitung nominal diskon dari type (NOMINAL|PERCENT) + value, dibatasi maksimal $base.
+     */
+    private function computeDiscountAmount(?string $type, float $value, float $base): float
+    {
+        $value  = max(0.0, $value);
+        $base   = max(0.0, $base);
+        $amount = $type === 'PERCENT'
+            ? round($base * min($value, 100) / 100, 2)
+            : $value;
+
+        return max(0.0, min($amount, $base));
+    }
+
+    /**
+     * Harga item: override klien hanya dipakai jika actor punya flag custom_price
+     * dan mengirim nilai; selain itu selalu dihitung server via PricingService.
+     */
+    private function resolvePrice(array $row, User $actor, string $branchId): float
+    {
+        if ($actor->custom_price && isset($row['price']) && $row['price'] !== null && $row['price'] !== '') {
+            return max(0.0, (float) $row['price']);
+        }
+
+        return (float) $this->pricing->getPrice($row['service_id'], $branchId);
     }
 
     /**

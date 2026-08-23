@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Models\WhatsappTemplate;
 
 class WhatsappTemplateUpdateRequest extends FormRequest
 {
@@ -18,7 +19,7 @@ class WhatsappTemplateUpdateRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:100'],
             'content' => ['sometimes', 'required', 'string'],
             'is_active' => ['sometimes', 'boolean'],
-            'key' => ['sometimes', 'required', 'string', Rule::in(['receipt_pending', 'receipt_paid'])],
+            'key' => ['sometimes', 'required', 'string', Rule::in(WhatsappTemplate::KEYS)],
             'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
         ];
     }

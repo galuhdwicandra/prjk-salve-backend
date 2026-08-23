@@ -1,17 +1,26 @@
 <?php
-
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Model;
 
 class WhatsappTemplate extends Model
 {
     use HasUuids;
 
-    protected $table = 'whatsapp_templates';
+    public const KEYS = [
+        'struk',
+        'ready',
+        'reminder',
+        'greeting',
+        'receipt_pending',
+        'receipt_paid',
+        'order_status',
+    ];
+
+    protected $table     = 'whatsapp_templates';
     public $incrementing = false;
-    protected $keyType = 'string';
+    protected $keyType   = 'string';
 
     protected $fillable = [
         'id',

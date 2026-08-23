@@ -18,6 +18,7 @@ class AccountingAccount extends Model
         'parent_id',
         'code',
         'name',
+        'description',
         'type',
         'normal_balance',
         'is_cash_account',
@@ -59,5 +60,10 @@ class AccountingAccount extends Model
     public function journalLines(): HasMany
     {
         return $this->hasMany(AccountingJournalLine::class, 'account_id');
+    }
+
+    public function paymentMethodAccounts(): HasMany
+    {
+        return $this->hasMany(PaymentMethodAccount::class, 'account_id');
     }
 }

@@ -28,14 +28,9 @@ class ExpenseController extends Controller
             ->with('branch')
             ->orderByDesc('created_at');
 
-        if ($user->hasRole('Superadmin')) {
-            if ($branchId = $request->query('branch_id')) {
-                $query->where('branch_id', $branchId);
-            }
-        } else {
-            if ($user->branch_id !== null) {
-                $query->where('branch_id', $user->branch_id);
-            }
+        $branchIds = $user->branchScopeIds($request->query('branch_id'));
+        if ($branchIds !== null) {
+            $query->whereIn('branch_id', $branchIds);
         }
 
         if ($dateFrom = $request->query('date_from')) {

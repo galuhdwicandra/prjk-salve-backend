@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use App\Models\ServiceCategory;
+use Illuminate\Validation\Rule;
 
 class CategoryStoreRequest extends FormRequest
 {
@@ -15,7 +16,7 @@ class CategoryStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:120'],
+            'name' => ['required', 'string', 'max:120', Rule::unique('service_categories', 'name')],
             'is_active' => ['required', 'boolean'],
         ];
     }

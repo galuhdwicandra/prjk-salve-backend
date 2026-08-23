@@ -1,21 +1,19 @@
 <?php
-
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class CashSessionUpdateRequest extends FormRequest
+class BranchTypeUpdateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('update', $this->route('branchType')) ?? false;
     }
 
     public function rules(): array
     {
         return [
-            'opening_cash' => ['required', 'numeric', 'min:0'],
-            'notes' => ['nullable', 'string'],
+            'name' => ['required', 'string', 'max:120'],
         ];
     }
 }

@@ -52,6 +52,23 @@ class VoucherService
                 throw ValidationException::withMessages(['code' => 'Batas pemakaian voucher sudah tercapai.']);
             }
         }
+
+        $order->loadMissing('customer');
+        $wa = $order->customer?->whatsapp;
+
+        if ($wa) {
+            $reused = OrderVoucher::query()
+                ->join('orders', 'orders.id', '=', 'order_vouchers.order_id')
+                ->join('customers', 'customers.id', '=', 'orders.customer_id')
+                ->where('order_vouchers.voucher_id', $voucher->id)
+                ->where('customers.whatsapp', $wa)
+                ->where('orders.id', '!=', (string) $order->getKey())
+                ->exists();
+
+            if ($reused) {
+                throw ValidationException::withMessages(['code' => 'Voucher sudah pernah dipakai nomor WA ini.']);
+            }
+        }
     }
 
     /**

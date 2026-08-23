@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Policies;
 
 use App\Models\Order;
@@ -7,109 +6,66 @@ use App\Models\User;
 
 class OrderPolicy
 {
-    public function before(User $user, $ability)
-    {
-        if ($user->hasRole('Superadmin')) {
-            return true;
-        }
-        return null;
-    }
+    private const TERMINAL_STATUSES = ['DELIVERING', 'PICKED_UP', 'CANCELED'];
 
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir']);
+        return true;
     }
 
     public function view(User $user, Order $order): bool
     {
-        if ($user->hasAnyRole(['Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir'])) {
-            return (string) $user->branch_id === (string) $order->branch_id;
-        }
-
-        return false;
+        return $user->canAccessBranch((string) $order->branch_id);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['Admin Cabang', 'Kasir']);
+        return true;
     }
 
     public function update(User $user, Order $order): bool
     {
-        if (! $user->hasRole('Admin Cabang')) {
-            return false;
-        }
-
-        $sameBranch = (string) $user->branch_id === (string) $order->branch_id;
-        if (! $sameBranch) {
-            return false;
-        }
-
-        $terminal = in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true);
-        if ($terminal) {
-            return false;
-        }
-
-        return true;
+        return $user->canManageBranch((string) $order->branch_id)
+        && ! $this->isTerminal($order);
     }
 
     public function uploadPhotos(User $user, Order $order): bool
     {
-        if (! $user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
-            return false;
-        }
+        return $user->canAccessBranch((string) $order->branch_id)
+        && ! $this->isTerminal($order);
+    }
 
-        $sameBranch = (string) $user->branch_id === (string) $order->branch_id;
-        if (! $sameBranch) {
-            return false;
-        }
-
-        $terminal = in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true);
-        if ($terminal) {
-            return false;
-        }
-
-        return true;
+    public function applyVoucher(User $user, Order $order): bool
+    {
+        return $user->canAccessBranch((string) $order->branch_id)
+        && ! $this->isTerminal($order);
     }
 
     public function delete(User $user, Order $order): bool
     {
-        if (! $user->hasRole('Admin Cabang')) {
-            return false;
-        }
-
-        $sameBranch = (string) $user->branch_id === (string) $order->branch_id;
-        if (! $sameBranch) {
-            return false;
-        }
-
-        $terminal = in_array($order->status, ['DELIVERING', 'PICKED_UP', 'CANCELED'], true);
-        if ($terminal) {
-            return false;
-        }
-
-        if ($order->payments()->exists()) {
-            return false;
-        }
-
-        return true;
+        return $user->canManageBranch((string) $order->branch_id)
+        && ! $this->isTerminal($order)
+        && ! $order->payments()->exists();
     }
 
     public function transitionStatus(User $user, Order $order): bool
     {
-        if ($user->hasAnyRole(['Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir'])) {
-            return (string) $user->branch_id === (string) $order->branch_id;
-        }
-
-        return false;
+        return $user->canAccessBranch((string) $order->branch_id);
     }
 
     public function settlePayment(User $user, Order $order): bool
     {
-        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
-            return (string) $user->branch_id === (string) $order->branch_id;
-        }
+        return $user->canAccessBranch((string) $order->branch_id);
+    }
 
-        return false;
+    public function void(User $user, Order $order): bool
+    {
+        return $user->canManageBranch((string) $order->branch_id)
+        && $order->status !== 'CANCELED';
+    }
+
+    private function isTerminal(Order $order): bool
+    {
+        return in_array($order->status, self::TERMINAL_STATUSES, true);
     }
 }

@@ -4,7 +4,6 @@ namespace App\Providers;
 use App\Models\AccountingAccount;
 use App\Models\AccountingAccountMapping;
 use App\Models\AccountingJournalEntry;
-use App\Policies\AccountingJournalEntryPolicy;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Delivery;
@@ -19,7 +18,10 @@ use App\Models\WashNote;
 use App\Models\WhatsappTemplate;
 use App\Policies\AccountingAccountMappingPolicy;
 use App\Policies\AccountingAccountPolicy;
+use App\Policies\AccountingJournalEntryPolicy;
 use App\Policies\BranchPolicy;
+use App\Models\BranchType;
+use App\Policies\BranchTypePolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\CustomerPolicy;
 use App\Policies\DeliveryPolicy;
@@ -33,6 +35,8 @@ use App\Policies\WashNotePolicy;
 use App\Policies\WhatsappTemplatePolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
+use App\Policies\CashTransactionPolicy;
+use App\Models\CashTransaction;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -40,6 +44,7 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         User::class                     => UserPolicy::class,
         Branch::class                   => BranchPolicy::class,
+        BranchType::class               => BranchTypePolicy::class,
         ServiceCategory::class          => CategoryPolicy::class,
         Service::class                  => ServicePolicy::class,
         Customer::class                 => CustomerPolicy::class,
@@ -48,6 +53,7 @@ class AuthServiceProvider extends ServiceProvider
         Voucher::class                  => VoucherPolicy::class,
         Receivable::class               => ReceivablePolicy::class,
         Expense::class                  => ExpensePolicy::class,
+        CashTransaction::class          => CashTransactionPolicy::class,
         WashNote::class                 => WashNotePolicy::class,
         WhatsappTemplate::class         => WhatsappTemplatePolicy::class,
         AccountingAccount::class        => AccountingAccountPolicy::class,
@@ -62,45 +68,6 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        // Superadmin akses penuh (role mapping di SOP)
-        Gate::before(function ($user, $ability) {
-            return $user->hasRole('Superadmin') ? true : null;
-        });
-
-        Gate::define(
-            'user.assignRole',
-            fn($user, $target = null) =>
-            $user->hasAnyRole(['Superadmin', 'Admin Cabang'])
-        );
-
-        Gate::define('user.viewAny', fn($user) => $user->hasAnyRole(['Superadmin', 'Admin Cabang']));
-        Gate::define(
-            'user.view',
-            fn($user, $target) =>
-            $user->hasRole('Superadmin') ||
-            ($user->hasRole('Admin Cabang') && ($target->branch_id === $user->branch_id)) ||
-            ($user->id === $target->id)
-        );
-
-        Gate::define('user.create', fn($user) => $user->hasAnyRole(['Superadmin', 'Admin Cabang']));
-        Gate::define(
-            'user.update',
-            fn($user, $target) =>
-            $user->hasRole('Superadmin') ||
-            ($user->hasRole('Admin Cabang') && ($target->branch_id === $user->branch_id)) ||
-            ($user->id === $target->id)
-        );
-
-        Gate::define('dashboard.summary', function (User $user) {
-            // Spatie roles; semua role boleh melihat ringkasan sesuai scope cabangnya.
-            return $user->hasAnyRole(['Superadmin', 'Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir']);
-        });
-
-        Gate::define(
-            'user.delete',
-            fn($user, $target) =>
-            $user->hasRole('Superadmin') ||
-            ($user->hasRole('Admin Cabang') && ($target->branch_id === $user->branch_id))
-        );
+        Gate::define('dashboard.summary', fn(User $user) => $user->canModule('dashboard'));
     }
 }

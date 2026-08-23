@@ -41,7 +41,7 @@ class ReportController extends Controller
 
         $from   = $req->input('from');
         $to     = $req->input('to');
-        $branch = $req->branchId() ? 'branch' : 'all';
+        $branch = $req->branchIds() !== null ? 'branch' : 'all';
 
         $filename = sprintf(
             '%s_%s-%s_%s.csv',
@@ -66,7 +66,7 @@ class ReportController extends Controller
     {
         $from = $req->fromDate();
         $to   = $req->toDate();
-        $bid  = $req->branchId();
+        $bid  = $req->branchIds();
 
         switch ($kind) {
             case 'sales':
@@ -104,7 +104,30 @@ class ReportController extends Controller
 
             case 'orders':
                 $q       = $this->svc->buildOrdersQuery($from, $to, $bid, $req->input('status'));
-                $columns = ['branch', 'created_at', 'number', 'invoice_no', 'customer', 'status', 'services', 'qty', 'grand_total', 'paid_amount', 'payment_status'];
+                $columns = [
+                    'branch_code',
+                    'branch_name',
+                    'order_created_at',
+                    'received_at',
+                    'ready_at',
+                    'order_number',
+                    'invoice_no',
+                    'customer_name',
+                    'customer_whatsapp',
+                    'services',
+                    'qty',
+                    'order_status',
+                    'payment_status',
+                    'subtotal',
+                    'discount_type',
+                    'discount',
+                    'dp_amount',
+                    'grand_total',
+                    'paid_amount',
+                    'due_amount',
+                    'cashier',
+                    'notes',
+                ];
                 return [$q, $columns];
 
             case 'ready-reminders':

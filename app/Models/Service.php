@@ -1,21 +1,21 @@
 <?php
-
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Service extends Model
 {
     use HasFactory, HasUuids;
 
     public $incrementing = false;
-    protected $keyType = 'string';
-    protected $table = 'services';
+    protected $keyType   = 'string';
+    protected $table     = 'services';
 
     protected $fillable = [
         'category_id',
+        'parent_id',
         'name',
         'unit',
         'price_default',
@@ -24,7 +24,7 @@ class Service extends Model
 
     protected $casts = [
         'price_default' => 'decimal:2',
-        'is_active' => 'boolean',
+        'is_active'     => 'boolean',
     ];
 
     public function category()
@@ -35,5 +35,15 @@ class Service extends Model
     public function prices()
     {
         return $this->hasMany(ServicePrice::class, 'service_id', 'id');
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(self::class, 'parent_id', 'id');
+    }
+
+    public function variants()
+    {
+        return $this->hasMany(self::class, 'parent_id', 'id');
     }
 }

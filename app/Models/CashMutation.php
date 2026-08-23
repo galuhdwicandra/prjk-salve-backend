@@ -1,21 +1,19 @@
 <?php
-
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class CashMutation extends Model
 {
     use HasFactory, HasUuids;
 
     public $incrementing = false;
-    protected $keyType = 'string';
-    protected $table = 'cash_mutations';
+    protected $keyType   = 'string';
+    protected $table     = 'cash_mutations';
 
     protected $fillable = [
-        'cash_session_id',
         'branch_id',
         'type',
         'direction',
@@ -24,19 +22,16 @@ class CashMutation extends Model
         'source_id',
         'reference_no',
         'note',
+        'category',
+        'proof_path',
         'created_by',
         'effective_at',
     ];
 
     protected $casts = [
-        'amount' => 'decimal:2',
+        'amount'       => 'decimal:2',
         'effective_at' => 'datetime',
     ];
-
-    public function session()
-    {
-        return $this->belongsTo(CashSession::class, 'cash_session_id', 'id');
-    }
 
     public function branch()
     {

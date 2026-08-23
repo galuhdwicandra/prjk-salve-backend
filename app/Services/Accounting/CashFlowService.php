@@ -7,98 +7,80 @@ use Illuminate\Validation\ValidationException;
 
 class CashFlowService
 {
+    private const SECTIONS = [
+        'OPERATING' => 'ARUS KAS DARI AKTIVITAS OPERASI',
+        'INVESTING' => 'ARUS KAS DARI AKTIVITAS INVESTASI',
+        'FINANCING' => 'ARUS KAS DARI AKTIVITAS PENDANAAN',
+    ];
+
+    private const EVENT_GROUPS = [
+        'ORDER_PAID_CASH'         => ['Penjualan', 'OPERATING'],
+        'ORDER_PAID_DP'           => ['Penjualan', 'OPERATING'],
+        'ORDER_PAID_QRIS'         => ['Penjualan', 'OPERATING'],
+        'ORDER_PAID_TRANSFER'     => ['Penjualan', 'OPERATING'],
+        'RECEIVABLE_SETTLED_CASH' => ['Pelunasan Piutang', 'OPERATING'],
+        'EXPENSE_CASH_BOX'        => ['Beban Operasional', 'OPERATING'],
+        'EXPENSE_NON_CASH'        => ['Beban Operasional', 'OPERATING'],
+        'CASH_ADJUSTMENT_IN'      => ['Penyesuaian Kas', 'OPERATING'],
+        'CASH_ADJUSTMENT_OUT'     => ['Penyesuaian Kas', 'OPERATING'],
+        'CASH_OPENING_FLOAT'      => ['Setoran Modal', 'FINANCING'],
+        'CASH_WITHDRAWAL'         => ['Penarikan Pemilik (Prive)', 'FINANCING'],
+    ];
+
+    private const SOURCE_GROUPS = [
+        'manual'   => 'Jurnal Manual',
+        'transfer' => 'Pindah Dana',
+    ];
+
     public function build(array $filters, User $user): array
     {
         $dateFrom = (string) $filters['date_from'];
         $dateTo   = (string) $filters['date_to'];
         $branchId = $this->resolveBranchId($filters, $user);
 
-        $openingBalance = $this->calculateOpeningBalance($dateFrom, $branchId);
-        $rows           = $this->getPeriodRows($dateFrom, $dateTo, $branchId);
+        $rows = array_merge(
+            $this->journalRows($dateFrom, $dateTo, $branchId),
+            $this->cashTransactionRows($dateFrom, $dateTo, $branchId),
+        );
 
-        $operating = [];
-        $investing = [];
-        $financing = [];
+        $groups   = $this->groupRows($rows);
+        $sections = [];
 
-        $totalCashIn  = 0.0;
-        $totalCashOut = 0.0;
+        foreach (self::SECTIONS as $sectionKey => $sectionLabel) {
+            $sectionGroups = array_values(array_filter(
+                $groups,
+                static fn(array $group) => $group['section'] === $sectionKey
+            ));
 
-        foreach ($rows as $row) {
-            $cashIn    = (float) $row->cash_in;
-            $cashOut   = (float) $row->cash_out;
-            $netAmount = $cashIn - $cashOut;
+            $visible = array_values(array_filter(
+                $sectionGroups,
+                static fn(array $group) => abs($group['amount']) >= 0.01
+            ));
 
-            $item = [
-                'id'               => (string) $row->id,
-                'journal_entry_id' => (string) $row->journal_entry_id,
-                'journal_date'     => $row->journal_date,
-                'journal_no'       => $row->journal_no,
-                'source_type'      => $row->source_type,
-                'source_no'        => $row->source_no,
-                'event_key'        => $row->event_key,
-                'description'      => $row->description,
-                'cash_account'     => [
-                    'id'             => (string) $row->account_id,
-                    'code'           => $row->account_code,
-                    'name'           => $row->account_name,
-                    'normal_balance' => $row->normal_balance,
-                ],
-                'branch'           => [
-                    'id'   => (string) $row->branch_id,
-                    'code' => $row->branch_code,
-                    'name' => $row->branch_name,
-                ],
-                'cash_in'          => round($cashIn, 2),
-                'cash_out'         => round($cashOut, 2),
-                'net_amount'       => round($netAmount, 2),
+            usort($visible, static fn(array $a, array $b) => strcmp($a['label'], $b['label']));
+
+            $sections[] = [
+                'key'      => $sectionKey,
+                'label'    => $sectionLabel,
+                'inflows'  => $this->shape($visible, true),
+                'outflows' => $this->shape($visible, false),
+                'net'      => round(array_sum(array_column($sectionGroups, 'amount')), 2),
             ];
-
-            $activity = $this->classifyActivity(
-                $row->event_key,
-                $row->source_type
-            );
-
-            if ($activity === 'FINANCING') {
-                $financing[] = $item;
-            } elseif ($activity === 'INVESTING') {
-                $investing[] = $item;
-            } else {
-                $operating[] = $item;
-            }
-
-            $totalCashIn  += $cashIn;
-            $totalCashOut += $cashOut;
         }
 
-        $operatingTotal = $this->sumNetAmount($operating);
-        $investingTotal = $this->sumNetAmount($investing);
-        $financingTotal = $this->sumNetAmount($financing);
-        $netCashFlow    = $operatingTotal + $investingTotal + $financingTotal;
-        $endingBalance  = $openingBalance + $netCashFlow;
+        $openingBalance = $this->cashBalanceAsOf($dateFrom, '<', $branchId);
+        $endingBalance  = $this->cashBalanceAsOf($dateTo, '<=', $branchId);
+        $netChange      = round(array_sum(array_column($sections, 'net')), 2);
+        $balanceChange  = round($endingBalance - $openingBalance, 2);
 
         return [
             'data' => [
-                'operating_activities' => [
-                    'label' => 'Aktivitas Operasional',
-                    'items' => $operating,
-                    'total' => round($operatingTotal, 2),
-                ],
-                'investing_activities' => [
-                    'label' => 'Aktivitas Investasi',
-                    'items' => $investing,
-                    'total' => round($investingTotal, 2),
-                ],
-                'financing_activities' => [
-                    'label' => 'Aktivitas Pendanaan',
-                    'items' => $financing,
-                    'total' => round($financingTotal, 2),
-                ],
-                'summary'              => [
-                    'opening_balance' => round($openingBalance, 2),
-                    'total_cash_in'   => round($totalCashIn, 2),
-                    'total_cash_out'  => round($totalCashOut, 2),
-                    'net_cash_flow'   => round($netCashFlow, 2),
-                    'ending_balance'  => round($endingBalance, 2),
+                'sections' => $sections,
+                'summary'  => [
+                    'opening_balance' => $openingBalance,
+                    'net_change'      => $netChange,
+                    'ending_balance'  => $endingBalance,
+                    'is_balanced'     => abs($netChange - $balanceChange) < 0.01,
                 ],
             ],
             'meta' => [
@@ -106,45 +88,78 @@ class CashFlowService
                 'date_to'   => $dateTo,
                 'branch_id' => $branchId,
                 'basis'     => 'POSTED',
-                'source'    => 'accounting_journal_lines',
+                'row_count' => count($rows),
             ],
         ];
     }
 
-    private function calculateOpeningBalance(string $dateFrom, ?string $branchId): float
+    private function groupRows(array $rows): array
     {
-        $row = DB::table('accounting_journal_lines as lines')
-            ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
-            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
-            ->where('entries.status', 'POSTED')
-            ->where('accounts.is_cash_account', true)
-            ->whereDate('entries.journal_date', '<', $dateFrom)
-            ->when($branchId, function ($query) use ($branchId) {
-                $query->where('entries.branch_id', $branchId);
-            })
-            ->selectRaw("
-                COALESCE(SUM(
-                    CASE
-                        WHEN accounts.normal_balance = 'DEBIT'
-                            THEN lines.debit - lines.credit
-                        ELSE lines.credit - lines.debit
-                    END
-                ), 0) as opening_balance
-            ")
-            ->first();
+        $groups = [];
 
-        return round((float) ($row->opening_balance ?? 0), 2);
+        foreach ($rows as $row) {
+            $key = $row['section'] . '|' . $row['label'];
+
+            if (! isset($groups[$key])) {
+                $groups[$key] = [
+                    'key'     => $key,
+                    'section' => $row['section'],
+                    'label'   => $row['label'],
+                    'amount'  => 0.0,
+                    'items'   => [],
+                ];
+            }
+
+            $groups[$key]['amount']  += $row['amount'];
+            $groups[$key]['items'][]  = [
+                'id'          => $row['id'],
+                'no'          => $row['no'],
+                'date'        => $row['date'],
+                'account'     => $row['account'],
+                'description' => $row['description'],
+                'amount'      => round(abs($row['amount']), 2),
+                'link'        => $row['link'],
+            ];
+        }
+
+        return $groups;
     }
 
-    private function getPeriodRows(string $dateFrom, string $dateTo, ?string $branchId)
+    private function shape(array $groups, bool $inflow): array
+    {
+        $selected = array_filter(
+            $groups,
+            static fn(array $group) => $inflow ? $group['amount'] > 0 : $group['amount'] < 0
+        );
+
+        return array_values(array_map(static fn(array $group) => [
+            'key'    => $group['key'],
+            'label'  => $group['label'],
+            'amount' => round($group['amount'], 2),
+            'items'  => $group['items'],
+        ], $selected));
+    }
+
+    private function journalRows(string $dateFrom, string $dateTo, ?string $branchId): array
     {
         return DB::table('accounting_journal_lines as lines')
             ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
             ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
-            ->leftJoin('branches', 'branches.id', '=', 'entries.branch_id')
             ->leftJoin('accounting_account_mappings as mappings', 'mappings.id', '=', 'entries.mapping_id')
+            ->leftJoin('payments', function ($join) {
+                $join->on('payments.id', '=', 'entries.source_id')
+                    ->where('entries.source_type', '=', 'payment');
+            })
+            ->leftJoin('receivables', function ($join) {
+                $join->on('receivables.id', '=', 'entries.source_id')
+                    ->where('entries.source_type', '=', 'receivable');
+            })
             ->where('entries.status', 'POSTED')
             ->where('accounts.is_cash_account', true)
+            ->where(function ($query) {
+                $query->whereNull('entries.source_type')
+                    ->orWhere('entries.source_type', '!=', 'cash_transaction');
+            })
             ->whereDate('entries.journal_date', '>=', $dateFrom)
             ->whereDate('entries.journal_date', '<=', $dateTo)
             ->when($branchId, function ($query) use ($branchId) {
@@ -155,74 +170,142 @@ class CashFlowService
             ->orderBy('lines.line_order')
             ->select([
                 'lines.id',
-                'lines.journal_entry_id',
-                'lines.account_id',
-                'lines.description',
-                'lines.debit',
-                'lines.credit',
-                'entries.branch_id',
+                'lines.description as line_description',
+                'entries.id as journal_entry_id',
                 'entries.journal_date',
                 'entries.journal_no',
                 'entries.source_type',
+                'entries.source_id',
                 'entries.source_no',
-                'entries.description as journal_description',
-                'accounts.code as account_code',
+                'entries.description as entry_description',
                 'accounts.name as account_name',
-                'accounts.normal_balance',
-                'branches.code as branch_code',
-                'branches.name as branch_name',
                 'mappings.event_key',
+                'payments.order_id as payment_order_id',
+                'receivables.order_id as receivable_order_id',
                 DB::raw("
                     CASE
-                        WHEN accounts.normal_balance = 'DEBIT' AND lines.debit > lines.credit
+                        WHEN accounts.normal_balance = 'DEBIT'
                             THEN lines.debit - lines.credit
-                        WHEN accounts.normal_balance = 'CREDIT' AND lines.credit > lines.debit
-                            THEN lines.credit - lines.debit
-                        ELSE 0
-                    END as cash_in
-                "),
-                DB::raw("
-                    CASE
-                        WHEN accounts.normal_balance = 'DEBIT' AND lines.credit > lines.debit
-                            THEN lines.credit - lines.debit
-                        WHEN accounts.normal_balance = 'CREDIT' AND lines.debit > lines.credit
-                            THEN lines.debit - lines.credit
-                        ELSE 0
-                    END as cash_out
+                        ELSE lines.credit - lines.debit
+                    END as net_amount
                 "),
             ])
             ->get()
             ->map(function ($row) {
-                $row->description = $row->description ?: $row->journal_description;
-                return $row;
-            });
+                [$label, $section] = self::EVENT_GROUPS[strtoupper((string) $row->event_key)] ?? [self::SOURCE_GROUPS[(string) $row->source_type] ?? 'Lainnya', 'OPERATING'];
+
+                return [
+                    'id'          => (string) $row->id,
+                    'no'          => $row->source_no ?: $row->journal_no,
+                    'date'        => $row->journal_date,
+                    'account'     => $row->account_name,
+                    'description' => $row->line_description ?: $row->entry_description,
+                    'amount'      => round((float) $row->net_amount, 2),
+                    'label'       => $label,
+                    'section'     => $section,
+                    'link'        => $this->linkFor($row),
+                ];
+            })
+            ->all();
     }
 
-    private function classifyActivity(?string $eventKey, ?string $sourceType): string
+    private function linkFor(object $row): array
     {
-        $eventKey   = strtoupper((string) $eventKey);
-        $sourceType = strtoupper((string) $sourceType);
+        $sourceType = (string) $row->source_type;
 
-        if (in_array($eventKey, [
-            'CASH_OPENING_FLOAT',
-            'CASH_WITHDRAWAL',
-        ], true)) {
-            return 'FINANCING';
+        if ($sourceType === 'order_discount' && $row->source_id) {
+            return ['type' => 'order', 'id' => (string) $row->source_id];
         }
 
-        if (str_contains($sourceType, 'ASSET')) {
-            return 'INVESTING';
+        if ($sourceType === 'payment' && $row->payment_order_id) {
+            return ['type' => 'order', 'id' => (string) $row->payment_order_id];
         }
 
-        return 'OPERATING';
+        if ($sourceType === 'receivable' && $row->receivable_order_id) {
+            return ['type' => 'order', 'id' => (string) $row->receivable_order_id];
+        }
+
+        return ['type' => 'journal', 'id' => (string) $row->journal_entry_id];
     }
 
-    private function sumNetAmount(array $items): float
+    private function cashTransactionRows(string $dateFrom, string $dateTo, ?string $branchId): array
     {
-        return round(array_sum(array_map(
-            fn(array $item) => (float) $item['net_amount'],
-            $items
-        )), 2);
+        return DB::table('cash_transaction_lines as lines')
+            ->join('cash_transactions as trx', 'trx.id', '=', 'lines.cash_transaction_id')
+            ->join('transaction_categories as categories', 'categories.id', '=', 'lines.transaction_category_id')
+            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'trx.cash_account_id')
+            ->join('accounting_journal_entries as entries', function ($join) {
+                $join->on('entries.source_id', '=', 'trx.id')
+                    ->where('entries.source_type', '=', 'cash_transaction')
+                    ->where('entries.status', '=', 'POSTED');
+            })
+            ->whereDate('trx.trx_date', '>=', $dateFrom)
+            ->whereDate('trx.trx_date', '<=', $dateTo)
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->where('trx.branch_id', $branchId);
+            })
+            ->orderBy('trx.trx_date')
+            ->orderBy('trx.created_at')
+            ->orderBy('lines.line_order')
+            ->select([
+                'lines.id',
+                'lines.amount',
+                'lines.description as line_description',
+                'trx.id as trx_id',
+                'trx.no',
+                'trx.kind',
+                'trx.trx_date',
+                'trx.description as trx_description',
+                'entries.id as journal_entry_id',
+                'accounts.name as account_name',
+                'categories.name as category_name',
+                'categories.cashflow',
+            ])
+            ->get()
+            ->map(function ($row) {
+                $amount  = round((float) $row->amount, 2);
+                $section = (string) $row->cashflow;
+
+                return [
+                    'id'          => (string) $row->id,
+                    'no'          => $row->no,
+                    'date'        => $row->trx_date,
+                    'account'     => $row->account_name,
+                    'description' => $row->line_description ?: $row->trx_description,
+                    'amount'      => $row->kind === 'IN' ? $amount : -$amount,
+                    'label'       => $row->category_name,
+                    'section'     => isset(self::SECTIONS[$section]) ? $section : 'OPERATING',
+                    'link'        => $row->kind === 'TRANSFER'
+                        ? ['type' => 'journal', 'id' => (string) $row->journal_entry_id]
+                        : ['type' => 'cash_transaction', 'id' => (string) $row->trx_id],
+                ];
+            })
+            ->all();
+    }
+
+    private function cashBalanceAsOf(string $date, string $operator, ?string $branchId): float
+    {
+        $row = DB::table('accounting_journal_lines as lines')
+            ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
+            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
+            ->where('entries.status', 'POSTED')
+            ->where('accounts.is_cash_account', true)
+            ->whereDate('entries.journal_date', $operator, $date)
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->where('entries.branch_id', $branchId);
+            })
+            ->selectRaw("
+                COALESCE(SUM(
+                    CASE
+                        WHEN accounts.normal_balance = 'DEBIT'
+                            THEN lines.debit - lines.credit
+                        ELSE lines.credit - lines.debit
+                    END
+                ), 0) as balance
+            ")
+            ->first();
+
+        return round((float) ($row->balance ?? 0), 2);
     }
 
     private function resolveBranchId(array $filters, User $user): ?string

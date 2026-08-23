@@ -6,17 +6,6 @@ use Illuminate\Validation\Rule;
 
 class CustomerStoreRequest extends FormRequest
 {
-    private const ALLOWED_TAGS = [
-        'VIP',
-        'Langganan',
-        'Corporate',
-        'Member',
-        'Prioritas',
-        'Outlet',
-        'Komplain',
-        'Blacklist',
-    ];
-
     public function authorize(): bool
     {
         return $this->user()?->can('create', \App\Models\Customer::class) ?? false;
@@ -33,18 +22,19 @@ class CustomerStoreRequest extends FormRequest
                 'required',
                 'string',
                 'max:32',
-                Rule::unique('customers', 'whatsapp')->where(fn($q) => $q->where('branch_id', $branchId)),
+                Rule::unique('customers', 'whatsapp')
+                    ->where(fn($q) => $q->where('branch_id', $branchId)->where('is_active', true)),
             ],
             'address'   => ['nullable', 'string', 'max:255'],
             'notes'     => ['nullable', 'string'],
             'tags'      => ['nullable', 'array', 'max:10'],
-            'tags.*'    => ['string', Rule::in(self::ALLOWED_TAGS)],
+            'tags.*'    => ['string', Rule::exists('customer_labels', 'name')],
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        $wa = preg_replace('/\s+/', '', (string) $this->input('whatsapp'));
+        $wa = preg_replace('/\D+/', '', (string) $this->input('whatsapp'));
 
         $tags = $this->input('tags', null);
 

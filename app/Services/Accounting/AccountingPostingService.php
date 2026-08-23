@@ -13,6 +13,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Models\CashTransaction;
+use App\Models\CashTransactionLine;
 
 class AccountingPostingService
 {
@@ -195,7 +197,141 @@ class AccountingPostingService
             journalDate: $mutation->effective_at ? Carbon::parse($mutation->effective_at) : now('Asia/Jakarta'),
             description: $mutation->note ?: 'Posting otomatis mutasi kas',
             actorId: $actor?->id ?: $mutation->created_by,
+            expenseCategory: $mutation->category,
         );
+    }
+
+    public function postCashTransaction(CashTransaction $transaction, ?User $actor = null): AccountingJournalEntry
+    {
+        $transaction->loadMissing(['lines.category']);
+
+        $rows = $this->cashTransactionRows($transaction);
+        $total = round(array_sum(array_column($rows, 'debit')), 2);
+
+        return DB::transaction(function () use ($transaction, $rows, $total, $actor) {
+            $date = Carbon::parse($transaction->trx_date);
+
+            $journal = AccountingJournalEntry::query()
+                ->where('source_type', 'cash_transaction')
+                ->where('source_id', $transaction->id)
+                ->lockForUpdate()
+                ->first();
+
+            $attributes = [
+                'branch_id'    => $transaction->branch_id,
+                'journal_date' => $date->toDateString(),
+                'source_no'    => $transaction->no,
+                'status'       => 'POSTED',
+                'description'  => $transaction->description ?: 'Transaksi ' . $transaction->no,
+                'total_debit'  => $total,
+                'total_credit' => $total,
+                'posted_by'    => $actor?->id,
+                'posted_at'    => now(),
+                'voided_by'    => null,
+                'voided_at'    => null,
+                'void_reason'  => null,
+            ];
+
+            if ($journal) {
+                AccountingJournalLine::query()->where('journal_entry_id', $journal->id)->delete();
+                $journal->fill($attributes)->save();
+            } else {
+                $journal = AccountingJournalEntry::query()->create($attributes + [
+                    'id'          => (string) Str::uuid(),
+                    'mapping_id'  => null,
+                    'journal_no'  => $this->numberService->next($date),
+                    'source_type' => 'cash_transaction',
+                    'source_id'   => $transaction->id,
+                    'created_by'  => $actor?->id,
+                ]);
+            }
+
+            foreach ($rows as $index => $row) {
+                AccountingJournalLine::query()->create([
+                    'id'               => (string) Str::uuid(),
+                    'journal_entry_id' => $journal->id,
+                    'account_id'       => $row['account_id'],
+                    'description'      => $row['description'],
+                    'debit'            => $row['debit'],
+                    'credit'           => $row['credit'],
+                    'line_order'       => $index + 1,
+                ]);
+            }
+
+            return $journal;
+        });
+    }
+
+    public function voidCashTransaction(CashTransaction $transaction, ?User $actor = null): void
+    {
+        AccountingJournalEntry::query()
+            ->where('source_type', 'cash_transaction')
+            ->where('source_id', $transaction->id)
+            ->update([
+                'status'      => 'VOID',
+                'voided_by'   => $actor?->id,
+                'voided_at'   => now(),
+                'void_reason' => 'Transaksi ' . $transaction->no . ' dihapus.',
+            ]);
+    }
+
+    private function cashTransactionRows(CashTransaction $transaction): array
+    {
+        $rows = [];
+
+        if ($transaction->kind === 'TRANSFER') {
+            $amount = round((float) $transaction->amount, 2);
+
+            $rows[] = ['account_id' => $transaction->to_account_id, 'description' => $transaction->description, 'debit' => $amount, 'credit' => 0.0];
+            $rows[] = ['account_id' => $transaction->cash_account_id, 'description' => $transaction->description, 'debit' => 0.0, 'credit' => $amount];
+
+            $fee = round((float) $transaction->fee_amount, 2);
+
+            if ($fee > 0) {
+                $bearerAccountId = $transaction->fee_bearer === 'RECEIVER'
+                    ? $transaction->to_account_id
+                    : $transaction->cash_account_id;
+
+                $rows[] = ['account_id' => $this->counterAccountId($transaction->lines->first(), 'OUT'), 'description' => 'Biaya admin transfer', 'debit' => $fee, 'credit' => 0.0];
+                $rows[] = ['account_id' => $bearerAccountId, 'description' => 'Biaya admin transfer', 'debit' => 0.0, 'credit' => $fee];
+            }
+
+            return $rows;
+        }
+
+        $total = 0.0;
+
+        foreach ($transaction->lines as $line) {
+            $amount = round((float) $line->amount, 2);
+            $total += $amount;
+            $accountId = $this->counterAccountId($line, $transaction->kind);
+
+            $rows[] = $transaction->kind === 'IN'
+                ? ['account_id' => $accountId, 'description' => $line->description, 'debit' => 0.0, 'credit' => $amount]
+                : ['account_id' => $accountId, 'description' => $line->description, 'debit' => $amount, 'credit' => 0.0];
+        }
+
+        $total = round($total, 2);
+
+        $rows[] = $transaction->kind === 'IN'
+            ? ['account_id' => $transaction->cash_account_id, 'description' => $transaction->description, 'debit' => $total, 'credit' => 0.0]
+            : ['account_id' => $transaction->cash_account_id, 'description' => $transaction->description, 'debit' => 0.0, 'credit' => $total];
+
+        return $rows;
+    }
+
+    private function counterAccountId(?CashTransactionLine $line, string $direction): string
+    {
+        $category = $line?->category;
+        $accountId = $direction === 'IN' ? $category?->in_account_id : $category?->out_account_id;
+
+        if (! $accountId) {
+            throw ValidationException::withMessages([
+                'lines' => ['Kategori "' . ($category?->name ?? '-') . '" belum dipetakan ke akun COA. Atur di Pengaturan > Master Kategori Transaksi.'],
+            ]);
+        }
+
+        return (string) $accountId;
     }
 
     private function postSimpleEntry(

@@ -5,6 +5,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\ProductionTask;
 use App\Models\ProductionTaskLog;
+use App\Models\User;
 use App\Services\ProductionTaskService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -21,9 +22,9 @@ class ProductionBoardController extends Controller
     {
         $this->authorizeProductionAccess($request);
 
-        $branchId = $this->branchScopeFor($request);
+        $branchIds = $this->branchScopeIds($request);
 
-        $this->service->syncOpenOrdersToTasks($branchId);
+        $this->service->syncOpenOrdersToTasks($branchIds);
 
         $user = $request->user();
 
@@ -41,8 +42,8 @@ class ProductionBoardController extends Controller
             ->orderByRaw("FIELD(current_status, 'QUEUE', 'WASHING', 'DRYING', 'IRONING', 'READY')")
             ->orderByDesc('created_at');
 
-        if ($branchId) {
-            $query->where('branch_id', $branchId);
+        if ($branchIds !== null) {
+            $query->whereIn('branch_id', $branchIds);
         }
 
         if ($user->hasRole('Superadmin')) {
@@ -67,6 +68,15 @@ class ProductionBoardController extends Controller
             }
         }
 
+        if ($phase = (string) $request->query('phase', '')) {
+
+            if (! isset(ProductionTaskService::PHASES[$phase])) {
+                abort(422, 'Fase workshop tidak valid.');
+            }
+
+            $query->whereIn('current_status', ProductionTaskService::PHASES[$phase]);
+        }
+
         if ($q = trim((string) $request->query('q', ''))) {
             $query->whereHas('order', function ($orderQuery) use ($q) {
                 $orderQuery
@@ -78,7 +88,7 @@ class ProductionBoardController extends Controller
             });
         }
 
-        $allowedPerPages  = [10, 20, 50, 100];
+        $allowedPerPages  = [10, 20, 25, 50, 100];
         $requestedPerPage = (int) $request->query('per_page', 20);
         $perPage          = in_array($requestedPerPage, $allowedPerPages, true)
             ? $requestedPerPage
@@ -106,7 +116,7 @@ class ProductionBoardController extends Controller
                 'items'   => $items,
             ],
             'meta'    => [
-                'branch_id'    => $branchId,
+                'branch_id'    => $branchIds,
                 'statuses'     => ProductionTaskService::BOARD_STATUSES,
                 'current_page' => $page->currentPage(),
                 'per_page'     => $page->perPage(),
@@ -186,7 +196,7 @@ class ProductionBoardController extends Controller
         ]);
     }
 
-    public function staffDailyReport(Request $request)
+    public function workRecap(Request $request)
     {
         $this->authorizeProductionAccess($request);
 
@@ -195,164 +205,112 @@ class ProductionBoardController extends Controller
             'date_to'   => ['nullable', 'date'],
             'branch_id' => ['nullable', 'string'],
             'user_id'   => ['nullable', 'integer'],
+            'phase'     => ['nullable', Rule::in(array_keys(ProductionTaskService::PHASES))],
+            'page'      => ['nullable', 'integer', 'min:1'],
+            'per_page'  => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $from     = Carbon::parse($payload['date_from'] ?? now('Asia/Jakarta')->toDateString())->toDateString();
-        $to       = Carbon::parse($payload['date_to'] ?? $from)->toDateString();
-        $branchId = $this->branchScopeFor($request);
-        $user     = $request->user();
+        $from      = Carbon::parse($payload['date_from'] ?? now('Asia/Jakarta')->toDateString())->toDateString();
+        $to        = Carbon::parse($payload['date_to'] ?? $from)->toDateString();
+        $branchIds = $this->branchScopeIds($request);
+        $user      = $request->user();
 
-        $logs = ProductionTaskLog::query()
-            ->with([
-                'user:id,name',
-                'task:id,order_id,assigned_to,current_status,qty,started_date,finished_date',
-                'order:id,branch_id,customer_id,number,invoice_no,status,received_at,ready_at',
-                'order.customer:id,name',
-            ])
+        $staffFilter = $this->isOnlyLaundryStaff($user)
+            ? (int) $user->id
+            : (isset($payload['user_id']) ? (int) $payload['user_id'] : null);
+
+        $base = ProductionTaskLog::query()
             ->whereBetween('process_date', [$from, $to])
-            ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
-            ->when($this->isOnlyLaundryStaff($user), fn($query) => $query->where('user_id', $user->id))
+            ->whereIn('to_status', array_merge(...array_values(ProductionTaskService::PHASES)))
+            ->when($branchIds !== null, fn($query) => $query->whereIn('branch_id', $branchIds));
+
+        $technicians = User::query()
+            ->whereIn('id', (clone $base)->select('user_id'))
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn(User $row) => ['id' => (string) $row->id, 'name' => $row->name])
+            ->values();
+
+        $filtered = (clone $base)
+            ->when($staffFilter !== null, fn($query) => $query->where('user_id', $staffFilter))
             ->when(
-                $user->hasRole('Superadmin') && ! empty($payload['user_id']),
-                fn($query) => $query->where('user_id', (int) $payload['user_id'])
-            )
-            ->orderBy('process_date')
-            ->orderBy('created_at')
-            ->get();
+                ! empty($payload['phase']),
+                fn($query) => $query->whereIn('to_status', ProductionTaskService::PHASES[$payload['phase']])
+            );
 
-        if ($logs->isEmpty() && $this->isOnlyLaundryStaff($user)) {
-            $tasks = ProductionTask::query()
-                ->with([
-                    'assignee:id,name',
-                    'order:id,branch_id,customer_id,number,invoice_no,status,received_at,ready_at',
-                    'order.customer:id,name',
-                ])
-                ->where('assigned_to', $user->id)
-                ->whereBetween('started_date', [$from, $to])
-                ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
-                ->orderBy('started_date')
-                ->orderBy('created_at')
-                ->get();
+        $summary = ['activities' => 0, 'persiapan' => 0, 'finishing' => 0, 'pairs' => 0.0];
 
-            $rows = $tasks
-                ->map(function (ProductionTask $task) use ($user) {
-                    $order = $task->order;
-
-                    $readyAt = $order?->ready_at
-                        ? Carbon::parse($order->ready_at)->toDateString()
-                        : null;
-
-                    $finishedDate = $task->finished_date
-                        ? Carbon::parse($task->finished_date)->toDateString()
-                        : null;
-
-                    $today = now('Asia/Jakarta')->toDateString();
-
-                    $isOverdue = $readyAt !== null
-                    && $task->current_status !== 'READY'
-                    && $readyAt < $today;
-
-                    $overdueDays = 0;
-                    if ($isOverdue) {
-                        $overdueDays = Carbon::parse($readyAt)->diffInDays(Carbon::parse($today));
-                    }
-
-                    return [
-                        'user_id'       => (string) $user->id,
-                        'staff_name'    => (string) $user->name,
-                        'total_invoice' => 1,
-                        'total_qty'     => (float) $task->qty,
-                        'finished'      => $task->current_status === 'READY' ? 1 : 0,
-                        'unfinished'    => $task->current_status !== 'READY' ? 1 : 0,
-                        'overdue'       => $isOverdue ? 1 : 0,
-                        'details'       => [[
-                            'order_id'       => (string) $task->order_id,
-                            'invoice_no'     => $order?->invoice_no,
-                            'number'         => $order?->number,
-                            'customer_name'  => $order?->customer?->name,
-                            'qty'            => (float) $task->qty,
-                            'current_status' => $task->current_status,
-                            'received_at'    => $order?->received_at,
-                            'ready_at'       => $order?->ready_at,
-                            'started_date'   => $task->started_date,
-                            'finished_date'  => $finishedDate,
-                            'is_overdue'     => $isOverdue,
-                            'overdue_days'   => $overdueDays,
-                            'overdue_text'   => $isOverdue ? "Terlambat {$overdueDays} hari" : null,
-                        ]],
-                    ];
-                })
-                ->values();
-
-            return response()->json([
-                'data'    => $rows,
-                'meta'    => [
-                    'from'      => $from,
-                    'to'        => $to,
-                    'branch_id' => $branchId,
-                ],
-                'message' => 'OK',
-                'errors'  => null,
-            ]);
+        foreach ((clone $filtered)->groupBy('to_status')->selectRaw('to_status, COUNT(*) as activities, SUM(qty) as pairs')->get() as $row) {
+            $summary['activities']                             = (int) $row->activities;
+            $summary['pairs']                                  = (float) $row->pairs;
+            $summary[$this->phaseOf((string) $row->to_status)] = (int) $row->activities;
         }
 
-        $grouped = $logs
+        $names = $technicians->pluck('name', 'id');
+
+        $byTechnician = (clone $filtered)
             ->groupBy('user_id')
-            ->map(function ($userLogs) {
-                $first = $userLogs->first();
+            ->selectRaw('user_id, COUNT(*) as activities')
+            ->pluck('activities', 'user_id')
+            ->map(fn($activities, $id) => [
+                'user_id'    => (string) $id,
+                'name'       => $names[(string) $id] ?? '-',
+                'activities' => (int) $activities,
+            ])
+            ->values();
 
-                $details = $userLogs
-                    ->unique('order_id')
-                    ->map(function ($log) {
-                        $task  = $log->task;
-                        $order = $log->order;
+        $page = (clone $filtered)
+            ->with([
+                'user:id,name',
+                'branch:id,code,name',
+                'order:id,customer_id,number,invoice_no',
+                'order.customer:id,name',
+            ])
+            ->orderBy('created_at')
+            ->paginate((int) ($payload['per_page'] ?? 25));
 
-                        $readyAt      = optional($order?->ready_at)->format('Y-m-d');
-                        $finishedDate = optional($task?->finished_date)->format('Y-m-d');
-                        $overdue      = $this->overdueMeta($readyAt, $finishedDate);
-
-                        return [
-                            'order_id'       => (string) $log->order_id,
-                            'invoice_no'     => $order?->invoice_no,
-                            'number'         => $order?->number,
-                            'customer_name'  => $order?->customer?->name,
-                            'qty'            => (float) ($task?->qty ?? $log->qty ?? 0),
-                            'current_status' => $task?->current_status,
-                            'received_at'    => optional($order?->received_at)->format('Y-m-d'),
-                            'ready_at'       => $readyAt,
-                            'started_date'   => optional($task?->started_date)->format('Y-m-d'),
-                            'finished_date'  => $finishedDate,
-                            'is_overdue'     => $overdue['is_overdue'],
-                            'overdue_days'   => $overdue['overdue_days'],
-                            'overdue_text'   => $overdue['overdue_text'],
-                        ];
-                    })
-                    ->values();
-
-                return [
-                    'user_id'       => (string) $first->user_id,
-                    'staff_name'    => $first->user?->name ?? '-',
-                    'total_invoice' => $details->count(),
-                    'total_qty'     => (float) $details->sum('qty'),
-                    'finished'      => $details->whereNotNull('finished_date')->count(),
-                    'unfinished'    => $details->whereNull('finished_date')->count(),
-                    'overdue'       => $details->where('is_overdue', true)->count(),
-                    'details'       => $details,
-                ];
-            })
+        $rows = collect($page->items())
+            ->map(fn(ProductionTaskLog $log) => [
+                'id'            => (string) $log->id,
+                'logged_at'     => optional($log->created_at)->toISOString(),
+                'process_date'  => optional($log->process_date)->format('Y-m-d'),
+                'order_id'      => (string) $log->order_id,
+                'order_number'  => $log->order?->number,
+                'invoice_no'    => $log->order?->invoice_no,
+                'customer_name' => $log->order?->customer?->name,
+                'workshop_code' => $log->branch?->code,
+                'workshop_name' => $log->branch?->name,
+                'phase'         => $this->phaseOf((string) $log->to_status),
+                'to_status'     => (string) $log->to_status,
+                'qty'           => (float) $log->qty,
+                'technician'    => $log->user?->name,
+            ])
             ->values();
 
         return response()->json([
-            'data'    => $grouped,
+            'data'    => $rows,
             'meta'    => [
-                'from'      => $from,
-                'to'        => $to,
-                'branch_id' => $branchId,
-                'user_id'   => $user->hasRole('Superadmin') ? ($payload['user_id'] ?? null) : null,
+                'from'          => $from,
+                'to'            => $to,
+                'branch_id'     => $branchIds,
+                'user_id'       => $staffFilter !== null ? (string) $staffFilter : null,
+                'phase'         => $payload['phase'] ?? null,
+                'current_page'  => $page->currentPage(),
+                'per_page'      => $page->perPage(),
+                'total'         => $page->total(),
+                'last_page'     => $page->lastPage(),
+                'summary'       => $summary,
+                'by_technician' => $byTechnician,
+                'technicians'   => $technicians,
             ],
             'message' => 'OK',
             'errors'  => null,
         ]);
+    }
+
+    private function phaseOf(string $status): string
+    {
+        return in_array($status, ProductionTaskService::PHASES['finishing'], true) ? 'finishing' : 'persiapan';
     }
 
     private function overdueMeta(?string $readyAt, ?string $finishedDate): array
@@ -410,6 +368,14 @@ class ProductionBoardController extends Controller
                 'name' => $task->assignee->name,
             ]
                 : null,
+            'branch'         => $task->branch
+                ? [
+                'id'   => (string) $task->branch->id,
+                'code' => $task->branch->code,
+                'name' => $task->branch->name,
+                'type' => $task->branch->type,
+            ]
+                : null,
             'order'          => $order
                 ? [
                 'id'          => (string) $order->id,
@@ -419,6 +385,14 @@ class ProductionBoardController extends Controller
                 'status'      => $order->status,
                 'received_at' => optional($order->received_at)->format('Y-m-d'),
                 'ready_at'    => optional($order->ready_at)->format('Y-m-d'),
+                'branch'      => $order->branch
+                    ? [
+                    'id'   => (string) $order->branch->id,
+                    'code' => $order->branch->code,
+                    'name' => $order->branch->name,
+                    'type' => $order->branch->type,
+                ]
+                    : null,
                 'customer'    => $order->customer
                     ? [
                     'id'       => (string) $order->customer->id,
@@ -451,15 +425,8 @@ class ProductionBoardController extends Controller
         && ! $user->hasRole('Admin Cabang');
     }
 
-    private function branchScopeFor(Request $request): ?string
+    private function branchScopeIds(Request $request): ?array
     {
-        $user = $request->user();
-
-        if ($user->hasRole('Superadmin')) {
-            $branchId = (string) $request->query('branch_id', '');
-            return $branchId !== '' ? $branchId : null;
-        }
-
-        return $user->branch_id ? (string) $user->branch_id : null;
+        return $request->user()->branchScopeIds($request->query('branch_id'));
     }
 }

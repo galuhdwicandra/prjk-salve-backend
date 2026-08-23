@@ -1,15 +1,17 @@
 <?php
-
 namespace App\Services;
 
 use App\Models\Branch;
 use App\Models\InvoiceCounter;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class InvoiceService
 {
+    public function __construct(private DocumentNumberService $numbers)
+    {
+    }
     /**
      * Generate nomor faktur format: {PREFIX}-{YYYYMM}-{SEQ6}
      * Reset bulanan jika reset_policy = 'monthly'.
@@ -29,57 +31,54 @@ class InvoiceService
     {
         // Pastikan branch ada
         $branch = Branch::query()->find($branchId);
-        if (!$branch) {
+        if (! $branch) {
             throw new ModelNotFoundException('Branch not found');
         }
 
         $now = $now ?: Carbon::now('Asia/Jakarta');
-        $nowYm = $now->format('Ym'); // contoh: 202511
-        $dd = $now->format('d');  // 25
-        $mm = $now->format('m');  // 11
-        $prefix = $branch->invoice_prefix ?? 'SLV';
 
-        return DB::transaction(function () use ($branch, $prefix, $nowYm, $dd, $mm) {
+        return DB::transaction(function () use ($branch, $now) {
             // Lock row counter by (branch_id, prefix)
             $counter = InvoiceCounter::query()
                 ->where('branch_id', $branch->id)
-                ->where('prefix', $prefix)
+                ->where('doc_key', DocumentNumberService::ORDER)
                 ->lockForUpdate()
                 ->first();
 
-            if (!$counter) {
-                $counter = new InvoiceCounter([
-                    'branch_id' => $branch->id,
-                    'prefix' => $prefix,
-                    'seq' => 0,
-                    'reset_policy' => $branch->reset_policy ?? 'monthly',
-                    'last_reset_month' => null,
-                ]);
-                $counter->save();
-                $counter->refresh();
+            if (! $counter) {
+                $created = InvoiceCounter::query()->create(
+                    $this->numbers->defaultsFor($branch, DocumentNumberService::ORDER)
+                );
+
+                $counter = InvoiceCounter::query()
+                    ->whereKey($created->getKey())
+                    ->lockForUpdate()
+                    ->first();
             }
 
             // Reset jika perlu (monthly)
-            if ($counter->reset_policy === 'monthly') {
-                if ($counter->last_reset_month !== $nowYm) {
-                    $counter->seq = 0;
-                    $counter->last_reset_month = $nowYm;
-                }
+            $period = $this->numbers->periodKey($counter->reset_policy, $now);
+            if ($period !== null && $counter->last_reset_month !== $period) {
+                $counter->seq              = 0;
+                $counter->last_reset_month = $period;
             }
 
             // Naikkan sequence
             $counter->seq = (int) $counter->seq + 1;
             $counter->save();
 
-            // number: PREFIX-YYYYMM-SEQ6
-            $seq6 = str_pad((string) $counter->seq, 6, '0', STR_PAD_LEFT);
-            $number = "{$counter->prefix}-{$nowYm}-{$seq6}";
-
             // invoice_no: INV-DD-MM-#### (gunakan 4 digit terakhir seq)
             $seq4 = substr(str_pad((string) $counter->seq, 4, '0', STR_PAD_LEFT), -4);
-            $invoiceNo = "INV-{$dd}-{$mm}-{$seq4}";
 
-            return ['number' => $number, 'invoice_no' => $invoiceNo];
+            return [
+                'number'     => $this->numbers->render(
+                    $counter->format ?: DocumentNumberService::DOCUMENTS[DocumentNumberService::ORDER]['format'],
+                    (int) $counter->seq,
+                    $branch->invoice_prefix ?? 'SLV',
+                    $now
+                ),
+                'invoice_no' => "INV-{$now->format('d')}-{$now->format('m')}-{$seq4}",
+            ];
         });
     }
 

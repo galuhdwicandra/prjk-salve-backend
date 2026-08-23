@@ -16,7 +16,9 @@ class InvoiceCounter extends Model
 
     protected $fillable = [
         'branch_id',
+        'doc_key',
         'prefix',
+        'format',
         'seq',
         'reset_policy',
         'last_reset_month',

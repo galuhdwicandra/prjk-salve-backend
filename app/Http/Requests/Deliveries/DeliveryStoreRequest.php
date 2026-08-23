@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Requests\Deliveries;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -22,18 +21,20 @@ class DeliveryStoreRequest extends FormRequest
 
     public function rules(): array
     {
-        $branchId = $this->user()?->branch_id;
+        $branchIds = $this->user()?->branchScopeIds();
 
         return [
             'order_id' => [
                 'required', 'uuid',
                 Rule::exists('orders', 'id')
-                    ->when(!$this->user()?->hasRole('Superadmin'),
-                        fn($q) => $q->where('branch_id', $branchId)),
+                    ->when($branchIds !== null, fn($q) => $q->where(
+                        fn($w) => $w->whereIn('branch_id', $branchIds)
+                            ->orWhereIn('destination_branch_id', $branchIds)
+                    )),
             ],
-            'type' => ['required', Rule::in(['pickup','delivery','return'])],
-            'zone_id' => ['nullable','uuid'],
-            'fee' => ['nullable','numeric','min:0'],
+            'type'     => ['required', Rule::in(['pickup', 'delivery', 'return', 'transfer_out', 'transfer_in'])],
+            'zone_id'  => ['nullable', 'uuid'],
+            'fee'      => ['nullable', 'numeric', 'min:0'],
         ];
     }
 }

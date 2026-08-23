@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Api\Accounting;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Accounting\FundTransferRequest;
 use App\Http\Requests\Accounting\JournalEntryStoreRequest;
 use App\Http\Requests\Accounting\JournalEntryUpdateRequest;
 use App\Models\AccountingAccount;
@@ -161,6 +162,85 @@ class JournalEntryController extends Controller
             ]),
             'meta'    => [],
             'message' => 'Created',
+            'errors'  => null,
+        ], 201);
+    }
+
+    public function transfer(FundTransferRequest $request)
+    {
+        $this->authorize('create', AccountingJournalEntry::class);
+
+        $payload  = $request->validated();
+        $branchId = $this->resolveBranchId($request, $payload);
+
+        if (! $request->user()->canManageBranch($branchId)) {
+            abort(403);
+        }
+
+        $amount = round((float) $payload['amount'], 2);
+
+        $lines = $this->normalizeLines([
+            [
+                'account_id'  => $payload['from_account_id'],
+                'description' => $payload['description'] ?? null,
+                'credit'      => $amount,
+            ],
+            [
+                'account_id'  => $payload['to_account_id'],
+                'description' => $payload['description'] ?? null,
+                'debit'       => $amount,
+            ],
+        ], $branchId);
+
+        $journal = DB::transaction(function () use ($request, $payload, $branchId, $lines) {
+            $journal = new AccountingJournalEntry([
+                'branch_id'    => $branchId,
+                'mapping_id'   => null,
+                'journal_no'   => $this->numberService->next($payload['journal_date']),
+                'journal_date' => Carbon::parse($payload['journal_date'])->toDateString(),
+                'source_type'  => 'transfer',
+                'source_id'    => null,
+                'source_no'    => null,
+                'status'       => 'POSTED',
+                'description'  => $payload['description'] ?? null,
+                'total_debit'  => $lines['total_debit'],
+                'total_credit' => $lines['total_credit'],
+                'created_by'   => $request->user()?->id,
+                'posted_by'    => $request->user()?->id,
+                'posted_at'    => now(),
+                'voided_by'    => null,
+                'voided_at'    => null,
+                'void_reason'  => null,
+            ]);
+
+            $journal->id = (string) Str::uuid();
+            $journal->save();
+
+            foreach ($lines['items'] as $index => $line) {
+                $detail = new AccountingJournalLine([
+                    'journal_entry_id' => $journal->id,
+                    'account_id'       => $line['account_id'],
+                    'description'      => $line['description'],
+                    'debit'            => $line['debit'],
+                    'credit'           => $line['credit'],
+                    'line_order'       => $index + 1,
+                ]);
+
+                $detail->id = (string) Str::uuid();
+                $detail->save();
+            }
+
+            return $journal;
+        });
+
+        return response()->json([
+            'data'    => $journal->load([
+                'branch:id,name,code',
+                'lines' => fn($q) => $q->orderBy('line_order'),
+                'lines.account:id,code,name,type,normal_balance,branch_id,is_active',
+            ]),
+            'meta'    => [],
+            'message' => 'Transfer berhasil',
             'errors'  => null,
         ], 201);
     }

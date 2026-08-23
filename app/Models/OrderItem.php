@@ -1,14 +1,16 @@
 <?php
-
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * @property numeric-string $qty
  * @property numeric-string $price
+ * @property string|null $discount_type
+ * @property numeric-string $discount_value
+ * @property numeric-string $discount_amount
  * @property numeric-string $total
  */
 class OrderItem extends Model
@@ -19,11 +21,23 @@ class OrderItem extends Model
     protected $keyType = 'string';
     protected $table = 'order_items';
 
-    protected $fillable = ['order_id', 'service_id', 'qty', 'price', 'total', 'note'];
+    protected $fillable = [
+        'order_id',
+        'service_id',
+        'qty',
+        'price',
+        'discount_type',
+        'discount_value',
+        'discount_amount',
+        'total',
+        'note',
+    ];
 
     protected $casts = [
         'qty' => 'decimal:2',
         'price' => 'decimal:2',
+        'discount_value' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'total' => 'decimal:2',
     ];
 

@@ -1,15 +1,15 @@
 <?php
-
 namespace App\Services;
 
 use App\Models\Service;
 use App\Models\ServicePrice;
+use Illuminate\Validation\ValidationException;
 
 class PricingService
 {
     /**
      * Ambil harga layanan untuk cabang tertentu.
-     * Urutan: service_prices(price) → fallback services.price_default.
+     * Harga wajib berasal dari service_prices milik cabang tersebut.
      * Return string decimal 2 digit.
      */
     public function getPrice(string $serviceId, string $branchId): string
@@ -19,11 +19,12 @@ class PricingService
             ->where('branch_id', $branchId)
             ->value('price');
 
-        if ($override !== null) {
-            return number_format((float) $override, 2, '.', '');
+        if ($override === null) {
+            throw ValidationException::withMessages([
+                'items' => ['Layanan tidak tersedia di cabang ini.'],
+            ]);
         }
 
-        $default = Service::query()->where('id', $serviceId)->value('price_default') ?? '0.00';
-        return number_format((float) $default, 2, '.', '');
+        return number_format((float) $override, 2, '.', '');
     }
 }

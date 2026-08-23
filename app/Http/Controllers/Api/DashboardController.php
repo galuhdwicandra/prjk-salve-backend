@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -17,14 +16,14 @@ class DashboardController extends Controller
         $data = $service->summary(
             $request->fromDate(),
             $request->toDate(),
-            $request->branchId(),
+            $request->branchIds(),
         );
 
         return response()->json([
-            'data' => $data,
-            'meta' => [
-                'from' => $request->input('from'),
-                'to' => $request->input('to'),
+            'data'    => $data,
+            'meta'    => [
+                'from'      => $request->input('from'),
+                'to'        => $request->input('to'),
                 'branch_id' => $request->input('branch_id'),
             ],
             'message' => 'OK',

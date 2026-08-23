@@ -14,10 +14,11 @@ class ServicePrice extends Model
     protected $keyType = 'string';
     protected $table = 'service_prices';
 
-    protected $fillable = ['service_id', 'branch_id', 'price'];
+    protected $fillable = ['service_id', 'branch_id', 'price', 'sla_days'];
 
     protected $casts = [
         'price' => 'decimal:2',
+        'sla_days' => 'integer',
     ];
 
     public function service()

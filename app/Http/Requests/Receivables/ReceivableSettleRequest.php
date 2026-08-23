@@ -1,10 +1,11 @@
 <?php
-
 namespace App\Http\Requests\Receivables;
 
+use App\Models\Receivable;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
-use App\Models\Receivable;
+use Illuminate\Validation\Rule;
+use App\Models\PaymentMethod;
 
 class ReceivableSettleRequest extends FormRequest
 {
@@ -16,22 +17,31 @@ class ReceivableSettleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'method' => ['required', 'in:CASH,QRIS,TRANSFER'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
+            'method'  => [
+                'required',
+                'string',
+                Rule::in(
+                    PaymentMethod::query()
+                        ->where('is_active', true)
+                        ->pluck('code')
+                        ->all()
+                ),
+            ],
+            'amount'  => ['required', 'numeric', 'min:0.01'],
             'paid_at' => ['nullable', 'date'],
-            'note' => ['nullable', 'string', 'max:255'],
+            'note'    => ['nullable', 'string', 'max:255'],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $v) {
-            $id = $this->route('id');
+            $id  = $this->route('id');
             $rcv = $id ? Receivable::query()->with('order')->find($id) : null;
-            if (!$rcv) {
+            if (! $rcv) {
                 return;
             }
-            $amt = (float) $this->input('amount', 0);
+            $amt       = (float) $this->input('amount', 0);
             $remaining = (float) $rcv->remaining_amount;
             if ($amt > $remaining + 1e-6) {
                 $v->errors()->add('amount', 'Jumlah melebihi sisa piutang.');

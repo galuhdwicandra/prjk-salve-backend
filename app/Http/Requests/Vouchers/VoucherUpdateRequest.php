@@ -1,10 +1,9 @@
 <?php
-
 namespace App\Http\Requests\Vouchers;
 
+use App\Models\Voucher;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use App\Models\Voucher;
 
 class VoucherUpdateRequest extends FormRequest
 {
@@ -28,15 +27,20 @@ class VoucherUpdateRequest extends FormRequest
         $voucher = $this->route('voucher');
 
         return [
-            'branch_id' => ['nullable', 'uuid'],
-            'code' => ['sometimes', 'string', 'max:40', Rule::unique('vouchers', 'code')->ignore($voucher?->id, 'id')],
-            'type' => ['sometimes', Rule::in(['PERCENT', 'NOMINAL'])],
-            'value' => ['sometimes', 'numeric', 'min:0'],
-            'start_at' => ['nullable', 'date'],
-            'end_at' => ['nullable', 'date', 'after_or_equal:start_at'],
-            'min_total' => ['nullable', 'numeric', 'min:0'],
-            'usage_limit' => ['nullable', 'integer', 'min:1'],
-            'active' => ['boolean'],
+            'branch_id'              => ['nullable', 'uuid'],
+            'code'                   => ['sometimes', 'string', 'regex:/^[A-Z0-9]{4,10}$/', Rule::unique('vouchers', 'code')->ignore($voucher?->id, 'id')],
+            'name'                   => ['sometimes', 'string', 'max:100'],
+            'type'                   => ['sometimes', Rule::in(['PERCENT', 'NOMINAL'])],
+            'value'                  => ['sometimes', 'numeric', 'min:0'],
+            'start_at'               => ['nullable', 'date'],
+            'end_at'                 => ['nullable', 'date', 'after_or_equal:start_at'],
+            'min_total'              => ['nullable', 'numeric', 'min:0'],
+            'usage_limit'            => ['nullable', 'integer', 'min:1'],
+            'active'                 => ['boolean'],
+            'is_archived'            => ['boolean'],
+            'stack_voucher'          => ['boolean'],
+            'stack_discount'         => ['boolean'],
+            'percent_after_discount' => ['boolean'],
         ];
     }
 }

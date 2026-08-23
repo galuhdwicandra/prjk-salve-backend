@@ -7,6 +7,7 @@ use App\Http\Requests\WhatsappTemplateUpdateRequest;
 use App\Models\WhatsappTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class WhatsappTemplateController extends Controller
 {
@@ -168,7 +169,7 @@ class WhatsappTemplateController extends Controller
         $this->authorize('viewAny', WhatsappTemplate::class);
 
         $request->validate([
-            'key'       => ['required', 'string', 'in:receipt_pending,receipt_paid'],
+            'key'       => ['required', 'string', Rule::in(WhatsappTemplate::KEYS)],
             'branch_id' => ['nullable', 'uuid'],
         ]);
 

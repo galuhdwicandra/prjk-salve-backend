@@ -17,10 +17,12 @@ class AccountingAccountSeeder extends Seeder
             ['code' => '1020', 'name' => 'Bank / Transfer', 'type' => 'ASSET', 'normal_balance' => 'DEBIT', 'is_cash_account' => true, 'sort_order' => 12],
             ['code' => '1030', 'name' => 'QRIS', 'type' => 'ASSET', 'normal_balance' => 'DEBIT', 'is_cash_account' => true, 'sort_order' => 13],
             ['code' => '1040', 'name' => 'Piutang Usaha', 'type' => 'ASSET', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 14],
+            ['code' => '1050', 'name' => 'Peralatan & Aset Tetap', 'type' => 'ASSET', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 15],
 
             ['code' => '2000', 'name' => 'Liabilitas', 'type' => 'LIABILITY', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 20],
 
             ['code' => '2010', 'name' => 'Uang Muka Pelanggan', 'type' => 'LIABILITY', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 21],
+            ['code' => '2020', 'name' => 'Utang Pinjaman', 'type' => 'LIABILITY', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 22],
 
             ['code' => '3000', 'name' => 'Ekuitas', 'type' => 'EQUITY', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 30],
             ['code' => '3010', 'name' => 'Modal Pemilik', 'type' => 'EQUITY', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 31],
@@ -28,6 +30,7 @@ class AccountingAccountSeeder extends Seeder
 
             ['code' => '4000', 'name' => 'Pendapatan', 'type' => 'REVENUE', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 40],
             ['code' => '4010', 'name' => 'Pendapatan Laundry', 'type' => 'REVENUE', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 41],
+            ['code' => '4020', 'name' => 'Pendapatan Lain-lain', 'type' => 'REVENUE', 'normal_balance' => 'CREDIT', 'is_cash_account' => false, 'sort_order' => 42],
             ['code' => '4090', 'name' => 'Diskon Penjualan', 'type' => 'REVENUE', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 49],
 
             ['code' => '5000', 'name' => 'Beban', 'type' => 'EXPENSE', 'normal_balance' => 'DEBIT', 'is_cash_account' => false, 'sort_order' => 50],

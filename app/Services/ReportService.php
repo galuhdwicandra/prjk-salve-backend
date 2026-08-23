@@ -7,13 +7,13 @@ use Illuminate\Support\Facades\DB;
 
 class ReportService
 {
-    public function buildServiceItemsQuery(Carbon $from, Carbon $to, ?string $branchId)
+    public function buildServiceItemsQuery(Carbon $from, Carbon $to, ?array $branchIds)
     {
         return DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
             ->join('services as s', 's.id', '=', 'oi.service_id')
             ->leftJoin('branches as b', 'b.id', '=', 'o.branch_id')
-            ->when($branchId, fn($qq) => $qq->where('o.branch_id', $branchId))
+            ->when($branchIds !== null, fn($qq) => $qq->whereIn('o.branch_id', $branchIds))
             ->whereBetween('o.created_at', [$from, $to])
             ->selectRaw("
                 b.name AS branch,
@@ -26,14 +26,14 @@ class ReportService
             ->orderByRaw('SUM(oi.qty) DESC');
     }
 
-    public function buildDeepCleanTreatmentQuery(Carbon $from, Carbon $to, ?string $branchId)
+    public function buildDeepCleanTreatmentQuery(Carbon $from, Carbon $to, ?array $branchIds)
     {
         return DB::table('order_items as oi')
             ->join('orders as o', 'o.id', '=', 'oi.order_id')
             ->join('services as s', 's.id', '=', 'oi.service_id')
             ->leftJoin('branches as b', 'b.id', '=', 'o.branch_id')
             ->leftJoin('customers as c', 'c.id', '=', 'o.customer_id')
-            ->when($branchId, fn($qq) => $qq->where('o.branch_id', $branchId))
+            ->when($branchIds !== null, fn($qq) => $qq->whereIn('o.branch_id', $branchIds))
             ->whereBetween('o.created_at', [$from, $to])
             ->whereRaw('LOWER(s.name) = ?', ['deep clean'])
             ->selectRaw("
@@ -63,10 +63,9 @@ class ReportService
             ->orderBy('o.invoice_no', 'asc');
     }
 
-    /** SALES (basis kas) – window: payments.paid_at */
-    public function buildSalesQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $method = null)
+    private function serviceSummarySub()
     {
-        $serviceSummary = DB::table('order_items as oi')
+        return DB::table('order_items as oi')
             ->join('services as s', 's.id', '=', 'oi.service_id')
             ->selectRaw("
             oi.order_id,
@@ -78,6 +77,12 @@ class ReportService
             TRIM(TRAILING '.00' FROM CAST(SUM(oi.qty) AS CHAR)) AS qty
         ")
             ->groupBy('oi.order_id');
+    }
+
+    /** SALES (basis kas) – window: payments.paid_at */
+    public function buildSalesQuery(Carbon $from, Carbon $to, ?array $branchIds, ?string $method = null)
+    {
+        $serviceSummary = $this->serviceSummarySub();
 
         $q = DB::table('payments')
             ->join('orders', 'orders.id', '=', 'payments.order_id')
@@ -87,7 +92,7 @@ class ReportService
             ->leftJoinSub($serviceSummary, 'service_summary', function ($join) {
                 $join->on('service_summary.order_id', '=', 'orders.id');
             })
-            ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
+            ->when($branchIds !== null, fn($qq) => $qq->whereIn('orders.branch_id', $branchIds))
             ->whereBetween('payments.paid_at', [$from, $to])
             ->selectRaw("
             branches.code AS branch_code,
@@ -126,43 +131,41 @@ class ReportService
     }
 
     /** ORDERS (basis transaksi dibuat) – window: orders.created_at */
-    public function buildOrdersQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $status = null)
+    public function buildOrdersQuery(Carbon $from, Carbon $to, ?array $branchIds, ?string $status = null)
     {
         $q = DB::table('orders')
             ->leftJoin('branches', 'branches.id', '=', 'orders.branch_id')
             ->leftJoin('customers', 'customers.id', '=', 'orders.customer_id')
-            ->leftJoin('order_items as oi', 'oi.order_id', '=', 'orders.id')
-            ->leftJoin('services as s', 's.id', '=', 'oi.service_id')
-            ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
+            ->leftJoin('users', 'users.id', '=', 'orders.created_by')
+            ->leftJoinSub($this->serviceSummarySub(), 'service_summary', function ($join) {
+                $join->on('service_summary.order_id', '=', 'orders.id');
+            })
+            ->when($branchIds !== null, fn($qq) => $qq->whereIn('orders.branch_id', $branchIds))
             ->whereBetween('orders.created_at', [$from, $to])
             ->selectRaw("
-                branches.name AS branch,
-                orders.created_at,
-                orders.number,
+                branches.code AS branch_code,
+                branches.name AS branch_name,
+                DATE_FORMAT(orders.created_at, '%Y-%m-%d %H:%i:%s') AS order_created_at,
+                DATE_FORMAT(orders.received_at, '%Y-%m-%d') AS received_at,
+                DATE_FORMAT(orders.ready_at, '%Y-%m-%d') AS ready_at,
+                orders.number AS order_number,
                 orders.invoice_no,
-                customers.name AS customer,
-                orders.status,
-                GROUP_CONCAT(
-                    CONCAT(s.name, ' x', CAST(oi.qty AS CHAR))
-                    ORDER BY s.name
-                    SEPARATOR '; '
-                ) AS services,
-                CAST(SUM(oi.qty) AS CHAR) AS qty,
-                orders.grand_total,
-                orders.paid_amount,
-                orders.payment_status
+                customers.name AS customer_name,
+                customers.whatsapp AS customer_whatsapp,
+                service_summary.services AS services,
+                service_summary.qty AS qty,
+                orders.status AS order_status,
+                orders.payment_status,
+                TRIM(TRAILING '.00' FROM CAST(orders.subtotal AS CHAR)) AS subtotal,
+                orders.discount_type,
+                TRIM(TRAILING '.00' FROM CAST(orders.discount AS CHAR)) AS discount,
+                TRIM(TRAILING '.00' FROM CAST(orders.dp_amount AS CHAR)) AS dp_amount,
+                TRIM(TRAILING '.00' FROM CAST(orders.grand_total AS CHAR)) AS grand_total,
+                TRIM(TRAILING '.00' FROM CAST(orders.paid_amount AS CHAR)) AS paid_amount,
+                TRIM(TRAILING '.00' FROM CAST(orders.due_amount AS CHAR)) AS due_amount,
+                users.name AS cashier,
+                orders.notes
             ")
-            ->groupBy(
-                'branches.name',
-                'orders.created_at',
-                'orders.number',
-                'orders.invoice_no',
-                'customers.name',
-                'orders.status',
-                'orders.grand_total',
-                'orders.paid_amount',
-                'orders.payment_status'
-            )
             ->orderBy('orders.created_at', 'asc');
 
         if ($status) {
@@ -172,7 +175,7 @@ class ReportService
         return $q;
     }
 
-    public function buildReadyReminderQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $status = null)
+    public function buildReadyReminderQuery(Carbon $from, Carbon $to, ?array $branchIds, ?string $status = null)
     {
         $today = now('Asia/Jakarta')->toDateString();
 
@@ -181,7 +184,7 @@ class ReportService
             ->leftJoin('customers', 'customers.id', '=', 'orders.customer_id')
             ->leftJoin('order_items as oi', 'oi.order_id', '=', 'orders.id')
             ->leftJoin('services as s', 's.id', '=', 'oi.service_id')
-            ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
+            ->when($branchIds !== null, fn($qq) => $qq->whereIn('orders.branch_id', $branchIds))
             ->whereNotNull('orders.ready_at')
             ->whereBetween('orders.ready_at', [$from->toDateString(), $to->toDateString()])
             ->whereNotIn('orders.status', ['PICKED_UP', 'CANCELED'])
@@ -244,12 +247,12 @@ class ReportService
     }
 
     /** RECEIVABLES (Piutang) – window: receivables.due_date (atau created_at bila due_date null) */
-    public function buildReceivablesQuery(Carbon $from, Carbon $to, ?string $branchId, ?string $status = null)
+    public function buildReceivablesQuery(Carbon $from, Carbon $to, ?array $branchIds, ?string $status = null)
     {
         $q = DB::table('receivables')
             ->join('orders', 'orders.id', '=', 'receivables.order_id')
             ->leftJoin('branches', 'branches.id', '=', 'orders.branch_id')
-            ->when($branchId, fn($qq) => $qq->where('orders.branch_id', $branchId))
+            ->when($branchIds !== null, fn($qq) => $qq->whereIn('orders.branch_id', $branchIds))
             ->where(function ($w) use ($from, $to) {
                 $w->whereBetween('receivables.due_date', [$from->toDateString(), $to->toDateString()])
                     ->orWhereBetween('receivables.created_at', [$from, $to]);
@@ -274,11 +277,11 @@ class ReportService
     }
 
     /** EXPENSES – window: expenses.created_at */
-    public function buildExpensesQuery(Carbon $from, Carbon $to, ?string $branchId)
+    public function buildExpensesQuery(Carbon $from, Carbon $to, ?array $branchIds)
     {
         return DB::table('expenses')
             ->leftJoin('branches', 'branches.id', '=', 'expenses.branch_id')
-            ->when($branchId, fn($qq) => $qq->where('expenses.branch_id', $branchId))
+            ->when($branchIds !== null, fn($qq) => $qq->whereIn('expenses.branch_id', $branchIds))
             ->whereBetween('expenses.created_at', [$from, $to])
             ->selectRaw("
                 branches.name AS branch,
@@ -320,19 +323,18 @@ class ReportService
         ]);
     }
 
-    public function buildCashQuery(Carbon $from, Carbon $to, ?string $branchId)
+    public function buildCashQuery(Carbon $from, Carbon $to, ?array $branchIds)
     {
         return DB::table('cash_mutations')
-            ->join('cash_sessions', 'cash_sessions.id', '=', 'cash_mutations.cash_session_id')
             ->join('branches', 'branches.id', '=', 'cash_mutations.branch_id')
             ->leftJoin('users', 'users.id', '=', 'cash_mutations.created_by')
-            ->when($branchId, fn($q) => $q->where('cash_mutations.branch_id', $branchId))
+            ->when($branchIds !== null, fn($q) => $q->whereIn('cash_mutations.branch_id', $branchIds))
             ->whereBetween('cash_mutations.effective_at', [$from, $to])
             ->orderByDesc('cash_mutations.effective_at')
             ->select([
                 'branches.code as branch_code',
                 'branches.name as branch_name',
-                'cash_sessions.business_date',
+                DB::raw('DATE(cash_mutations.effective_at) as business_date'),
                 'cash_mutations.effective_at',
                 'cash_mutations.type',
                 'cash_mutations.direction',

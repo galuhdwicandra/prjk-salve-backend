@@ -6,48 +6,35 @@ use App\Models\User;
 
 class AccountingAccountPolicy
 {
-    public function before(User $user, string $ability): bool | null
-    {
-        return $user->hasAnyRole(['Superadmin', 'Akuntansi']) ? true : null;
-    }
-
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('Admin Cabang');
+        return true;
     }
 
     public function view(User $user, AccountingAccount $account): bool
     {
-        if ($account->branch_id === null) {
-            return $user->hasRole('Admin Cabang');
-        }
-
-        return $user->hasRole('Admin Cabang')
-        && (string) $account->branch_id === (string) $user->branch_id;
+        return $account->branch_id === null
+        || $user->canAccessBranch((string) $account->branch_id);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasRole('Admin Cabang');
+        return $user->isManager();
     }
 
     public function update(User $user, AccountingAccount $account): bool
     {
-        if ($account->branch_id === null) {
+        if (! $user->canModule('set-coa') && ! $account->is_cash_account) {
             return false;
         }
-
-        return $user->hasRole('Admin Cabang')
-        && (string) $account->branch_id === (string) $user->branch_id;
+        return $user->canManageBranch($account->branch_id);
     }
 
     public function delete(User $user, AccountingAccount $account): bool
     {
-        if ($account->branch_id === null) {
+        if (! $user->canModule('set-coa') && ! $account->is_cash_account) {
             return false;
         }
-
-        return $user->hasRole('Admin Cabang')
-        && (string) $account->branch_id === (string) $user->branch_id;
+        return $user->canManageBranch($account->branch_id);
     }
 }

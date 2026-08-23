@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -15,7 +14,7 @@ class CategoryController extends Controller
     {
         $this->authorize('viewAny', ServiceCategory::class);
 
-        $q = ServiceCategory::query()->orderBy('name');
+        $q = ServiceCategory::query()->withCount('services')->orderBy('name');
         if ($s = $request->query('q')) {
             $q->where('name', 'like', "%{$s}%");
         }
@@ -25,15 +24,15 @@ class CategoryController extends Controller
         $items = $q->paginate((int) $request->query('per_page', 10));
 
         return response()->json([
-            'data' => $items->items(),
-            'meta' => [
+            'data'    => $items->items(),
+            'meta'    => [
                 'current_page' => $items->currentPage(),
-                'per_page' => $items->perPage(),
-                'total' => $items->total(),
-                'last_page' => $items->lastPage(),
+                'per_page'     => $items->perPage(),
+                'total'        => $items->total(),
+                'last_page'    => $items->lastPage(),
             ],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -42,10 +41,10 @@ class CategoryController extends Controller
         $this->authorize('view', $category);
 
         return response()->json([
-            'data' => $category,
-            'meta' => [],
+            'data'    => $category,
+            'meta'    => [],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -54,17 +53,17 @@ class CategoryController extends Controller
         $payload = $request->validated();
         $this->authorize('create', ServiceCategory::class);
 
-        $category = new ServiceCategory($payload);
+        $category     = new ServiceCategory($payload);
         $category->id = (string) Str::uuid();
         $category->save();
 
         // TODO: audit('CATEGORY_CREATE', $category)
 
         return response()->json([
-            'data' => $category,
-            'meta' => [],
+            'data'    => $category,
+            'meta'    => [],
             'message' => 'Created',
-            'errors' => null,
+            'errors'  => null,
         ], 201);
     }
 
@@ -78,25 +77,36 @@ class CategoryController extends Controller
         // TODO: audit('CATEGORY_UPDATE', $category)
 
         return response()->json([
-            'data' => $category,
-            'meta' => [],
+            'data'    => $category,
+            'meta'    => [],
             'message' => 'Updated',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
     public function destroy(ServiceCategory $category)
     {
         $this->authorize('delete', $category);
+
+        if ($category->services()->exists()) {
+            return response()->json([
+                'data'    => null,
+                'meta'    => [],
+                'message' => 'Kategori masih dipakai produk',
+                'errors'  => ['services' => ['has_services']],
+            ], 422);
+
+        }
+
         $category->delete();
 
         // TODO: audit('CATEGORY_DELETE', ['id' => $category->id])
 
         return response()->json([
-            'data' => null,
-            'meta' => [],
+            'data'    => null,
+            'meta'    => [],
             'message' => 'Deleted',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 }

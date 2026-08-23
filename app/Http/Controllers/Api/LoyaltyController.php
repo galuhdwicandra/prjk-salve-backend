@@ -25,14 +25,13 @@ class LoyaltyController extends Controller
 
         return response()->json([
             'data'    => [
-                'stamps' => $currentStamp,
-                'cycle'  => LoyaltyService::CYCLE,
-                'next'   => $currentStamp >= LoyaltyService::CYCLE
-                    ? LoyaltyService::CYCLE
-                    : $currentStamp,
+                'stamps'   => $currentStamp,
+                'lifetime' => (int) $acc->lifetime,
+                'cycle'    => LoyaltyService::CYCLE,
+                'next'     => ($currentStamp % LoyaltyService::CYCLE) + 1,
             ],
             'meta'    => [],
-            'message' => 'Loyalty stamp berhasil diubah secara manual.',
+            'message' => 'OK',
             'errors'  => null,
         ]);
     }
@@ -94,10 +93,9 @@ class LoyaltyController extends Controller
         return response()->json([
             'data'    => [
                 'stamps' => $currentStamp,
-                'cycle'  => LoyaltyService::CYCLE,
-                'next'   => $currentStamp >= LoyaltyService::CYCLE
-                    ? LoyaltyService::CYCLE
-                    : $currentStamp,
+                'lifetime' => (int) $acc->lifetime,
+                'cycle'    => LoyaltyService::CYCLE,
+                'next'   => ($currentStamp % LoyaltyService::CYCLE) + 1,
             ],
             'meta'    => [],
             'message' => 'OK',

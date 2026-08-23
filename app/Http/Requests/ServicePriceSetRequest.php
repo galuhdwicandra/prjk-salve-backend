@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -16,8 +15,9 @@ class ServicePriceSetRequest extends FormRequest
     {
         return [
             'service_id' => ['required', 'uuid', 'exists:services,id'],
-            'branch_id' => ['required', 'uuid', 'exists:branches,id'],
-            'price' => ['required', 'numeric', 'min:0'],
+            'branch_id'  => ['required', 'uuid', 'exists:branches,id'],
+            'price'      => ['required', 'numeric', 'min:0'],
+            'sla_days'   => ['sometimes', 'nullable', 'integer', 'min:0', 'max:365'],
         ];
     }
 
@@ -25,8 +25,10 @@ class ServicePriceSetRequest extends FormRequest
     {
         return [
             'service_id.required' => 'service_id wajib diisi',
-            'branch_id.required' => 'branch_id wajib diisi',
-            'price.required' => 'price wajib diisi',
+            'branch_id.required'  => 'branch_id wajib diisi',
+            'price.required'      => 'price wajib diisi',
+            'sla_days.integer'    => 'sla_days harus bilangan bulat',
+            'sla_days.max'        => 'sla_days maksimal 365 hari',
         ];
     }
 }

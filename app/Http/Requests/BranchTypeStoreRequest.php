@@ -1,21 +1,19 @@
 <?php
-
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class CashSessionCloseRequest extends FormRequest
+class BranchTypeStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('create', \App\Models\BranchType::class) ?? false;
     }
 
     public function rules(): array
     {
         return [
-            'closing_cash_counted' => ['required', 'numeric', 'min:0'],
-            'notes' => ['nullable', 'string'],
+            'name' => ['required', 'string', 'max:120'],
         ];
     }
 }

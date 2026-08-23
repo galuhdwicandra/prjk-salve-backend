@@ -29,23 +29,6 @@ class ReportFilterRequest extends FormRequest
         ];
     }
 
-    protected function prepareForValidation(): void
-    {
-        $u = $this->user();
-
-        if (! $u) {
-            return;
-        }
-
-        if ($u->hasAnyRole(['Superadmin', 'Akuntansi'])) {
-            return;
-        }
-
-        $this->merge([
-            'branch_id' => $u->branch_id,
-        ]);
-    }
-
     public function fromDate(): Carbon
     {
         return Carbon::createFromFormat('Y-m-d', $this->input('from'))->startOfDay();
@@ -56,8 +39,15 @@ class ReportFilterRequest extends FormRequest
         return Carbon::createFromFormat('Y-m-d', $this->input('to'))->endOfDay();
     }
 
-    public function branchId(): ?string
+    public function branchIds(): ?array
     {
-        return $this->input('branch_id');
+        $user = $this->user();
+
+        if ($user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
+            $requested = $this->input('branch_id');
+            return $requested ? [$requested] : null;
+        }
+
+        return $user->branchScopeIds($this->input('branch_id'));
     }
 }

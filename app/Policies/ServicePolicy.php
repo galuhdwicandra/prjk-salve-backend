@@ -2,40 +2,33 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Service;
+use App\Models\User;
 
 class ServicePolicy
 {
-    public function before(User $user, $ability)
-    {
-        if ($user->hasRole('Superadmin'))
-            return true;
-        return null;
-    }
-
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['Superadmin', 'Admin Cabang','Kasir']);
+        return true;
     }
 
     public function view(User $user, Service $service): bool
     {
-        return $user->hasAnyRole(['Superadmin', 'Admin Cabang','Kasir']);
+        return true;
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['Superadmin', 'Admin Cabang']);
+        return $user->isManager();
     }
 
     public function update(User $user, Service $service): bool
     {
-        return $user->hasAnyRole(['Superadmin', 'Admin Cabang']);
+        return $user->isManager();
     }
 
     public function delete(User $user, Service $service): bool
     {
-        return $user->hasAnyRole(['Superadmin', 'Admin Cabang']);
+        return $user->isManager();
     }
 }

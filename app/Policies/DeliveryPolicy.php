@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Policies;
 
 use App\Models\Delivery;
@@ -7,48 +6,47 @@ use App\Models\User;
 
 class DeliveryPolicy
 {
-    public function before(User $user, $ability)
+    public function viewAny(User $user): bool
     {
-        if ($user->hasRole('Superadmin'))
-            return true;
-        return null;
-    }
-
-    public function create(User $user): bool
-    {
-        return $user->hasAnyRole(['Admin Cabang', 'Kasir']);
-    }
-
-    public function assignCourier(User $user, Delivery $delivery): bool
-    {
-        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
-            return (string) $delivery->order?->branch_id === (string) $user->branch_id;
-        }
-        return false;
-    }
-
-    public function updateStatus(User $user, Delivery $delivery): bool
-    {
-        if ($user->hasRole('Kurir')) {
-            return (int) $delivery->assigned_to === (int) $user->id;
-        }
-        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
-            return (string) $delivery->order?->branch_id === (string) $user->branch_id;
-        }
-        return false;
+        return true;
     }
 
     public function view(User $user, Delivery $delivery): bool
     {
-        if ($user->hasAnyRole(['Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir'])) {
-            return (string) $delivery->order?->branch_id === (string) $user->branch_id
-                || (int) $delivery->assigned_to === (int) $user->id;
-        }
-        return false;
+        return $this->isAssignee($user, $delivery)
+        || $this->canAccessOrderBranches($user, $delivery);
     }
 
-    public function viewAny(User $user): bool
+    public function create(User $user): bool
     {
-        return $user->hasAnyRole(['Admin Cabang', 'Kasir', 'Petugas Cuci', 'Kurir']);
+        return true;
+    }
+
+    public function assignCourier(User $user, Delivery $delivery): bool
+    {
+        return $this->canManageOrderBranches($user, $delivery);
+    }
+
+    public function updateStatus(User $user, Delivery $delivery): bool
+    {
+        return $this->isAssignee($user, $delivery)
+        || $this->canAccessOrderBranches($user, $delivery);
+    }
+
+    private function isAssignee(User $user, Delivery $delivery): bool
+    {
+        return $delivery->assigned_to !== null && (int) $delivery->assigned_to === (int) $user->id;
+    }
+
+    private function canAccessOrderBranches(User $user, Delivery $delivery): bool
+    {
+        return $user->canAccessBranch((string) $delivery->order?->branch_id)
+        || $user->canAccessBranch((string) $delivery->order?->destination_branch_id);
+    }
+
+    private function canManageOrderBranches(User $user, Delivery $delivery): bool
+    {
+        return $user->canManageBranch((string) $delivery->order?->branch_id)
+        || $user->canManageBranch((string) $delivery->order?->destination_branch_id);
     }
 }

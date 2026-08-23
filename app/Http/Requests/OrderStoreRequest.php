@@ -47,10 +47,27 @@ class OrderStoreRequest extends FormRequest
             $data['notes'] = ($this->input('notes') === null) ? null : trim((string) $this->input('notes'));
         }
 
-        if ($this->has('discount')) {
-            $data['discount'] = is_numeric($this->input('discount'))
-                ? (float) $this->input('discount')
-                : $this->input('discount');
+        if ($this->has('discount_value')) {
+            $data['discount_value'] = is_numeric($this->input('discount_value'))
+                ? (float) $this->input('discount_value')
+                : $this->input('discount_value');
+        }
+
+        if ($this->has('items') && is_array($this->input('items'))) {
+            $items = $this->input('items');
+            foreach ($items as $k => $row) {
+                if (isset($row['discount_value'])) {
+                    $items[$k]['discount_value'] = is_numeric($row['discount_value'])
+                        ? (float) $row['discount_value']
+                        : $row['discount_value'];
+                }
+                if (isset($row['price'])) {
+                    $items[$k]['price'] = is_numeric($row['price'])
+                        ? (float) $row['price']
+                        : $row['price'];
+                }
+            }
+            $data['items'] = $items;
         }
 
         if ($this->has('received_at')) {
@@ -68,24 +85,62 @@ class OrderStoreRequest extends FormRequest
 
     public function rules(): array
     {
-        $branchId = $this->user()?->branch_id;
+        $user     = $this->user();
+        $branchId = $user?->all_branches
+            ? (string) $this->input('branch_id')
+            : $user?->branch_id;
 
         return [
-            'branch_id'          => ['nullable', 'uuid', 'exists:branches,id'],
-            'customer_id'        => [
+            'branch_id'              => ['nullable', 'uuid', 'exists:branches,id'],
+            'client_ref'             => ['nullable', 'uuid'],
+            'customer_id'            => [
                 'required',
                 'uuid',
                 Rule::exists('customers', 'id')->where(fn($q) => $q->where('branch_id', $branchId)),
             ],
-            'notes'              => ['nullable', 'string'],
-            'discount'           => ['nullable', 'numeric', 'min:0'],
+            'notes'                  => ['nullable', 'string'],
+            'discount_type'          => ['nullable', Rule::in(['NOMINAL', 'PERCENT'])],
+            'processing_destination' => ['nullable', Rule::in(['workshop', 'vendor'])],
+            'destination_branch_id'  => [
+                'nullable', 'uuid',
+                Rule::requiredIf(fn() => $this->input('processing_destination') === 'workshop'),
+                Rule::exists('branches', 'id')->where(fn($q) => $q->where('type', 'workshop')),
+                function ($attribute, $value, $fail) {
+                    if ($value !== null && $this->input('processing_destination') !== 'workshop') {
+                        $fail('Cabang tujuan hanya berlaku untuk tujuan workshop.');
+                    }
+                },
+            ],
+            'discount_value'         => [
+                'nullable', 'numeric', 'min:0',
+                function ($attribute, $value, $fail) {
+                    if ($this->input('discount_type') === 'PERCENT' && (float) $value > 100) {
+                        $fail('Diskon persen tidak boleh lebih dari 100.');
+                    }
+                },
+            ],
 
-            'items'              => ['required', 'array', 'min:1'],
-            'items.*.service_id' => ['required', 'uuid', 'exists:services,id'],
-            'items.*.qty'        => ['required', 'numeric', 'gt:0'],
+            'items'                  => ['required', 'array', 'min:1'],
+            'items.*.service_id'     => ['required', 'uuid', 'exists:services,id'],
+            'items.*.qty'            => ['required', 'numeric', 'gt:0'],
+            'items.*.price'          => ['nullable', 'numeric', 'min:0'],
+            'items.*.discount_type'  => ['nullable', Rule::in(['NOMINAL', 'PERCENT'])],
+            'items.*.discount_value' => Rule::forEach(function ($value, $attribute) {
+                $index = (int) explode('.', $attribute)[1];
+                $type  = $this->input("items.$index.discount_type");
 
-            'received_at'        => ['required', 'date'],
-            'ready_at'           => ['required', 'date', 'after_or_equal:received_at'],
+                return [
+                    'nullable', 'numeric', 'min:0',
+                    function ($attr, $val, $fail) use ($type) {
+                        if ($type === 'PERCENT' && (float) $val > 100) {
+                            $fail('Diskon persen item tidak boleh lebih dari 100.');
+                        }
+                    },
+                ];
+            }) ,
+
+            'received_at'            => ['required', 'date'],
+            'ready_at'               => ['required', 'date', 'after_or_equal:received_at'],
         ];
     }
 

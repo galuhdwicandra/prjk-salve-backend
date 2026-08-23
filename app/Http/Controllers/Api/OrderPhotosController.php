@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Orders\OrderPhotosRequest;
 use App\Models\Order;
+use App\Models\OrderPhoto;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 
 class OrderPhotosController extends Controller
 {
@@ -42,6 +44,28 @@ class OrderPhotosController extends Controller
             'data'    => $order,
             'meta'    => [],
             'message' => 'Photos uploaded',
+            'errors'  => null,
+        ]);
+    }
+
+    public function destroy(Order $order, OrderPhoto $photo): JsonResponse
+    {
+        $this->authorize('uploadPhotos', $order);
+
+        abort_unless((string) $photo->order_id === (string) $order->getKey(), 404);
+
+        $relative = preg_replace('#^storage/#', '', (string) $photo->path);
+
+        if ($relative !== null && Storage::disk('public')->exists($relative)) {
+            Storage::disk('public')->delete($relative);
+        }
+
+        $photo->delete();
+
+        return response()->json([
+            'data'    => $order->fresh(['customer', 'items.service', 'photos', 'receivable', 'payments']),
+            'meta'    => [],
+            'message' => 'Foto dihapus',
             'errors'  => null,
         ]);
     }

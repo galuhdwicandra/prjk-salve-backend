@@ -4,48 +4,31 @@ namespace App\Policies;
 
 use App\Models\Expense;
 use App\Models\User;
-use Illuminate\Auth\Access\HandlesAuthorization;
 
 class ExpensePolicy
 {
-    use HandlesAuthorization;
-
-    public function before(?User $user, string $ability)
-    {
-        if ($user && $user->hasRole('Superadmin')) {
-            return true;
-        }
-
-        return null;
-    }
-
     public function viewAny(User $user): bool
     {
-        // Sesuai SOP: modul Expenses hanya untuk Admin Cabang (dan Superadmin via before)
-        return $user->hasRole('Admin Cabang');
+        return true;
     }
 
     public function view(User $user, Expense $expense): bool
     {
-        if ($user->hasRole('Admin Cabang') && $user->branch_id !== null) {
-            return $expense->branch_id === $user->branch_id;
-        }
-
-        return false;
+        return $user->canAccessBranch((string) $expense->branch_id);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasRole('Admin Cabang') && $user->branch_id !== null;
+        return $user->isManager();
     }
 
     public function update(User $user, Expense $expense): bool
     {
-        return $this->view($user, $expense);
+        return $user->canManageBranch((string) $expense->branch_id);
     }
 
     public function delete(User $user, Expense $expense): bool
     {
-        return $this->view($user, $expense);
+        return $user->canManageBranch((string) $expense->branch_id);
     }
 }

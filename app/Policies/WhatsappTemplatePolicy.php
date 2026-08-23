@@ -9,39 +9,23 @@ class WhatsappTemplatePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['Superadmin', 'Admin Cabang', 'Kasir']);
+        return true;
     }
 
     public function view(User $user, WhatsappTemplate $template): bool
     {
-        if ($user->hasRole('Superadmin')) {
-            return true;
-        }
-
-        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
-            return (string) $template->branch_id === (string) $user->branch_id
-                || $template->branch_id === null;
-        }
-
-        return false;
+        return $template->branch_id === null
+            || $user->canAccessBranch((string) $template->branch_id);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasRole('Superadmin') || $user->hasRole('Admin Cabang');
+        return $user->isManager();
     }
 
     public function update(User $user, WhatsappTemplate $template): bool
     {
-        if ($user->hasRole('Superadmin')) {
-            return true;
-        }
-
-        if ($user->hasRole('Admin Cabang')) {
-            return (string) $template->branch_id === (string) $user->branch_id;
-        }
-
-        return false;
+        return $user->canManageBranch($template->branch_id);
     }
 
     public function delete(User $user, WhatsappTemplate $template): bool

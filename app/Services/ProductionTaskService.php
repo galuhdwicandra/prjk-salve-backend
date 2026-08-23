@@ -31,6 +31,11 @@ class ProductionTaskService
         'READY',
     ];
 
+    public const PHASES = [
+        'persiapan' => ['QUEUE', 'WASHING'],
+        'finishing' => ['DRYING', 'IRONING'],
+    ];
+
     public const CORRECTION_TYPES = [
         'REWASH',
         'ROLLBACK',
@@ -42,12 +47,14 @@ class ProductionTaskService
         'REJECTED',
     ];
 
-    public function syncOpenOrdersToTasks(?string $branchId = null): void
+    public function syncOpenOrdersToTasks(?array $branchIds = null): void
     {
         Order::query()
             ->with('items:id,order_id,qty')
             ->whereIn('status', self::STATUSES)
-            ->when($branchId, fn($query) => $query->where('branch_id', $branchId))
+            ->where('processing_destination', 'workshop')
+            ->whereNotNull('destination_branch_id')
+            ->when($branchIds !== null, fn($query) => $query->whereIn('branch_id', $branchIds))
             ->whereDoesntHave('productionTask')
             ->chunkById(100, function (Collection $orders) {
                 foreach ($orders as $order) {
@@ -57,7 +64,7 @@ class ProductionTaskService
 
                     ProductionTask::query()->create([
                         'order_id'       => (string) $order->id,
-                        'branch_id'      => (string) $order->branch_id,
+                        'branch_id'      => (string) $order->destination_branch_id,
                         'assigned_to'    => null,
                         'current_status' => $status,
                         'qty'            => $this->calculateOrderQty($order),
@@ -135,6 +142,11 @@ class ProductionTaskService
 
             if (! in_array($toStatus, ['READY', 'PICKED_UP'], true)) {
                 $payload['finished_date'] = null;
+            }
+
+            if ($toStatus === 'QUEUE') {
+                $payload['assigned_to']  = null;
+                $payload['started_date'] = null;
             }
 
             $task->fill($payload)->save();
@@ -347,8 +359,10 @@ class ProductionTaskService
         return [
             'order:id,branch_id,customer_id,number,invoice_no,status,received_at,ready_at',
             'order.customer:id,name,whatsapp',
+            'order.branch:id,code,name,type',
             'assignee:id,name',
             'branch:id,name',
+            'branch:id,code,name,type',
         ];
     }
 
@@ -356,20 +370,32 @@ class ProductionTaskService
     {
         $order->loadMissing('items:id,order_id,qty');
 
-        return ProductionTask::query()->firstOrCreate(
-            ['order_id' => (string) $order->id],
-            [
-                'branch_id'      => (string) $order->branch_id,
-                'assigned_to'    => null,
-                'current_status' => in_array((string) $order->status, self::STATUSES, true)
-                    ? (string) $order->status
-                    : 'QUEUE',
-                'qty'            => $this->calculateOrderQty($order),
-                'started_date'   => null,
-                'finished_date'  => null,
-                'note'           => null,
-            ]
-        );
+        $task = ProductionTask::query()
+            ->where('order_id', (string) $order->id)
+            ->first();
+
+        if ($task) {
+            return $task;
+        }
+
+        if ($order->processing_destination !== 'workshop' || ! $order->destination_branch_id) {
+            throw ValidationException::withMessages([
+                'processing_destination' => ['Order belum memiliki tujuan proses workshop.'],
+            ]);
+        }
+
+        return ProductionTask::query()->create([
+            'order_id'       => (string) $order->id,
+            'branch_id'      => (string) $order->destination_branch_id,
+            'assigned_to'    => null,
+            'current_status' => in_array((string) $order->status, self::STATUSES, true)
+                ? (string) $order->status
+                : 'QUEUE',
+            'qty'            => $this->calculateOrderQty($order),
+            'started_date'   => null,
+            'finished_date'  => null,
+            'note'           => null,
+        ]);
     }
 
     private function ensureTaskBranchAllowed(ProductionTask $task, User $user): void
@@ -482,11 +508,9 @@ class ProductionTaskService
         if (! $this->isManager($user)) {
             abort(403, 'Hanya Superadmin atau Admin Cabang yang dapat memproses pengajuan koreksi.');
         }
-
         if ($user->hasRole('Superadmin')) {
             return;
         }
-
         if ((string) $request->branch_id !== (string) $user->branch_id) {
             abort(403, 'Anda tidak memiliki akses ke pengajuan koreksi cabang ini.');
         }

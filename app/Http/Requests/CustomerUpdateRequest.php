@@ -7,17 +7,6 @@ use Illuminate\Validation\Rule;
 
 class CustomerUpdateRequest extends FormRequest
 {
-    private const ALLOWED_TAGS = [
-        'VIP',
-        'Langganan',
-        'Corporate',
-        'Member',
-        'Prioritas',
-        'Outlet',
-        'Komplain',
-        'Blacklist',
-    ];
-
     public function authorize(): bool
     {
         /** @var Customer $customer */
@@ -32,8 +21,8 @@ class CustomerUpdateRequest extends FormRequest
         $branchId = $customer->branch_id;
 
         return [
-            'name'     => ['sometimes', 'required', 'string', 'max:150'],
-            'whatsapp' => [
+            'name'      => ['sometimes', 'required', 'string', 'max:150'],
+            'whatsapp'  => [
                 'sometimes',
                 'required',
                 'string',
@@ -42,10 +31,11 @@ class CustomerUpdateRequest extends FormRequest
                     ->where(fn($q) => $q->where('branch_id', $branchId))
                     ->ignore($customer->id, 'id'),
             ],
-            'address'  => ['sometimes', 'nullable', 'string', 'max:255'],
-            'notes'    => ['sometimes', 'nullable', 'string'],
-            'tags'     => ['sometimes', 'nullable', 'array', 'max:10'],
-            'tags.*'   => ['string', Rule::in(self::ALLOWED_TAGS)],
+            'address'   => ['sometimes', 'nullable', 'string', 'max:255'],
+            'notes'     => ['sometimes', 'nullable', 'string'],
+            'tags'      => ['sometimes', 'nullable', 'array', 'max:10'],
+            'tags.*'    => ['string', Rule::exists('customer_labels', 'name')],
+            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -54,7 +44,7 @@ class CustomerUpdateRequest extends FormRequest
         $payload = [];
 
         if ($this->has('whatsapp')) {
-            $payload['whatsapp'] = preg_replace('/\s+/', '', (string) $this->input('whatsapp'));
+            $payload['whatsapp'] = preg_replace('/\D+/', '', (string) $this->input('whatsapp'));
         }
 
         if ($this->has('tags') && is_array($this->input('tags'))) {
@@ -66,7 +56,7 @@ class CustomerUpdateRequest extends FormRequest
                 ->all();
         }
 
-        if (!empty($payload)) {
+        if (! empty($payload)) {
             $this->merge($payload);
         }
     }

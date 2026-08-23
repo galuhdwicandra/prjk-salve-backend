@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Requests\Vouchers;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -22,15 +21,19 @@ class VoucherStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'branch_id' => ['nullable', 'uuid'],
-            'code' => ['required', 'string', 'max:40', 'unique:vouchers,code'],
-            'type' => ['required', Rule::in(['PERCENT', 'NOMINAL'])],
-            'value' => ['required', 'numeric', 'min:0'],
-            'start_at' => ['nullable', 'date'],
-            'end_at' => ['nullable', 'date', 'after_or_equal:start_at'],
-            'min_total' => ['nullable', 'numeric', 'min:0'],
-            'usage_limit' => ['nullable', 'integer', 'min:1'],
-            'active' => ['boolean'],
+            'branch_id'              => ['nullable', 'uuid'],
+            'code'                   => ['required', 'string', 'regex:/^[A-Z0-9]{4,10}$/', 'unique:vouchers,code'],
+            'name'                   => ['required', 'string', 'max:100'],
+            'type'                   => ['required', Rule::in(['PERCENT', 'NOMINAL'])],
+            'value'                  => ['required', 'numeric', 'min:0'],
+            'start_at'               => ['nullable', 'date'],
+            'end_at'                 => ['nullable', 'date', 'after_or_equal:start_at'],
+            'min_total'              => ['nullable', 'numeric', 'min:0'],
+            'usage_limit'            => ['nullable', 'integer', 'min:1'],
+            'active'                 => ['boolean'],
+            'stack_voucher'          => ['boolean'],
+            'stack_discount'         => ['boolean'],
+            'percent_after_discount' => ['boolean'],
         ];
     }
 
@@ -46,7 +49,7 @@ class VoucherStoreRequest extends FormRequest
             // Admin cabang hanya boleh set branch_id == branch dirinya
             $u = $this->user();
             if ($u && method_exists($u, 'hasRole') && $u->hasRole('admin')) {
-                if (!$this->filled('branch_id') || $this->input('branch_id') !== $u->branch_id) {
+                if (! $this->filled('branch_id') || $this->input('branch_id') !== $u->branch_id) {
                     $v->errors()->add('branch_id', 'Admin cabang hanya boleh membuat voucher untuk cabangnya.');
                 }
             }

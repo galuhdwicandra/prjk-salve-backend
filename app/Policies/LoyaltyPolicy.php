@@ -2,39 +2,18 @@
 
 namespace App\Policies;
 
-use App\Models\User;
 use App\Models\Customer;
+use App\Models\User;
 
 class LoyaltyPolicy
 {
-    public function before(User $actor, string $ability): bool|null
-    {
-        return $actor->hasRole('Superadmin') ? true : null;
-    }
-
     public function view(User $actor, Customer $customer): bool
     {
-        if (! $actor->hasAnyRole(['Admin Cabang', 'Kasir'])) {
-            return false;
-        }
-
-        if (! $actor->branch_id) {
-            return false;
-        }
-
-        return (string) $actor->branch_id === (string) $customer->branch_id;
+        return $actor->canAccessBranch((string) $customer->branch_id);
     }
 
     public function manageManual(User $actor, Customer $customer): bool
     {
-        if (! $actor->hasRole('Admin Cabang')) {
-            return false;
-        }
-
-        if (! $actor->branch_id) {
-            return false;
-        }
-
-        return (string) $actor->branch_id === (string) $customer->branch_id;
+        return $actor->canManageBranch((string) $customer->branch_id);
     }
 }

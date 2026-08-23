@@ -7,7 +7,6 @@ use App\Http\Requests\OrderStoreRequest;
 use App\Http\Requests\Orders\OrderLoyaltyCorrectionRequest;
 use App\Http\Requests\OrderUpdateRequest;
 use App\Models\Order;
-use App\Services\CashLedgerService;
 use App\Services\LoyaltyService;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
@@ -25,9 +24,9 @@ class OrderController extends Controller
 {
     public function __construct(
         private OrderService $svc,
-        private CashLedgerService $cash
+        private \App\Services\PaymentService $payments
     ) {
-        $this->middleware('auth:sanctum')->except(['receipt']);
+        $this->middleware('auth:sanctum')->except(['receipt', 'track']);
     }
     // GET /orders
     public function index(Request $request)
@@ -55,13 +54,9 @@ class OrderController extends Controller
 
         $q->orderBy($sortBy, $sortDir);
 
-        // ===== (2) Scope cabang =====
-        if ($me->hasRole('Superadmin')) {
-            if ($branchId = (string) $request->query('branch_id')) {
-                $q->where('branch_id', $branchId);
-            }
-        } elseif ($me->branch_id) {
-            $q->where('branch_id', $me->branch_id);
+        $branchIds = $me->branchScopeIds($request->query('branch_id'));
+        if ($branchIds !== null) {
+            $q->whereIn('branch_id', $branchIds);
         }
 
         // ===== (3) Pencarian cepat diperluas =====
@@ -82,11 +77,23 @@ class OrderController extends Controller
             $q->where('status', $st);
         }
 
-        // ===== (5) Filter status pembayaran =====
-        if ($paymentStatus = $request->query('payment_status')) {
-            $q->where('payment_status', $paymentStatus);
+        if ($customerId = $request->query('customer_id')) {
+            $q->where('customer_id', $customerId);
         }
 
+        if ($destination = $request->query('processing_destination')) {
+            if ($destination === 'unsorted') {
+                $q->whereNull('processing_destination');
+            } else {
+                $q->where('processing_destination', $destination);
+            }
+        }
+
+        // ===== (5) Filter status pembayaran =====
+        $paymentStatus = (string) $request->query('payment_status');
+        if (in_array($paymentStatus, ['PENDING', 'DP', 'PAID'], true)) {
+            $q->where('payment_status', $paymentStatus);
+        }
         // ===== (6) Filter metode pembayaran =====
         if ($paymentMethod = $request->query('payment_method')) {
             $q->whereHas('payments', function ($pq) use ($paymentMethod) {
@@ -94,16 +101,15 @@ class OrderController extends Controller
             });
         }
 
-        // ===== (7) Filter tanggal masuk sampai tanggal selesai =====
         if ($dateFrom = $request->query('date_from')) {
             $q->whereDate('received_at', '>=', $dateFrom);
         }
 
         if ($dateTo = $request->query('date_to')) {
-            $q->whereDate('ready_at', '<=', $dateTo);
+            $q->whereDate('received_at', '<=', $dateTo);
         }
 
-        $allowedPerPages  = [10, 100, 200, 500];
+        $allowedPerPages  = [5, 10, 25, 50, 100, 200, 500];
         $requestedPerPage = (int) $request->query('per_page', 10);
         $per              = in_array($requestedPerPage, $allowedPerPages, true) ? $requestedPerPage : 10;
 
@@ -128,7 +134,14 @@ class OrderController extends Controller
         $this->authorize('view', $order);
 
         return response()->json([
-            'data'    => $order->load(['customer', 'items.service', 'photos', 'receivable']),
+            'data'    => $order->load([
+                'customer',
+                'items.service',
+                'photos',
+                'receivable',
+                'productionTask.logs.user:id,name',
+                'payments' => fn($q) => $q->orderBy('paid_at')->orderBy('created_at'),
+            ]),
             'meta'    => [],
             'message' => 'OK',
             'errors'  => null,
@@ -161,9 +174,6 @@ class OrderController extends Controller
             ? Carbon::parse((string) $payload['received_at'], 'Asia/Jakarta')->startOfDay()
             : now('Asia/Jakarta')->startOfDay();
 
-        $this->cash->requireOpenSession($branchId, $businessDate);
-
-        // (Opsional, tapi disarankan) Customer harus di cabang yang sama
         if (! empty($payload['customer_id'])) {
             $customerId = (string) ($payload['customer_id'] ?? '');
             $branchId   = (string) $payload['branch_id'];
@@ -177,25 +187,37 @@ class OrderController extends Controller
         }
 
         $fingerprint = sha1(json_encode([
-            'user_id'     => (string) $me->id,
-            'branch_id'   => (string) ($payload['branch_id'] ?? ''),
-            'customer_id' => (string) ($payload['customer_id'] ?? ''),
-            'items'       => collect($payload['items'] ?? [])
+            'user_id'        => (string) $me->id,
+            'branch_id'      => (string) ($payload['branch_id'] ?? ''),
+            'customer_id'    => (string) ($payload['customer_id'] ?? ''),
+            'items'          => collect($payload['items'] ?? [])
                 ->map(fn($it) => [
-                    'service_id' => (string) ($it['service_id'] ?? ''),
-                    'qty'        => (float) ($it['qty'] ?? 0),
-                    'note'       => (string) ($it['note'] ?? ''),
+                    'service_id'     => (string) ($it['service_id'] ?? ''),
+                    'qty'            => (float) ($it['qty'] ?? 0),
+                    'note'           => (string) ($it['note'] ?? ''),
+                    'discount_type'  => (string) ($it['discount_type'] ?? ''),
+                    'discount_value' => (float) ($it['discount_value'] ?? 0),
                 ])
                 ->values()
                 ->all(),
-            'discount'    => (float) ($payload['discount'] ?? 0),
-            'notes'       => (string) ($payload['notes'] ?? ''),
-            'received_at' => (string) ($payload['received_at'] ?? ''),
-            'ready_at'    => (string) ($payload['ready_at'] ?? ''),
+            'discount_type'  => (string) ($payload['discount_type'] ?? ''),
+            'discount_value' => (float) ($payload['discount_value'] ?? 0),
+            'notes'          => (string) ($payload['notes'] ?? ''),
+            'received_at'    => (string) ($payload['received_at'] ?? ''),
+            'ready_at'       => (string) ($payload['ready_at'] ?? ''),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
-        $cacheKey = 'order:create:' . $fingerprint;
-        $lockKey  = $cacheKey . ':lock';
+        $clientRef = (string) ($payload['client_ref'] ?? '');
+
+        $cacheKey = $clientRef !== ''
+            ? 'order:create:ref:' . $clientRef
+            : 'order:create:' . $fingerprint;
+
+        $cacheTtl = $clientRef !== ''
+            ? now()->addDay()
+            : now()->addSeconds(30);
+
+        $lockKey = $cacheKey . ':lock';
 
         $lock = Cache::lock($lockKey, 10);
 
@@ -251,7 +273,7 @@ class OrderController extends Controller
             Cache::put(
                 $cacheKey,
                 (string) $order->getKey(),
-                now()->addSeconds(30)
+                $cacheTtl
             );
 
             return response()->json([
@@ -313,6 +335,20 @@ class OrderController extends Controller
             'data'    => null,
             'meta'    => [],
             'message' => 'Deleted',
+            'errors'  => null,
+        ]);
+    }
+
+    public function void(\App\Http\Requests\Orders\OrderVoidRequest $request, Order $order)
+    {
+        $this->authorize('void', $order);
+
+        $order = $this->payments->voidOrder($order, $request->user(), (string) $request->validated('reason'));
+
+        return response()->json([
+            'data'    => $order,
+            'meta'    => [],
+            'message' => 'Receipt berhasil di-void.',
             'errors'  => null,
         ]);
     }

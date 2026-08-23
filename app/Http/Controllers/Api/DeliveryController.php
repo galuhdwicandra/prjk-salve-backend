@@ -26,6 +26,8 @@ class DeliveryController extends Controller
             ->with([
                 'courier:id,name',
                 'order:id,branch_id,customer_id,number,invoice_no',
+                'order.branch:id,name,code',
+                'order.items:id,order_id,qty',
                 'order.customer:id,name,whatsapp,address',
             ])
             ->latest('created_at');
@@ -39,19 +41,23 @@ class DeliveryController extends Controller
         }
         if ($term = trim((string) $request->query('q', ''))) {
             $q->where(function ($w) use ($term) {
-                $w->whereRaw('CAST(id AS CHAR) LIKE ?', ["%{$term}%"])
+                $w->where('number', 'LIKE', "%{$term}%")
+                    ->orWhereRaw('CAST(id AS CHAR) LIKE ?', ["%{$term}%"])
                     ->orWhereRaw('CAST(order_id AS CHAR) LIKE ?', ["%{$term}%"])
                     ->orWhereHas('order', function ($oq) use ($term) {
                         $oq->where('number', 'LIKE', "%{$term}%")
-                            ->orWhere('invoice_no', 'LIKE', "%{$term}%");
+                            ->orWhere('invoice_no', 'LIKE', "%{$term}%")
+                            ->orWhereHas('customer', fn($cq) => $cq->where('name', 'LIKE', "%{$term}%"));
                     });
             });
         }
 
-                                                     // Scope cabang & peran (pola sama seperti controller lain yang Anda pakai)
-        $branchId = $this->branchScopeFor($request); // lihat helper di bawah
-        if ($branchId) {
-            $q->whereHas('order', fn($oq) => $oq->where('branch_id', $branchId));
+        $branchIds = $this->branchScopeIds($request);
+        if ($branchIds !== null) {
+            $q->whereHas('order', fn($oq) => $oq->where(
+                fn($w) => $w->whereIn('branch_id', $branchIds)
+                    ->orWhereIn('destination_branch_id', $branchIds)
+            ));
         }
 
         // Kurir hanya lihat yang ditugaskan
@@ -63,28 +69,37 @@ class DeliveryController extends Controller
         $page = $q->paginate($per);
 
         $items = collect($page->items())->map(function (Delivery $d) {
-        return [
-            'id'               => $d->id,
-            'order_id'         => $d->order_id,
-            'order_invoice_no' => $d->order?->invoice_no,
-            'order_number'     => $d->order?->number,
-            'type'             => $d->type,
-            'fee'              => $d->fee,
-            'assigned_to'      => $d->assigned_to,
-            'status'           => $d->status,
-            'created_at'       => $d->created_at,
-            'courier'          => $d->courier
-                ? ['id' => $d->courier->id, 'name' => $d->courier->name]
-                : null,
-            'customer'         => $d->order?->customer
-                ? [
+            return [
+                'id'               => $d->id,
+                'number'           => $d->number,
+                'order_id'         => $d->order_id,
+                'order_invoice_no' => $d->order?->invoice_no,
+                'order_number'     => $d->order?->number,
+                'type'             => $d->type,
+                'fee'              => $d->fee,
+                'qty'              => (float) ($d->order?->items->sum('qty') ?? 0),
+                'branch'           => $d->order?->branch
+                    ? [
+                    'id'   => (string) $d->order->branch->id,
+                    'name' => $d->order->branch->name,
+                    'code' => $d->order->branch->code,
+                ]
+                    : null,
+                'assigned_to'      => $d->assigned_to,
+                'status'           => $d->status,
+                'created_at'       => $d->created_at,
+                'courier'          => $d->courier
+                    ? ['id' => $d->courier->id, 'name' => $d->courier->name]
+                    : null,
+                'customer'         => $d->order?->customer
+                    ? [
                     'id'       => $d->order->customer->id,
                     'name'     => $d->order->customer->name,
                     'whatsapp' => $d->order->customer->whatsapp,
                     'address'  => $d->order->customer->address,
                 ]
-                : null,
-        ];
+                    : null,
+            ];
         })->all();
 
         return response()->json([
@@ -168,13 +183,8 @@ class DeliveryController extends Controller
         ]);
     }
 
-    private function branchScopeFor(Request $request): ?string
+    private function branchScopeIds(Request $request): ?array
     {
-        $u = $request->user();
-        if ($u->hasRole('Superadmin')) {
-            $bid = (string) $request->query('branch_id', '');
-            return $bid !== '' ? $bid : null;
-        }
-        return $u->branch_id ?: null;
+        return $request->user()->branchScopeIds($request->query('branch_id'));
     }
 }

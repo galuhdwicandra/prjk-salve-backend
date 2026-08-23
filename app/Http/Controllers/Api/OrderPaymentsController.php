@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Payments\PaymentCorrectionRequest;
 use App\Http\Requests\Payments\PaymentRequest;
+use App\Http\Requests\Payments\PaymentUpdateRequest;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Services\PaymentService;
 use Illuminate\Http\JsonResponse;
 
@@ -37,6 +39,47 @@ class OrderPaymentsController extends Controller
             'message' => 'Payment applied',
             'errors'  => null,
         ], 201);
+    }
+
+    public function update(PaymentUpdateRequest $request, Order $order, Payment $payment): JsonResponse
+    {
+        $this->authorize('settlePayment', $order);
+
+        abort_unless((string) $payment->order_id === (string) $order->getKey(), 404);
+
+        $data = $request->validated();
+
+        $updated = $this->svc->updatePayment(
+            $payment,
+            (string) $data['method'],
+            (float) $data['amount'],
+            $data['paid_at'] ?? null,
+            $data['note'] ?? null,
+            $request->user()
+        );
+
+        return response()->json([
+            'data'    => ['order' => $updated],
+            'meta'    => [],
+            'message' => 'Pembayaran berhasil diperbarui.',
+            'errors'  => null,
+        ]);
+    }
+
+    public function destroy(Order $order, Payment $payment): JsonResponse
+    {
+        $this->authorize('settlePayment', $order);
+
+        abort_unless((string) $payment->order_id === (string) $order->getKey(), 404);
+
+        $updated = $this->svc->deletePayment($payment, request()->user());
+
+        return response()->json([
+            'data'    => ['order' => $updated],
+            'meta'    => [],
+            'message' => 'Pembayaran berhasil dihapus.',
+            'errors'  => null,
+        ]);
     }
 
     public function resetToPending(PaymentCorrectionRequest $request, Order $order): JsonResponse

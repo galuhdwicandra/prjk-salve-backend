@@ -26,3 +26,7 @@ Thumbs.db
 venv/
 __pycache__/
 *.pyc
+
+#docker
+Dockerfile.dev
+.serena

@@ -41,6 +41,7 @@ class AccountingLedgerService
                 'journal_date'     => optional($line->journalEntry?->journal_date)->format('Y-m-d'),
                 'journal_no'       => $line->journalEntry?->journal_no,
                 'source_type'      => $line->journalEntry?->source_type,
+                'source_id'        => $line->journalEntry?->source_id,
                 'source_no'        => $line->journalEntry?->source_no,
                 'branch'           => $line->journalEntry?->branch ? [
                     'id'   => (string) $line->journalEntry->branch->id,
@@ -85,11 +86,102 @@ class AccountingLedgerService
         ];
     }
 
-    private function resolveAccount(string $accountId, $user): AccountingAccount
+        public function buildAll(array $filters, $user): array
     {
-        $query = AccountingAccount::query()
-            ->where('id', $accountId)
-            ->where('is_active', true);
+        $branchId = $this->resolveScopeBranchId($filters, $user);
+        $dateFrom = (string) $filters['date_from'];
+        $dateTo   = (string) $filters['date_to'];
+
+        $accounts = $this->visibleAccountsQuery($user)->get()->keyBy(fn ($account) => (string) $account->id);
+        $openings = $this->openingBalancesByAccount($branchId, $dateFrom);
+
+        $groups   = [];
+        $rowCount = 0;
+
+        foreach ($this->groupedLinesQuery($branchId, $dateFrom, $dateTo)->cursor() as $line) {
+            $key     = (string) $line->account_id;
+            $account = $accounts->get($key);
+
+            if (! $account) {
+                continue;
+            }
+
+            if (! isset($groups[$key])) {
+                $opening = $this->balanceFromTotals(
+                    $account,
+                    (float) ($openings[$key]['debit'] ?? 0),
+                    (float) ($openings[$key]['credit'] ?? 0)
+                );
+
+                $groups[$key] = [
+                    'account'         => [
+                        'id'             => (string) $account->id,
+                        'code'           => $account->code,
+                        'name'           => $account->name,
+                        'type'           => $account->type,
+                        'normal_balance' => $account->normal_balance,
+                    ],
+                    'opening_balance' => round($opening, 2),
+                    'total_debit'     => 0.0,
+                    'total_credit'    => 0.0,
+                    'ending_balance'  => $opening,
+                    'rows'            => [],
+                ];
+            }
+
+            $debit  = (float) $line->debit;
+            $credit = (float) $line->credit;
+
+            $groups[$key]['total_debit']  += $debit;
+            $groups[$key]['total_credit'] += $credit;
+            $groups[$key]['ending_balance'] = $this->applyMovement(
+                $account,
+                $groups[$key]['ending_balance'],
+                $debit,
+                $credit
+            );
+
+            $groups[$key]['rows'][] = [
+                'id'               => (string) $line->id,
+                'journal_entry_id' => (string) $line->journal_entry_id,
+                'journal_date'     => $line->journal_date,
+                'journal_no'       => $line->journal_no,
+                'source_type'      => $line->source_type,
+                'source_no'        => $line->source_no,
+                'cash_kind'        => $line->cash_kind,
+                'description'      => $line->line_description ?: $line->entry_description,
+                'debit'            => round($debit, 2),
+                'credit'           => round($credit, 2),
+                'balance'          => round($groups[$key]['ending_balance'], 2),
+            ];
+
+            $rowCount++;
+        }
+
+        $data = array_map(function (array $group) {
+            $group['total_debit']    = round($group['total_debit'], 2);
+            $group['total_credit']   = round($group['total_credit'], 2);
+            $group['ending_balance'] = round($group['ending_balance'], 2);
+
+            return $group;
+        }, array_values($groups));
+
+        return [
+            'data' => $data,
+            'meta' => [
+                'grouped'        => true,
+                'branch_id'      => $branchId,
+                'date_from'      => $dateFrom,
+                'date_to'        => $dateTo,
+                'total_rows'     => $rowCount,
+                'total_accounts' => count($data),
+            ],
+        ];
+    }
+
+    private function visibleAccountsQuery($user)
+    {
+        $query = AccountingAccount::query();
 
         if (! $user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
             $query->where(function ($q) use ($user) {
@@ -98,11 +190,88 @@ class AccountingLedgerService
             });
         }
 
-        $account = $query->first();
+        return $query;
+    }
+
+    private function resolveScopeBranchId(array $filters, $user): ?string
+    {
+        if (! $user->hasAnyRole(['Superadmin', 'Akuntansi'])) {
+            if (! $user->branch_id) {
+                throw ValidationException::withMessages([
+                    'branch_id' => ['User belum terikat ke cabang.'],
+                ]);
+            }
+
+            return (string) $user->branch_id;
+        }
+
+        return ($filters['branch_id'] ?? null) ? (string) $filters['branch_id'] : null;
+    }
+
+    private function openingBalancesByAccount(?string $branchId, string $dateFrom): array
+    {
+        $rows = AccountingJournalLine::query()
+            ->join('accounting_journal_entries as e', 'e.id', '=', 'accounting_journal_lines.journal_entry_id')
+            ->where('e.status', 'POSTED')
+            ->whereDate('e.journal_date', '<', $dateFrom)
+            ->when($branchId, fn ($q) => $q->where('e.branch_id', $branchId))
+            ->groupBy('accounting_journal_lines.account_id')
+            ->selectRaw('accounting_journal_lines.account_id as account_id, COALESCE(SUM(accounting_journal_lines.debit), 0) as debit_total, COALESCE(SUM(accounting_journal_lines.credit), 0) as credit_total')
+            ->get();
+
+        $totals = [];
+
+        foreach ($rows as $row) {
+            $totals[(string) $row->account_id] = [
+                'debit'  => (float) $row->debit_total,
+                'credit' => (float) $row->credit_total,
+            ];
+        }
+
+        return $totals;
+    }
+
+    private function groupedLinesQuery(?string $branchId, string $dateFrom, string $dateTo)
+    {
+        return AccountingJournalLine::query()
+            ->join('accounting_journal_entries as e', 'e.id', '=', 'accounting_journal_lines.journal_entry_id')
+            ->join('accounting_accounts as a', 'a.id', '=', 'accounting_journal_lines.account_id')
+            ->leftJoin('cash_transactions as ct', function ($join) {
+                $join->on('ct.id', '=', 'e.source_id')
+                    ->where('e.source_type', '=', 'cash_transaction');
+            })
+            ->where('e.status', 'POSTED')
+            ->whereDate('e.journal_date', '>=', $dateFrom)
+            ->whereDate('e.journal_date', '<=', $dateTo)
+            ->when($branchId, fn ($q) => $q->where('e.branch_id', $branchId))
+            ->orderBy('a.sort_order')
+            ->orderBy('a.code')
+            ->orderBy('e.journal_date')
+            ->orderBy('e.journal_no')
+            ->orderBy('accounting_journal_lines.line_order')
+            ->select([
+                'accounting_journal_lines.id',
+                'accounting_journal_lines.journal_entry_id',
+                'accounting_journal_lines.account_id',
+                'accounting_journal_lines.debit',
+                'accounting_journal_lines.credit',
+                'accounting_journal_lines.description as line_description',
+                'e.journal_no',
+                'e.journal_date',
+                'e.source_type',
+                'e.source_no',
+                'e.description as entry_description',
+                'ct.kind as cash_kind',
+            ]);
+    }
+
+    private function resolveAccount(string $accountId, $user): AccountingAccount
+    {
+        $account = $this->visibleAccountsQuery($user)->where('id', $accountId)->first();
 
         if (! $account) {
             throw ValidationException::withMessages([
-                'account_id' => ['Akun tidak aktif atau tidak sesuai cabang user.'],
+                'account_id' => ['Akun tidak ditemukan atau tidak sesuai cabang user.'],
             ]);
         }
 
@@ -162,7 +331,7 @@ class AccountingLedgerService
     {
         return AccountingJournalLine::query()
             ->with([
-                'journalEntry:id,branch_id,journal_no,journal_date,source_type,source_no,description,status',
+                'journalEntry:id,branch_id,journal_no,journal_date,source_type,source_id,source_no,description,status',
                 'journalEntry.branch:id,name,code',
             ])
             ->where('account_id', $account->id)

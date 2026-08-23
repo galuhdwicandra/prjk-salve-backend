@@ -7,55 +7,33 @@ use App\Models\User;
 
 class CustomerPolicy
 {
-    public function before(User $user, $ability)
-    {
-        if ($user->hasRole('Superadmin')) {
-            return true;
-        }
-        return null;
-    }
-
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['Superadmin', 'Admin Cabang', 'Kasir']);
+        return true;
     }
 
-    public function view(User $user, Customer $c): bool
+    public function view(User $user, Customer $customer): bool
     {
-        if ($user->hasRole('Admin Cabang') || $user->hasRole('Kasir')) {
-            return (string) $user->branch_id === (string) $c->branch_id;
-        }
-        return false;
+        return $user->canAccessBranch((string) $customer->branch_id);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['Superadmin', 'Admin Cabang', 'Kasir']);
+        return true;
     }
 
-    public function update(User $user, Customer $c): bool
+    public function update(User $user, Customer $customer): bool
     {
-        if ($user->hasRole('Admin Cabang') || $user->hasRole('Kasir')) {
-            return (string) $user->branch_id === (string) $c->branch_id;
-        }
-        return false;
+        return $user->canAccessBranch((string) $customer->branch_id);
     }
 
     public function viewLoyalty(User $user, Customer $customer): bool
     {
-        if ($user->hasRole('Superadmin')) return true;
-        if ($user->hasAnyRole(['Admin Cabang', 'Kasir'])) {
-            return (string)$user->branch_id === (string)$customer->branch_id;
-        }
-        return false;
+        return $user->canAccessBranch((string) $customer->branch_id);
     }
 
-    public function delete(User $user, Customer $c): bool
+    public function delete(User $user, Customer $customer): bool
     {
-        if ($user->hasRole('Admin Cabang')) {
-            return (string) $user->branch_id === (string) $c->branch_id;
-        }
-        // Kasir tidak bisa delete
-        return false;
+        return $user->canManageBranch((string) $customer->branch_id);
     }
 }

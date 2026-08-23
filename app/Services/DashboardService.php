@@ -6,260 +6,129 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardService
 {
-    /**
-     * @param Carbon $from  awal hari (inklusif)
-     * @param Carbon $to    akhir hari (inklusif)
-     * @param string|null $branchId
-     * @return array<string,mixed>
-     */
-    public function summary(Carbon $from, Carbon $to, ?string $branchId): array
+    private const COMPLETED = ['READY', 'DELIVERING', 'PICKED_UP'];
+    private const VOID = 'CANCELED';
+
+    public function summary(Carbon $from, Carbon $to, ?array $branchIds): array
     {
-        // === OMZET (basis kas) ===
-        $omzetTotal = (float) DB::table('payments')
-            ->join('orders', 'orders.id', '=', 'payments.order_id')
-            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
-            ->whereBetween('payments.paid_at', [$from, $to])
-            ->sum('payments.amount');
+        $qtyPerOrder = DB::table('order_items')
+            ->selectRaw('order_id, SUM(qty) AS qty')
+            ->groupBy('order_id');
 
-        // === TRANSAKSI (jumlah order dibuat) ===
-        $ordersCount = (int) DB::table('orders')
-            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
-            ->whereBetween('orders.created_at', [$from, $to])
-            ->count();
+        $liveOrders = fn() => DB::table('orders')
+            ->leftJoinSub($qtyPerOrder, 'item_qty', 'item_qty.order_id', '=', 'orders.id')
+            ->when($branchIds !== null, fn($q) => $q->whereIn('orders.branch_id', $branchIds))
+            ->where('orders.status', '!=', self::VOID)
+            ->whereBetween('orders.created_at', [$from, $to]);
 
-        // === ONGKIR (jumlah fee pengantaran) ===
-        $shippingFee = (float) DB::table('deliveries')
-            ->join('orders', 'orders.id', '=', 'deliveries.order_id')
-            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
-            ->whereBetween('deliveries.created_at', [$from, $to])
-            ->sum('deliveries.fee');
-
-        // === VOUCHER (penggunaan & nilai) ===
-        $voucherAgg = DB::table('order_vouchers')
-            ->join('orders', 'orders.id', '=', 'order_vouchers.order_id')
-            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
-            ->whereBetween('order_vouchers.applied_at', [$from, $to])
-            ->selectRaw('COUNT(DISTINCT order_vouchers.order_id) AS used_count,
-                         COALESCE(SUM(order_vouchers.applied_amount),0) AS used_amount')
-            ->first();
-
-        $vouchersUsedCount  = (int) ($voucherAgg->used_count ?? 0);
-        $vouchersUsedAmount = (float) ($voucherAgg->used_amount ?? 0);
-
-        // === PIUTANG BELUM LUNAS ===
-        $receivableAgg = DB::table('receivables')
-            ->join('orders', 'orders.id', '=', 'receivables.order_id')
-            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
-            ->whereIn('receivables.status', ['OPEN', 'PARTIAL'])
-            ->where('receivables.remaining_amount', '>', 0)
+        $all = $liveOrders()
             ->selectRaw('
-                COUNT(*) AS open_count,
-                COALESCE(SUM(receivables.remaining_amount), 0) AS open_amount
+                COALESCE(SUM(item_qty.qty), 0) AS pairs,
+                COALESCE(SUM(GREATEST(orders.grand_total - orders.paid_amount, 0)), 0) AS outstanding
             ')
             ->first();
 
-        $receivablesOpenCount  = (int) ($receivableAgg->open_count ?? 0);
-        $receivablesOpenAmount = (float) ($receivableAgg->open_amount ?? 0);
-
-        // === PIUTANG JATUH TEMPO / OVERDUE ===
-        $overdueAgg = DB::table('receivables')
-            ->join('orders', 'orders.id', '=', 'receivables.order_id')
-            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
-            ->whereIn('receivables.status', ['OPEN', 'PARTIAL'])
-            ->where('receivables.remaining_amount', '>', 0)
-            ->whereNotNull('receivables.due_date')
-            ->where('receivables.due_date', '<', now()->toDateString())
+        $done = $liveOrders()
+            ->whereIn('orders.status', self::COMPLETED)
             ->selectRaw('
-                COUNT(*) AS overdue_count,
-                COALESCE(SUM(receivables.remaining_amount), 0) AS overdue_amount
+                COALESCE(SUM(orders.grand_total), 0) AS revenue,
+                COALESCE(SUM(item_qty.qty), 0) AS pairs
             ')
             ->first();
 
-        $dpOutstandingCount  = (int) ($overdueAgg->overdue_count ?? 0);
-        $dpOutstandingAmount = (float) ($overdueAgg->overdue_amount ?? 0);
+        $unearned = (float) $liveOrders()
+            ->whereNotIn('orders.status', self::COMPLETED)
+            ->sum('orders.paid_amount');
 
-        // === PIUTANG (outstanding & overdue) ===
-        $now  = now();
-        $recv = DB::table('receivables')
-            ->join('orders', 'orders.id', '=', 'receivables.order_id')
-            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
-            ->whereIn('receivables.status', ['OPEN', 'PARTIAL', 'OVERDUE'])
+        $revenueRecognized = (float) ($done->revenue ?? 0);
+        $pairsRecognized = (float) ($done->pairs ?? 0);
+
+        $cashflowDaily = DB::table('cash_mutations')
+            ->when($branchIds !== null, fn($q) => $q->whereIn('cash_mutations.branch_id', $branchIds))
+            ->whereBetween('cash_mutations.effective_at', [$from, $to])
             ->selectRaw("
-                COALESCE(SUM(receivables.remaining_amount),0) AS remaining_amount,
-                COUNT(*) AS open_count,
-                COALESCE(SUM(CASE WHEN receivables.due_date < ? THEN receivables.remaining_amount ELSE 0 END),0) AS overdue_amount,
-                SUM(CASE WHEN receivables.due_date < ? THEN 1 ELSE 0 END) AS overdue_count
-            ", [$now, $now])
-            ->first();
-
-        $receivablesOpenAmount = (float) ($recv->remaining_amount ?? 0);
-        $receivablesOpenCount  = (int) ($recv->open_count ?? 0);
-        $overdueAmount         = (float) ($recv->overdue_amount ?? 0);
-        $overdueCount          = (int) ($recv->overdue_count ?? 0);
-
-        // === DP Outstanding (diletakkan di root KPI) ===
-        $dp = DB::table('receivables')
-            ->join('orders', 'orders.id', '=', 'receivables.order_id')
-            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
-            ->whereIn('receivables.status', ['OPEN', 'PARTIAL'])
-            ->selectRaw('COUNT(*) AS cnt, COALESCE(SUM(receivables.remaining_amount),0) AS amt')
-            ->first();
-
-        $dpOutstandingCount  = (int) ($dp->cnt ?? 0);
-        $dpOutstandingAmount = (float) ($dp->amt ?? 0);
-
-        // === TOTAL PEMBAYARAN PER METODE ===
-        $paymentMethodAgg = DB::table('payments')
-            ->join('orders', 'orders.id', '=', 'payments.order_id')
-            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
-            ->whereNotNull('payments.paid_at')
-            ->whereBetween('payments.paid_at', [$from, $to])
-            ->selectRaw("
-                COALESCE(SUM(CASE WHEN payments.method = 'DP' THEN payments.amount ELSE 0 END), 0) AS dp_amount,
-                COALESCE(SUM(CASE WHEN payments.method = 'CASH' THEN payments.amount ELSE 0 END), 0) AS cash_amount,
-                COALESCE(SUM(CASE WHEN payments.method = 'TRANSFER' THEN payments.amount ELSE 0 END), 0) AS transfer_amount,
-                COALESCE(SUM(CASE WHEN payments.method = 'QRIS' THEN payments.amount ELSE 0 END), 0) AS qris_amount
+                DATE(cash_mutations.effective_at) AS d,
+                COALESCE(SUM(CASE WHEN cash_mutations.direction = 'IN' THEN cash_mutations.amount ELSE 0 END), 0) AS cash_in,
+                COALESCE(SUM(CASE WHEN cash_mutations.direction = 'OUT' THEN cash_mutations.amount ELSE 0 END), 0) AS cash_out
             ")
-            ->first();
+            ->groupByRaw('DATE(cash_mutations.effective_at)')
+            ->orderBy('d')
+            ->get()
+            ->map(fn($r) => [
+                'date'     => (string) $r->d,
+                'cash_in'  => (float) $r->cash_in,
+                'cash_out' => (float) $r->cash_out,
+            ])
+            ->all();
 
-        $paymentMethodTotals = [
-            'dp_amount'       => (float) ($paymentMethodAgg->dp_amount ?? 0),
-            'cash_amount'     => (float) ($paymentMethodAgg->cash_amount ?? 0),
-            'transfer_amount' => (float) ($paymentMethodAgg->transfer_amount ?? 0),
-            'qris_amount'     => (float) ($paymentMethodAgg->qris_amount ?? 0),
-        ];
-
-        // === STATUS PEMBAYARAN ORDER ===
-        $paymentStatusAgg = DB::table('orders')
-            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+        $revenueByBranch = DB::table('orders')
+            ->join('branches', 'branches.id', '=', 'orders.branch_id')
+            ->when($branchIds !== null, fn($q) => $q->whereIn('orders.branch_id', $branchIds))
+            ->whereIn('orders.status', self::COMPLETED)
             ->whereBetween('orders.created_at', [$from, $to])
-            ->selectRaw("
-                SUM(CASE WHEN orders.payment_status = 'PENDING' THEN 1 ELSE 0 END) AS pending_count,
-                COALESCE(SUM(CASE WHEN orders.payment_status = 'PENDING' THEN orders.grand_total ELSE 0 END), 0) AS pending_amount,
+            ->groupBy('orders.branch_id', 'branches.code', 'branches.name')
+            ->selectRaw('orders.branch_id, branches.code, branches.name, COALESCE(SUM(orders.grand_total), 0) AS amount')
+            ->orderByDesc('amount')
+            ->get()
+            ->map(fn($r) => [
+                'branch_id' => (string) $r->branch_id,
+                'code'      => (string) $r->code,
+                'name'      => (string) $r->name,
+                'amount'    => (float) $r->amount,
+            ])
+            ->all();
 
-                SUM(CASE WHEN orders.payment_status = 'DP' THEN 1 ELSE 0 END) AS dp_count,
-                COALESCE(SUM(CASE WHEN orders.payment_status = 'DP' THEN orders.due_amount ELSE 0 END), 0) AS dp_due_amount,
+        $firstOrderAt = DB::table('orders')
+            ->where('status', '!=', self::VOID)
+            ->whereNotNull('customer_id')
+            ->selectRaw('customer_id, MIN(created_at) AS first_at')
+            ->groupBy('customer_id');
 
-                SUM(CASE WHEN orders.payment_status = 'PAID' THEN 1 ELSE 0 END) AS paid_count
-            ")
+        $customers = DB::table('orders')
+            ->joinSub($firstOrderAt, 'first_order', 'first_order.customer_id', '=', 'orders.customer_id')
+            ->when($branchIds !== null, fn($q) => $q->whereIn('orders.branch_id', $branchIds))
+            ->where('orders.status', '!=', self::VOID)
+            ->whereBetween('orders.created_at', [$from, $to])
+            ->selectRaw('
+                SUM(CASE WHEN orders.created_at = first_order.first_at THEN 1 ELSE 0 END) AS new_count,
+                SUM(CASE WHEN orders.created_at > first_order.first_at THEN 1 ELSE 0 END) AS returning_count
+            ')
             ->first();
 
-        $paymentStatusTotals = [
-            'pending_count'  => (int) ($paymentStatusAgg->pending_count ?? 0),
-            'pending_amount' => (float) ($paymentStatusAgg->pending_amount ?? 0),
-            'dp_count'       => (int) ($paymentStatusAgg->dp_count ?? 0),
-            'dp_due_amount'  => (float) ($paymentStatusAgg->dp_due_amount ?? 0),
-            'paid_count'     => (int) ($paymentStatusAgg->paid_count ?? 0),
-        ];
-
-        // === TOP LAYANAN (Top 5 by omzet dalam window order dibuat) ===
-        $topServices = DB::table('order_items')
+        $categoryMix = DB::table('order_items')
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->join('services', 'services.id', '=', 'order_items.service_id')
-            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
+            ->join('service_categories', 'service_categories.id', '=', 'services.category_id')
+            ->when($branchIds !== null, fn($q) => $q->whereIn('orders.branch_id', $branchIds))
+            ->where('orders.status', '!=', self::VOID)
             ->whereBetween('orders.created_at', [$from, $to])
-            ->groupBy('order_items.service_id', 'services.name')
-            ->selectRaw('order_items.service_id, services.name, SUM(order_items.qty) AS qty, SUM(order_items.total) AS amount')
+            ->groupBy('service_categories.id', 'service_categories.name')
+            ->selectRaw('
+                service_categories.name,
+                COALESCE(SUM(order_items.qty), 0) AS qty,
+                COALESCE(SUM(order_items.total), 0) AS amount
+            ')
             ->orderByDesc('amount')
-            ->limit(5)
-            ->get();
-
-        // === OMZET HARIAN (time-series untuk grafik) ===
-        $daily = DB::table('payments')
-            ->join('orders', 'orders.id', '=', 'payments.order_id')
-            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
-            ->whereNotNull('payments.paid_at')
-            ->whereBetween('payments.paid_at', [$from, $to])
-            ->selectRaw('DATE(payments.paid_at) AS d, SUM(payments.amount) AS sum')
-            ->groupByRaw('DATE(payments.paid_at)')
-            ->orderBy('d', 'asc')
             ->get()
             ->map(fn($r) => [
-                'date'   => (string) $r->d,
-                'amount' => (float) $r->sum,
+                'name'   => (string) $r->name,
+                'qty'    => (float) $r->qty,
+                'amount' => (float) $r->amount,
             ])
             ->all();
 
-        // === OMZET BULANAN (time-series untuk grafik) ===
-        $monthly = DB::table('payments')
-            ->join('orders', 'orders.id', '=', 'payments.order_id')
-            ->when($branchId, fn($q) => $q->where('orders.branch_id', $branchId))
-            ->whereNotNull('payments.paid_at')
-            ->whereBetween('payments.paid_at', [$from, $to])
-            ->selectRaw("DATE_FORMAT(payments.paid_at, '%Y-%m') AS m, SUM(payments.amount) AS sum")
-            ->groupByRaw("DATE_FORMAT(payments.paid_at, '%Y-%m')")
-            ->orderBy('m', 'asc')
-            ->get()
-            ->map(fn($r) => [
-                'month'  => (string) $r->m,
-                'amount' => (float) $r->sum,
-            ])
-            ->all();
-
-        // === CASH BOX ===
-        $cashMutationBase = DB::table('cash_mutations')
-            ->join('cash_sessions', 'cash_sessions.id', '=', 'cash_mutations.cash_session_id')
-            ->when($branchId, fn($q) => $q->where('cash_mutations.branch_id', $branchId))
-            ->whereBetween('cash_mutations.effective_at', [$from, $to]);
-
-        $cashIn = (clone $cashMutationBase)
-            ->where('cash_mutations.direction', 'IN')
-            ->sum('cash_mutations.amount');
-
-        $cashOut = (clone $cashMutationBase)
-            ->where('cash_mutations.direction', 'OUT')
-            ->sum('cash_mutations.amount');
-
-        $cashWithdrawals = (clone $cashMutationBase)
-            ->where('cash_mutations.type', 'WITHDRAWAL')
-            ->sum('cash_mutations.amount');
-
-        $cashOnHandNow = (float) DB::table('cash_mutations')
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->selectRaw("
-                COALESCE(SUM(CASE WHEN direction = 'IN' THEN amount ELSE 0 END),0)
-                - COALESCE(SUM(CASE WHEN direction = 'OUT' THEN amount ELSE 0 END),0)
-                AS balance
-            ")
-            ->value('balance');
-
-        $lastClosedDifference = (float) DB::table('cash_sessions')
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->where('status', 'CLOSED')
-            ->orderByDesc('business_date')
-            ->orderByDesc('closed_at')
-            ->value('difference_amount');
-
-        // === Payload yang DIHARAPKAN Frontend (flatten + time-series) ===
         return [
-            'omzet_total'                 => $omzetTotal,
-            'orders_count'                => $ordersCount,
-
-            'payment_method_totals'       => $paymentMethodTotals,
-            'payment_status_totals'       => $paymentStatusTotals,
-
-            'delivery_shipping_fee'       => $shippingFee,
-
-            'vouchers_used_count'         => $vouchersUsedCount,
-            'vouchers_used_amount'        => $vouchersUsedAmount,
-
-            'receivables_open_count'      => $receivablesOpenCount,
-            'receivables_open_amount'     => $receivablesOpenAmount,
-            'overdue_count'               => $overdueCount,
-            'overdue_amount'              => $overdueAmount,
-
-            'dp_outstanding_count'        => $dpOutstandingCount,
-            'dp_outstanding_amount'       => $dpOutstandingAmount,
-
-            'omzet_daily'                 => $daily,
-            'omzet_monthly'               => $monthly,
-            'top_services'                => $topServices,
-
-            'cash_in_total'               => (float) $cashIn,
-            'cash_out_total'              => (float) $cashOut,
-            'cash_withdrawal_total'       => (float) $cashWithdrawals,
-            'cash_on_hand_now'            => (float) $cashOnHandNow,
-            'cash_difference_last_closed' => (float) $lastClosedDifference,
+            'revenue_recognized'   => $revenueRecognized,
+            'unearned_revenue'     => $unearned,
+            'pairs'                => (float) ($all->pairs ?? 0),
+            'atv_per_pair'         => $pairsRecognized > 0 ? round($revenueRecognized / $pairsRecognized, 2) : 0.0,
+            'outstanding'          => (float) ($all->outstanding ?? 0),
+            'cashflow_daily'       => $cashflowDaily,
+            'revenue_by_branch'    => $revenueByBranch,
+            'customers_new'        => (int) ($customers->new_count ?? 0),
+            'customers_returning'  => (int) ($customers->returning_count ?? 0),
+            'category_mix'         => $categoryMix,
         ];
     }
 }
+
