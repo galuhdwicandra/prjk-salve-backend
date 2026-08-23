@@ -1,5 +1,4 @@
 <?php
-
 namespace Database\Seeders;
 
 use App\Models\User;
@@ -24,17 +23,17 @@ class UserSeeder extends Seeder
         $defaultBranchId = null;
         if (Schema::hasTable('branches')) {
             $defaultBranchId = DB::table('branches')->value('id');
-            if (!$defaultBranchId) {
+            if (! $defaultBranchId) {
                 $defaultBranchId = (string) Str::uuid();
                 DB::table('branches')->insert([
-                    'id'            => $defaultBranchId,
-                    'code'          => 'CBG-001',
-                    'name'          => 'Cabang Utama',
-                    'address'       => 'Alamat Cabang Utama',
-                    'invoice_prefix'=> 'SLV',
-                    'reset_policy'  => 'monthly',
-                    'created_at'    => now(),
-                    'updated_at'    => now(),
+                    'id'             => $defaultBranchId,
+                    'code'           => 'CBG-001',
+                    'name'           => 'Cabang Utama',
+                    'address'        => 'Alamat Cabang Utama',
+                    'invoice_prefix' => 'SLV',
+                    'reset_policy'   => 'monthly',
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
                 ]);
             }
         }
@@ -42,49 +41,52 @@ class UserSeeder extends Seeder
         // --- Data seed user inti ---
         $users = [
             [
-                'name'       => 'Superadmin',
-                'username'   => 'superadmin',
-                'email'      => 'superadmin@gmail.com',
-                'password'   => 'password',
-                'role'       => 'Superadmin',
-                'branch_id'  => null,
-                'is_active'  => true,
+                'name'         => 'Superadmin',
+                'username'     => 'superadmin',
+                'email'        => 'superadmin@gmail.com',
+                'password'     => 'password',
+                'role'         => 'Superadmin',
+                'branch_id'    => null,
+                'is_active'    => true,
+                'modules'      => User::MODULES,
+                'manager'      => true,
+                'all_branches' => true,
             ],
             [
-                'name'       => 'Admin PB',
-                'username'   => 'adminpb',
-                'email'      => 'adminpb@gmail.com',
-                'password'   => 'password',
-                'role'       => 'Admin Cabang',
-                'branch_id'  => $defaultBranchId,   // wajib punya cabang
-                'is_active'  => true,
+                'name'      => 'Admin PB',
+                'username'  => 'adminpb',
+                'email'     => 'adminpb@gmail.com',
+                'password'  => 'password',
+                'role'      => 'Admin Cabang',
+                'branch_id' => $defaultBranchId, // wajib punya cabang
+                'is_active' => true,
             ],
             [
-                'name'       => 'Kasir PB',
-                'username'   => 'kasirpb',
-                'email'      => 'kasirpb@gmail.com',
-                'password'   => 'password',
-                'role'       => 'Kasir',
-                'branch_id'  => $defaultBranchId,
-                'is_active'  => true,
+                'name'      => 'Kasir PB',
+                'username'  => 'kasirpb',
+                'email'     => 'kasirpb@gmail.com',
+                'password'  => 'password',
+                'role'      => 'Kasir',
+                'branch_id' => $defaultBranchId,
+                'is_active' => true,
             ],
             [
-                'name'       => 'Petugas Cuci PB',
-                'username'   => 'petugascucipb',
-                'email'      => 'petugascucipb@gmail.com',
-                'password'   => 'password',
-                'role'       => 'Petugas Cuci',
-                'branch_id'  => $defaultBranchId,
-                'is_active'  => true,
+                'name'      => 'Petugas Cuci PB',
+                'username'  => 'petugascucipb',
+                'email'     => 'petugascucipb@gmail.com',
+                'password'  => 'password',
+                'role'      => 'Petugas Cuci',
+                'branch_id' => $defaultBranchId,
+                'is_active' => true,
             ],
             [
-                'name'       => 'Kurir PB',
-                'username'   => 'kurirpb',
-                'email'      => 'kurirpb@gmail.com',
-                'password'   => 'password',
-                'role'       => 'Kurir',
-                'branch_id'  => $defaultBranchId,
-                'is_active'  => true,
+                'name'      => 'Kurir PB',
+                'username'  => 'kurirpb',
+                'email'     => 'kurirpb@gmail.com',
+                'password'  => 'password',
+                'role'      => 'Kurir',
+                'branch_id' => $defaultBranchId,
+                'is_active' => true,
             ],
         ];
 
@@ -97,20 +99,28 @@ class UserSeeder extends Seeder
                 $user = User::query()->firstOrCreate(
                     ['email' => $u['email']],
                     [
-                        'name'       => $u['name'],
-                        'password'   => Hash::make($u['password']),
-                        'is_active'  => (bool) $u['is_active'],
-                        'branch_id'  => $u['branch_id'],
+                        'name'      => $u['name'],
+                        'password'  => Hash::make($u['password']),
+                        'is_active' => (bool) $u['is_active'],
+                        'branch_id' => $u['branch_id'],
                         // jangan set email_verified_at; biarkan null
                     ]
                 );
 
                 // Jika user sudah ada, update nama/is_active/branch saja (JANGAN overwrite password)
                 $dirty = false;
-                if ($user->name !== $u['name']) { $user->name = $u['name']; $dirty = true; }
-                if ((bool)$user->is_active !== (bool)$u['is_active']) { $user->is_active = (bool)$u['is_active']; $dirty = true; }
-                if ((string)$user->branch_id !== (string)$u['branch_id']) { $user->branch_id = $u['branch_id']; $dirty = true; }
-                if ($dirty) { $user->save(); }
+                if ($user->name !== $u['name']) {$user->name = $u['name']; $dirty = true;}
+                if ((bool) $user->is_active !== (bool) $u['is_active']) {$user->is_active = (bool) $u['is_active']; $dirty = true;}
+                if ((string) $user->branch_id !== (string) $u['branch_id']) {$user->branch_id = $u['branch_id']; $dirty = true;}
+                if ($user->username === null) {$user->username = $u['username']; $dirty = true;}
+                if ($user->role_label !== $u['role']) {$user->role_label = $u['role']; $dirty = true;}
+
+                if (array_key_exists('modules', $u)) {
+                    if ($user->modules !== $u['modules']) {$user->modules = $u['modules']; $dirty = true;}
+                    if ((bool) $user->manager !== $u['manager']) {$user->manager = $u['manager']; $dirty = true;}
+                    if ((bool) $user->all_branches !== $u['all_branches']) {$user->all_branches = $u['all_branches']; $dirty = true;}
+                }
+                if ($dirty) {$user->save();}
 
                 // Sinkronkan branch_uuid jika kolom tersedia
                 if ($hasBranchUuid) {
@@ -125,7 +135,7 @@ class UserSeeder extends Seeder
                     // Banyak project lebih suka 1 role/user; kalau mau multi-role ganti ke syncWithoutDetaching
                     $user->syncRoles([$u['role']]);
                 } elseif (method_exists($user, 'assignRole')) {
-                    if (!$user->hasRole($u['role'])) {
+                    if (! $user->hasRole($u['role'])) {
                         $user->assignRole($u['role']);
                     }
                 }
