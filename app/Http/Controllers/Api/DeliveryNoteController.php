@@ -121,6 +121,13 @@ class DeliveryNoteController extends Controller
         $request->validate([
             'photos'   => ['required', 'array', 'min:1'],
             'photos.*' => ['image', 'max:5120'],
+            ], [
+            'photos.required'   => 'Pilih minimal satu foto bukti.',
+            'photos.array'      => 'Format foto bukti tidak valid.',
+            'photos.min'        => 'Pilih minimal satu foto bukti.',
+            'photos.*.uploaded' => 'Foto gagal diunggah. Periksa ukuran file dan batas upload server.',
+            'photos.*.image'    => 'File bukti harus berupa gambar.',
+            'photos.*.max'      => 'Ukuran setiap foto maksimal 5 MB.',
         ]);
 
         return $request->file('photos', []);
