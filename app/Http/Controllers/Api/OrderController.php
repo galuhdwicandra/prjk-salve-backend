@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\OrderStatusRequest;
 use App\Http\Requests\OrderStoreRequest;
+use App\Http\Requests\Orders\OrderBulkVoidRequest;
 use App\Http\Requests\Orders\OrderLoyaltyCorrectionRequest;
 use App\Http\Requests\OrderUpdateRequest;
 use App\Models\Order;
@@ -335,6 +336,55 @@ class OrderController extends Controller
             'data'    => null,
             'meta'    => [],
             'message' => 'Deleted',
+            'errors'  => null,
+        ]);
+    }
+
+    public function bulkVoid(OrderBulkVoidRequest $request): JsonResponse
+    {
+        $orderIds = array_values(array_unique(array_map(
+            'strval',
+            $request->validated('order_ids')
+        )));
+
+        $orders = Order::query()
+            ->whereIn('id', $orderIds)
+            ->get()
+            ->keyBy(fn(Order $order) => (string) $order->getKey());
+
+        if ($orders->count() !== count($orderIds)) {
+            throw ValidationException::withMessages([
+                'order_ids' => ['Salah satu receipt tidak ditemukan.'],
+            ]);
+        }
+
+        foreach ($orderIds as $orderId) {
+            $this->authorize('void', $orders->get($orderId));
+        }
+
+        $voidedIds = DB::transaction(function () use ($request, $orderIds, $orders) {
+            $result = [];
+
+            foreach ($orderIds as $orderId) {
+                $this->payments->voidOrder(
+                    $orders->get($orderId),
+                    $request->user(),
+                    (string) $request->validated('reason')
+                );
+
+                $result[] = $orderId;
+            }
+
+            return $result;
+        });
+
+        return response()->json([
+            'data'    => [
+                'voided_ids'   => $voidedIds,
+                'voided_count' => count($voidedIds),
+            ],
+            'meta'    => [],
+            'message' => count($voidedIds) . ' receipt berhasil di-void.',
             'errors'  => null,
         ]);
     }

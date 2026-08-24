@@ -229,6 +229,7 @@ Route::prefix('v1')->group(function () {
             ->middleware('module:kasir-receipt,kasir-customer');
 
         Route::middleware('module:kasir-receipt')->group(function () {
+            Route::post('/orders/bulk-void', [OrderController::class, 'bulkVoid']);
             Route::put('/orders/{order}', [OrderController::class, 'update']);
             Route::delete('/orders/{order}', [OrderController::class, 'destroy']);
             Route::post('/orders/{order}/void', [OrderController::class, 'void']);
