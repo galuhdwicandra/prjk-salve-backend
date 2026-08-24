@@ -1,7 +1,7 @@
 <?php
-
 namespace App\Http\Requests\Deliveries;
 
+use App\Models\Delivery;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,19 +25,30 @@ class DeliveryStatusRequest extends FormRequest
                     'HANDOVER',
                     'COMPLETED',
                     'FAILED',
-                    'CANCELLED'
+                    'CANCELLED',
                 ]),
             ],
-            'note' => ['nullable', 'string', 'max:200'],
-            'photo' => ['nullable', 'image', 'max:4096'],
+            'note'   => ['nullable', 'string', 'max:200'],
+            'photo'  => [
+                Rule::requiredIf(function (): bool {
+                    $delivery = $this->route('delivery');
+
+                    return $this->input('status') === 'COMPLETED'
+                    && $delivery instanceof Delivery
+                    && ! $delivery->handover_photo;
+                }),
+                'image',
+                'max:4096',
+            ],
         ];
     }
 
     public function messages(): array
     {
         return [
+            'photo.required' => 'Foto serah-terima wajib ditambahkan.',
             'photo.image' => 'File foto harus berupa gambar.',
-            'photo.max' => 'Ukuran foto maksimal 4MB.',
+            'photo.max'   => 'Ukuran foto maksimal 4MB.',
         ];
     }
 }

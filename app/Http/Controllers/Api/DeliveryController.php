@@ -25,7 +25,7 @@ class DeliveryController extends Controller
         $q    = Delivery::query()
             ->with([
                 'courier:id,name',
-                'order:id,branch_id,customer_id,number,invoice_no',
+                'order:id,branch_id,customer_id,number,invoice_no,due_amount',
                 'order.branch:id,name,code',
                 'order.items:id,order_id,qty',
                 'order.customer:id,name,whatsapp,address',
@@ -33,7 +33,9 @@ class DeliveryController extends Controller
             ->latest('created_at');
 
         // Filter umum
-        if ($status = $request->query('status')) {
+        if ($request->boolean('active')) {
+            $q->whereNotIn('status', DeliveryService::TERMINAL);
+        } elseif ($status = $request->query('status')) {
             $q->where('status', $status);
         }
         if ($courierId = $request->query('courier_id')) {
@@ -75,6 +77,7 @@ class DeliveryController extends Controller
                 'order_id'         => $d->order_id,
                 'order_invoice_no' => $d->order?->invoice_no,
                 'order_number'     => $d->order?->number,
+                'due_amount'       => (float) ($d->order?->due_amount ?? 0),
                 'type'             => $d->type,
                 'fee'              => $d->fee,
                 'qty'              => (float) ($d->order?->items->sum('qty') ?? 0),

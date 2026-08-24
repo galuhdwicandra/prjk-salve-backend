@@ -1,35 +1,41 @@
 <?php
-
 namespace App\Services;
 
-use App\Models\{Delivery, DeliveryEvent, Order, User};
-use Illuminate\Http\UploadedFile;
+use App\Models\Delivery;
+use App\Models\DeliveryEvent;
+use App\Models\Order;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Http\UploadedFile;
 
 class DeliveryService
 {
-    private const TERMINAL = ['COMPLETED', 'FAILED', 'CANCELLED'];
+    public const TERMINAL = ['COMPLETED', 'FAILED', 'CANCELLED'];
+
+    public function __construct(
+        private OrderService $orders,
+    ) {}
 
     public function create(Order $order, array $data, User $actor): Delivery
     {
         return DB::transaction(function () use ($order, $data) {
             /** @var Delivery $d */
             $d = new Delivery([
-                'order_id' => $order->getKey(),
-                'type' => (string) $data['type'],
-                'zone_id' => $data['zone_id'] ?? null,
-                'fee' => (float) ($data['fee'] ?? 0),
-                'status' => 'CREATED',
+                'order_id'      => $order->getKey(),
+                'type'          => (string) $data['type'],
+                'zone_id'       => $data['zone_id'] ?? null,
+                'fee'           => (float) ($data['fee'] ?? 0),
+                'status'        => 'CREATED',
                 'auto_assigned' => false,
             ]);
             $d->save();
 
             DeliveryEvent::query()->create([
-                'id' => (string) Str::uuid(),
+                'id'          => (string) Str::uuid(),
                 'delivery_id' => $d->getKey(),
-                'status' => 'CREATED',
-                'note' => 'Delivery created',
+                'status'      => 'CREATED',
+                'note'        => 'Delivery created',
             ]);
 
             return $d->fresh(['order', 'courier', 'events']);
@@ -41,9 +47,9 @@ class DeliveryService
         return DB::transaction(function () use ($orderId) {
             /** @var Delivery $delivery */
             $delivery = Delivery::query()->where('order_id', $orderId)->latest('created_at')->firstOrFail();
-            $order = $delivery->order()->firstOrFail();
+            $order    = $delivery->order()->firstOrFail();
 
-            if ($delivery->assigned_to && !in_array($delivery->status, self::TERMINAL, true)) {
+            if ($delivery->assigned_to && ! in_array($delivery->status, self::TERMINAL, true)) {
                 return ['delivery' => $delivery->fresh(['courier']), 'idempotent' => true];
             }
 
@@ -70,16 +76,16 @@ class DeliveryService
                 ->first();
 
             $delivery->forceFill([
-                'assigned_to' => $chosen['id'],
+                'assigned_to'   => $chosen['id'],
                 'auto_assigned' => true,
-                'status' => 'ASSIGNED',
+                'status'        => 'ASSIGNED',
             ])->save();
 
             DeliveryEvent::query()->create([
-                'id' => (string) Str::uuid(),
+                'id'          => (string) Str::uuid(),
                 'delivery_id' => $delivery->getKey(),
-                'status' => 'ASSIGNED',
-                'note' => 'Auto-assigned courier #' . $chosen['id'],
+                'status'      => 'ASSIGNED',
+                'note'        => 'Auto-assigned courier #' . $chosen['id'],
             ]);
 
             return ['delivery' => $delivery->fresh(['courier']), 'idempotent' => false];
@@ -90,16 +96,16 @@ class DeliveryService
     {
         return DB::transaction(function () use ($delivery, $courierId) {
             $delivery->forceFill([
-                'assigned_to' => $courierId,
+                'assigned_to'   => $courierId,
                 'auto_assigned' => false,
-                'status' => 'ASSIGNED',
+                'status'        => 'ASSIGNED',
             ])->save();
 
             DeliveryEvent::query()->create([
-                'id' => (string) Str::uuid(),
+                'id'          => (string) Str::uuid(),
                 'delivery_id' => $delivery->getKey(),
-                'status' => 'ASSIGNED',
-                'note' => 'Manually assigned courier #' . $courierId,
+                'status'      => 'ASSIGNED',
+                'note'        => 'Manually assigned courier #' . $courierId,
             ]);
 
             return $delivery->fresh(['courier']);
@@ -108,20 +114,30 @@ class DeliveryService
 
     public function updateStatus(Delivery $delivery, string $status, ?UploadedFile $photo, ?string $note, User $actor): Delivery
     {
-        return DB::transaction(function () use ($delivery, $status, $photo, $note) {
+        return DB::transaction(function () use ($delivery, $status, $photo, $note, $actor) {
             $delivery->forceFill(['status' => $status])->save();
 
-            if ($photo && $status === 'HANDOVER') {
+            if ($photo && in_array($status, ['HANDOVER', 'COMPLETED'], true)) {
                 $dir = "uploads/deliveries/{$delivery->getKey()}/{$status}";
-                $p = $photo->store($dir, 'public');
+                $p   = $photo->store($dir, 'public');
                 $delivery->forceFill(['handover_photo' => "storage/{$p}"])->save();
             }
 
+            if ($status === 'COMPLETED') {
+                $order = $delivery->order()
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($order->status === 'DELIVERING') {
+                    $this->orders->transition($order, 'PICKED_UP', $actor);
+                }
+            }
+
             DeliveryEvent::query()->create([
-                'id' => (string) Str::uuid(),
+                'id'          => (string) Str::uuid(),
                 'delivery_id' => $delivery->getKey(),
-                'status' => $status,
-                'note' => $note,
+                'status'      => $status,
+                'note'        => $note,
             ]);
 
             return $delivery->fresh(['courier', 'events']);
