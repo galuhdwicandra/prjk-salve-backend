@@ -43,6 +43,18 @@ class AuthService
         return $this->presentUser($user);
     }
 
+    public function changePassword(User $user, string $current, string $new): array
+    {
+        if (! Hash::check($current, (string) $user->password)) {
+            return ['ok' => false, 'status' => 422, 'message' => 'Password saat ini tidak sesuai.'];
+        }
+
+        $user->password = Hash::make($new);
+        $user->save();
+
+        return ['ok' => true, 'status' => 200, 'message' => 'Password updated.'];
+    }
+
     private function presentUser(User $user): array
     {
         $user->loadMissing(['branches', 'roles']);

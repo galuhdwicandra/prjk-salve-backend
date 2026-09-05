@@ -1,15 +1,15 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\AuthService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AuthController extends Controller
 {
-    public function __construct(private AuthService $auth) {}
+    public function __construct(private AuthService $auth)
+    {}
 
     public function login(Request $request): JsonResponse
     {
@@ -19,20 +19,20 @@ class AuthController extends Controller
         ]);
 
         $res = $this->auth->login($payload['login'], $payload['password']);
-        if (!$res['ok']) {
+        if (! $res['ok']) {
             return response()->json([
-                'data' => null,
-                'meta' => null,
+                'data'    => null,
+                'meta'    => null,
                 'message' => 'Unauthenticated',
-                'errors' => ['auth' => [$res['message']]],
+                'errors'  => ['auth' => [$res['message']]],
             ], 401);
         }
 
         return response()->json([
-            'data' => ['user' => $res['user']],
-            'meta' => ['token' => $res['token']],
+            'data'    => ['user' => $res['user']],
+            'meta'    => ['token' => $res['token']],
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 
@@ -41,10 +41,36 @@ class AuthController extends Controller
         $user = $request->user();
 
         return response()->json([
-            'data' => ['user' => $this->auth->me($user)],
-            'meta' => null,
+            'data'    => ['user' => $this->auth->me($user)],
+            'meta'    => null,
             'message' => 'OK',
-            'errors' => null,
+            'errors'  => null,
+        ]);
+    }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $payload = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password'         => ['required', 'confirmed', \Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()],
+        ]);
+
+        $res = $this->auth->changePassword($request->user(), $payload['current_password'], $payload['password']);
+
+        if (! $res['ok']) {
+            return response()->json([
+                'data'    => null,
+                'meta'    => null,
+                'message' => $res['message'],
+                'errors'  => ['current_password' => [$res['message']]],
+            ], 422);
+        }
+
+        return response()->json([
+            'data'    => null,
+            'meta'    => null,
+            'message' => 'Password updated',
+            'errors'  => null,
         ]);
     }
 
@@ -53,10 +79,10 @@ class AuthController extends Controller
         $this->auth->logout($request->user());
 
         return response()->json([
-            'data' => null,
-            'meta' => null,
+            'data'    => null,
+            'meta'    => null,
             'message' => 'Logged out',
-            'errors' => null,
+            'errors'  => null,
         ]);
     }
 }
