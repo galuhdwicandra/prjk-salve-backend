@@ -6,6 +6,7 @@ use App\Http\Requests\TransactionCategories\TransactionCategoryRequest;
 use App\Models\Expense;
 use App\Models\TransactionCategory;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TransactionCategoryController extends Controller
 {
@@ -44,6 +45,27 @@ class TransactionCategoryController extends Controller
     public function update(TransactionCategoryRequest $request, TransactionCategory $transactionCategory)
     {
         $transactionCategory->fill($request->validated())->save();
+
+        return $this->ok($transactionCategory->refresh(), [], 'Updated');
+    }
+
+    public function setDefault(TransactionCategory $transactionCategory)
+    {
+        if (! $transactionCategory->cash_out || ! $transactionCategory->is_active) {
+            return $this->fail(
+                ['transaction_category_id' => ['Kategori harus aktif dan berjenis uang keluar.']],
+                'Kategori tidak dapat dipakai sebagai biaya admin transfer.'
+            );
+        }
+
+        DB::transaction(function () use ($transactionCategory) {
+            TransactionCategory::query()
+                ->where('cash_out', true)
+                ->where('id', '!=', $transactionCategory->id)
+                ->update(['is_default' => false]);
+
+            $transactionCategory->forceFill(['is_default' => true])->save();
+        });
 
         return $this->ok($transactionCategory->refresh(), [], 'Updated');
     }

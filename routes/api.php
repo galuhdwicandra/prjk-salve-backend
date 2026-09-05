@@ -123,7 +123,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('/service-prices', [ServicePriceController::class, 'unset']);
         });
 
-        Route::middleware('module:set-master,kasir-pos,kasir-receipt')->group(function () {
+        Route::middleware('module:set-master,kasir-pos,kasir-receipt,set-jurnal')->group(function () {
             Route::get('/services', [ServiceController::class, 'index']);
             Route::get('/services/{service}', [ServiceController::class, 'show']);
             Route::get('/service-prices/by-service', [ServicePriceController::class, 'listByService']);
@@ -151,13 +151,16 @@ Route::prefix('v1')->group(function () {
         });
 
         Route::get('/transaction-categories', [TransactionCategoryController::class, 'index'])
-            ->middleware('module:set-coa,fin-transaksi,fin-kas');
+            ->middleware('module:set-coa,fin-transaksi,fin-kas,set-jurnal');
 
         Route::middleware('module:set-coa')->group(function () {
             Route::post('/transaction-categories', [TransactionCategoryController::class, 'store']);
             Route::put('/transaction-categories/{transactionCategory}', [TransactionCategoryController::class, 'update']);
             Route::delete('/transaction-categories/{transactionCategory}', [TransactionCategoryController::class, 'destroy']);
         });
+
+        Route::post('/transaction-categories/{transactionCategory}/default', [TransactionCategoryController::class, 'setDefault'])
+            ->middleware('module:set-jurnal');
 
         // Wash Notes
         Route::middleware('module:ops-proses')->group(function () {
@@ -351,7 +354,7 @@ Route::prefix('v1')->group(function () {
                 ->middleware('module:set-coa,set-jurnal,laporan,fin-kas,fin-transaksi,set-paymethod');
 
             Route::post('accounts/bulk-destroy', [AccountController::class, 'bulkDestroy'])
-                ->middleware('module:set-coa,fin-kas');
+                ->middleware('module:set-coa,fin-kas,set-jurnal');
 
             Route::apiResource('accounts', AccountController::class)
                 ->parameters(['accounts' => 'account'])

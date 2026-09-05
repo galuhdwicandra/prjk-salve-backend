@@ -24,7 +24,7 @@ class AccountingAccountPolicy
 
     public function update(User $user, AccountingAccount $account): bool
     {
-        if (! $user->canModule('set-coa') && ! $account->is_cash_account) {
+        if (! $user->canModule('set-coa') && ! $user->canModule('set-jurnal') && ! $account->is_cash_account) {
             return false;
         }
         return $user->canManageBranch($account->branch_id);

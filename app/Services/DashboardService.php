@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 class DashboardService
 {
     private const COMPLETED = ['READY', 'DELIVERING', 'PICKED_UP'];
-    private const VOID = 'CANCELED';
+    private const VOID      = 'CANCELED';
 
     public function summary(Carbon $from, Carbon $to, ?array $branchIds): array
     {
@@ -41,17 +41,29 @@ class DashboardService
             ->sum('orders.paid_amount');
 
         $revenueRecognized = (float) ($done->revenue ?? 0);
-        $pairsRecognized = (float) ($done->pairs ?? 0);
+        $pairsRecognized   = (float) ($done->pairs ?? 0);
 
-        $cashflowDaily = DB::table('cash_mutations')
-            ->when($branchIds !== null, fn($q) => $q->whereIn('cash_mutations.branch_id', $branchIds))
-            ->whereBetween('cash_mutations.effective_at', [$from, $to])
+        $cashflowDaily = DB::table('accounting_journal_lines as lines')
+            ->join('accounting_journal_entries as entries', 'entries.id', '=', 'lines.journal_entry_id')
+            ->join('accounting_accounts as accounts', 'accounts.id', '=', 'lines.account_id')
+            ->when($branchIds !== null, fn($q) => $q->whereIn('entries.branch_id', $branchIds))
+            ->where('entries.status', 'POSTED')
+            ->where('accounts.is_cash_account', true)
+            ->whereBetween('entries.journal_date', [$from->toDateString(), $to->toDateString()])
             ->selectRaw("
-                DATE(cash_mutations.effective_at) AS d,
-                COALESCE(SUM(CASE WHEN cash_mutations.direction = 'IN' THEN cash_mutations.amount ELSE 0 END), 0) AS cash_in,
-                COALESCE(SUM(CASE WHEN cash_mutations.direction = 'OUT' THEN cash_mutations.amount ELSE 0 END), 0) AS cash_out
+                entries.journal_date AS d,
+                COALESCE(SUM(GREATEST(
+                    CASE WHEN accounts.normal_balance = 'DEBIT'
+                        THEN lines.debit - lines.credit
+                        ELSE lines.credit - lines.debit
+                    END, 0)), 0) AS cash_in,
+                COALESCE(SUM(GREATEST(
+                    CASE WHEN accounts.normal_balance = 'DEBIT'
+                        THEN lines.credit - lines.debit
+                        ELSE lines.debit - lines.credit
+                    END, 0)), 0) AS cash_out
             ")
-            ->groupByRaw('DATE(cash_mutations.effective_at)')
+            ->groupBy('entries.journal_date')
             ->orderBy('d')
             ->get()
             ->map(fn($r) => [
@@ -118,17 +130,16 @@ class DashboardService
             ->all();
 
         return [
-            'revenue_recognized'   => $revenueRecognized,
-            'unearned_revenue'     => $unearned,
-            'pairs'                => (float) ($all->pairs ?? 0),
-            'atv_per_pair'         => $pairsRecognized > 0 ? round($revenueRecognized / $pairsRecognized, 2) : 0.0,
-            'outstanding'          => (float) ($all->outstanding ?? 0),
-            'cashflow_daily'       => $cashflowDaily,
-            'revenue_by_branch'    => $revenueByBranch,
-            'customers_new'        => (int) ($customers->new_count ?? 0),
-            'customers_returning'  => (int) ($customers->returning_count ?? 0),
-            'category_mix'         => $categoryMix,
+            'revenue_recognized'  => $revenueRecognized,
+            'unearned_revenue'    => $unearned,
+            'pairs'               => (float) ($all->pairs ?? 0),
+            'atv_per_pair'        => $pairsRecognized > 0 ? round($revenueRecognized / $pairsRecognized, 2) : 0.0,
+            'outstanding'         => (float) ($all->outstanding ?? 0),
+            'cashflow_daily'      => $cashflowDaily,
+            'revenue_by_branch'   => $revenueByBranch,
+            'customers_new'       => (int) ($customers->new_count ?? 0),
+            'customers_returning' => (int) ($customers->returning_count ?? 0),
+            'category_mix'        => $categoryMix,
         ];
     }
 }
-
