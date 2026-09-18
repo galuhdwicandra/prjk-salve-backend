@@ -207,6 +207,14 @@ class OrderTrackerService
 
     public function issueToken(Order $order, int $days = 90): Order
     {
+
+        $stillValid = $order->tracker_token
+            && (! $order->tracker_token_expires_at || $order->tracker_token_expires_at->isFuture());
+
+        if ($stillValid) {
+            return $order;
+        }
+
         $order->tracker_token            = Str::random(48);
         $order->tracker_token_expires_at = now()->addDays($days);
         $order->save();
@@ -248,13 +256,13 @@ class OrderTrackerService
         ];
     }
 
-        private function createdDetail(Order $order, bool $internal): string
+    private function createdDetail(Order $order, bool $internal): string
     {
         $parts = [];
 
         if ($order->branch) {
             $parts[] = 'Outlet ' . $order->branch->name
-                . ' (' . $order->branch->code . ' · ' . $order->branch->type . ')';
+            . ' (' . $order->branch->code . ' · ' . $order->branch->type . ')';
         }
 
         if ($internal && $order->creator) {

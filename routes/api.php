@@ -219,6 +219,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/orders/{order}/apply-voucher', [\App\Http\Controllers\Api\VoucherController::class, 'applyToOrder'])
             ->middleware('module:kasir-pos');
 
+        Route::post('/vouchers/preview', [\App\Http\Controllers\Api\VoucherController::class, 'preview'])
+            ->middleware('module:kasir-pos,kasir-promo');
+
         // Orders
         Route::get('/orders/{order}', [OrderController::class, 'show'])
             ->middleware('module:kasir-receipt,kasir-pos,ops-kirim,ops-sorting,ops-proses');
@@ -245,7 +248,6 @@ Route::prefix('v1')->group(function () {
         Route::middleware('module:ops-tracker')->group(function () {
             Route::get('/tracker/search', [TrackerController::class, 'search']);
             Route::get('/tracker/orders/{order}', [TrackerController::class, 'show']);
-            Route::post('/tracker/orders/{order}/link', [TrackerController::class, 'issueLink']);
             Route::delete('/tracker/orders/{order}/link', [TrackerController::class, 'revokeLink']);
         });
 
@@ -257,6 +259,9 @@ Route::prefix('v1')->group(function () {
             Route::post('/sorting/handover', [SortingController::class, 'handover']);
             Route::post('/sorting/courier', [SortingController::class, 'courier']);
         });
+
+        Route::post('/tracker/orders/{order}/link', [TrackerController::class, 'issueLink'])
+            ->middleware('module:ops-tracker,kasir-pos,kasir-receipt');
 
         Route::middleware('module:ops-sorting,ops-kirim')->group(function () {
             Route::get('/delivery-notes', [DeliveryNoteController::class, 'index']);

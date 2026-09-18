@@ -3,8 +3,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Orders\OrderApplyVoucherRequest;
+use App\Http\Requests\Vouchers\VoucherPreviewRequest;
 use App\Http\Requests\Vouchers\VoucherStoreRequest;
 use App\Http\Requests\Vouchers\VoucherUpdateRequest;
+use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Voucher;
 use App\Services\VoucherService;
@@ -154,6 +156,55 @@ class VoucherController extends Controller
             'data'    => (object) [],
             'meta'    => (object) [],
             'message' => 'Deleted',
+            'errors'  => null,
+        ]);
+    }
+
+    public function preview(VoucherPreviewRequest $req, VoucherService $svc)
+    {
+        $code    = strtoupper(trim($req->input('code')));
+        $voucher = Voucher::query()->where('code', $code)->first();
+
+        if (! $voucher) {
+            return response()->json([
+                'data'    => (object) [],
+                'meta'    => (object) [],
+                'message' => 'Voucher tidak ditemukan.',
+                'errors'  => ['code' => ['Voucher tidak ditemukan.']],
+            ], 422);
+        }
+
+        $subtotal = (float) $req->input('subtotal');
+
+        $order = new Order([
+            'branch_id'   => $req->input('branch_id'),
+            'customer_id' => $req->input('customer_id'),
+            'subtotal'    => $subtotal,
+        ]);
+        $order->id = (string) Str::uuid();
+        $order->setRelation('customer', Customer::query()->find($req->input('customer_id')));
+
+        try {
+            $svc->validate($order, $voucher);
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+
+            return response()->json([
+                'data'    => (object) [],
+                'meta'    => (object) [],
+                'message' => $errors['code'][0] ?? 'Voucher tidak valid.',
+                'errors'  => $errors,
+            ], 422);
+        }
+
+        return response()->json([
+            'data'    => [
+                'code'   => $voucher->code,
+                'name'   => $voucher->name,
+                'amount' => $svc->amountFor($voucher, $subtotal),
+            ],
+            'meta'    => (object) [],
+            'message' => 'Voucher valid.',
             'errors'  => null,
         ]);
     }

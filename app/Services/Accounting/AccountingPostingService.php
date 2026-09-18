@@ -3,6 +3,7 @@ namespace App\Services\Accounting;
 
 use App\Models\AccountingJournalEntry;
 use App\Models\AccountingJournalLine;
+use App\Models\AccountingAccount;
 use App\Models\CashMutation;
 use App\Models\Expense;
 use App\Models\Order;
@@ -325,6 +326,8 @@ class AccountingPostingService
         $category = $line?->category;
         $accountId = $direction === 'IN' ? $category?->in_account_id : $category?->out_account_id;
 
+        $accountId ??= $this->fallbackAccountId($direction);
+
         if (! $accountId) {
             throw ValidationException::withMessages([
                 'lines' => ['Kategori "' . ($category?->name ?? '-') . '" belum dipetakan ke akun COA. Atur di Pengaturan > Master Kategori Transaksi.'],
@@ -332,6 +335,14 @@ class AccountingPostingService
         }
 
         return (string) $accountId;
+    }
+
+    private function fallbackAccountId(string $direction): ?string
+    {
+        return AccountingAccount::query()
+            ->whereNull('branch_id')
+            ->where('code', $direction === 'IN' ? '4020' : '5090')
+            ->value('id');
     }
 
     private function postSimpleEntry(

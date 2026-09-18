@@ -3,7 +3,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TransactionCategories\TransactionCategoryRequest;
-use App\Models\Expense;
+use App\Models\CashTransactionLine;
 use App\Models\TransactionCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -79,7 +79,9 @@ class TransactionCategoryController extends Controller
             );
         }
 
-        $used = Expense::query()->where('category', $transactionCategory->name)->exists();
+        $used = CashTransactionLine::query()
+            ->where('transaction_category_id', $transactionCategory->id)
+            ->exists();
 
         if ($used) {
             return $this->fail(

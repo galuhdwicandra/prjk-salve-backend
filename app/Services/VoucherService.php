@@ -71,6 +71,16 @@ class VoucherService
         }
     }
 
+    public function amountFor(Voucher $voucher, float $subtotal): float
+    {
+        $amount = match ($voucher->type) {
+            'PERCENT' => round($subtotal * ((float) $voucher->value / 100), 2),
+            default   => (float) $voucher->value,
+        };
+
+        return max(0.0, min($amount, $subtotal));
+    }
+
     /**
      * Terapkan voucher ke order (idempotent).
      * - Satu voucher per order (pivot unique order_id).
@@ -89,12 +99,7 @@ class VoucherService
 
             // Hitung nilai potongan
             $subtotal = (float) $order->subtotal;
-            $amount   = match ($voucher->type) {
-                'PERCENT' => round($subtotal * ((float) $voucher->value / 100), 2),
-                default   => (float) $voucher->value,
-            };
-            // Batasi tidak melebihi subtotal
-            $amount = max(0.0, min($amount, $subtotal));
+            $amount   = $this->amountFor($voucher, $subtotal);
 
             // Simpan pivot
             OrderVoucher::query()->create([
