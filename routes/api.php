@@ -201,9 +201,11 @@ Route::prefix('v1')->group(function () {
 
         // Receipt (HTML)
         Route::middleware('module:kasir-receipt')->group(function () {
-            Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt']);
             Route::post('/orders/{order}/share-link', [OrderController::class, 'shareLink']);
         });
+
+        Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt'])
+            ->middleware('module:kasir-receipt,kasir-pos');
 
         // Payments
         Route::post('/orders/{order}/payments', [OrderPaymentsController::class, 'store'])
@@ -333,7 +335,7 @@ Route::prefix('v1')->group(function () {
 
         // WhatsApp Templates
         Route::get('/whatsapp-templates/resolve', [WhatsappTemplateController::class, 'resolve'])
-            ->middleware('module:set-wa,kasir-receipt');
+            ->middleware('module:set-wa,kasir-receipt,kasir-pos');
 
         Route::middleware('module:set-wa')->group(function () {
             Route::get('/whatsapp-templates', [WhatsappTemplateController::class, 'index']);
