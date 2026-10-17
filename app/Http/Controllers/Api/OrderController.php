@@ -53,7 +53,9 @@ class OrderController extends Controller
 
         $sortDir = strtolower((string) $request->query('sort_dir')) === 'asc' ? 'asc' : 'desc';
 
-        $q->orderBy($sortBy, $sortDir);
+        $q->orderBy($sortBy, $sortDir)
+            ->orderBy('created_at', $sortDir)
+            ->orderBy('id', $sortDir);
 
         $branchIds = $me->branchScopeIds($request->query('branch_id'));
         if ($branchIds !== null) {
