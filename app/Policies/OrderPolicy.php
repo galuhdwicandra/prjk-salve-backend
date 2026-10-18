@@ -25,7 +25,8 @@ class OrderPolicy
 
     public function update(User $user, Order $order): bool
     {
-        return $user->canManageBranch((string) $order->branch_id)
+        return $user->hasRole('Superadmin')
+        && $user->canAccessBranch((string) $order->branch_id)
         && ! $this->isTerminal($order);
     }
 
@@ -43,9 +44,9 @@ class OrderPolicy
 
     public function delete(User $user, Order $order): bool
     {
-        return $user->canManageBranch((string) $order->branch_id)
-        && ! $this->isTerminal($order)
-        && ! $order->payments()->exists();
+        return $user->hasRole('Superadmin')
+        && $user->canAccessBranch((string) $order->branch_id)
+        && ! $this->isTerminal($order);
     }
 
     public function transitionStatus(User $user, Order $order): bool

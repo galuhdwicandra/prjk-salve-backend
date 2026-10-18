@@ -330,7 +330,19 @@ class OrderController extends Controller
     {
         $this->authorize('delete', $order);
 
+        if (
+            $order->deliveryNotes()->exists()
+            || \App\Models\WashNoteItem::query()->where('order_id', $order->getKey())->exists()
+        ) {
+            abort(422, 'Receipt sudah masuk surat jalan atau catatan cuci, tidak dapat dihapus.');
+        }
+
         DB::transaction(function () use ($order) {
+            foreach ($order->payments()->get() as $payment) {
+                $this->payments->discardPaymentPostings($payment);
+            }
+
+            $this->payments->voidJournals('order_discount', [(string) $order->getKey()]);
             $order->delete();
         });
 

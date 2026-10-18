@@ -429,7 +429,7 @@ class PaymentService
         ]);
         return $order->fresh(['customer', 'items.service', 'photos', 'receivable', 'payments']);
     }
-    private function discardPaymentPostings(Payment $payment): void
+    public function discardPaymentPostings(Payment $payment): void
     {
         $paymentId = (string) $payment->getKey();
         if (Schema::hasTable('cash_mutations')) {
@@ -440,7 +440,7 @@ class PaymentService
         }
         $this->voidJournals('payment', [$paymentId]);
     }
-    private function voidJournals(string $sourceType, array $sourceIds): void
+    public function voidJournals(string $sourceType, array $sourceIds): void
     {
         if ($sourceIds === [] || ! Schema::hasTable('accounting_journal_entries')) {
             return;
