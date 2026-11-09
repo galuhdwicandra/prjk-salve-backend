@@ -67,8 +67,7 @@ class InvoiceService
             $counter->seq = (int) $counter->seq + 1;
             $counter->save();
 
-            // invoice_no: INV-DD-MM-#### (gunakan 4 digit terakhir seq)
-            $seq4 = substr(str_pad((string) $counter->seq, 4, '0', STR_PAD_LEFT), -4);
+            $invoiceSeq = str_pad((string) $counter->seq, 4, '0', STR_PAD_LEFT);
 
             return [
                 'number'     => $this->numbers->render(
@@ -77,7 +76,7 @@ class InvoiceService
                     $branch->invoice_prefix ?? 'SLV',
                     $now
                 ),
-                'invoice_no' => "INV-{$now->format('d')}-{$now->format('m')}-{$seq4}",
+                'invoice_no' => "INV-{$now->format('d')}-{$now->format('m')}-{$invoiceSeq}",
             ];
         });
     }

@@ -112,6 +112,10 @@ class OrderController extends Controller
             $q->whereDate('received_at', '<=', $dateTo);
         }
 
+        if ($finishedOn = $request->query('finished_on')) {
+            $q->whereHas('productionTask', fn($t) => $t->whereDate('finished_date', $finishedOn));
+        }
+
         $allowedPerPages  = [5, 10, 25, 50, 100, 200, 500];
         $requestedPerPage = (int) $request->query('per_page', 10);
         $per              = in_array($requestedPerPage, $allowedPerPages, true) ? $requestedPerPage : 10;

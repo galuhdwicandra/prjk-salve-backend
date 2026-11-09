@@ -154,6 +154,7 @@ class TrackerController extends Controller
             ],
             'show_pickup'         => $stage['index'] >= 2,
             'outstanding'         => max(0.0, (float) $order->due_amount),
+            'notes'               => $order->notes,
             'photos'              => $this->tracker->photos($order),
             'timeline'            => $this->tracker->timeline($order, false),
             'updated_at'          => now()->toIso8601String(),
