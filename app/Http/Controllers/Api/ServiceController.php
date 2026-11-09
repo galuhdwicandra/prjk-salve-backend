@@ -6,6 +6,7 @@ use App\Http\Requests\ServiceStoreRequest;
 use App\Http\Requests\ServiceUpdateRequest;
 use App\Models\Service;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ServiceController extends Controller
@@ -124,7 +125,10 @@ class ServiceController extends Controller
         $payload = $request->validated();
         $this->authorize('update', $service);
 
-        $service->fill($payload)->save();
+        DB::transaction(function () use ($service, $payload) {
+            $service->fill($payload)->save();
+            $service->variants()->update(['category_id' => $service->category_id]);
+        });
 
         // TODO: audit('SERVICE_UPDATE', $service)
 
