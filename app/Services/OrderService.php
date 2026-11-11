@@ -7,6 +7,7 @@ use App\Models\OrderAuditLog;
 use App\Models\OrderItem;
 use App\Models\OrderPhoto;
 use App\Models\Receivable;
+use App\Models\Service;
 use App\Models\User;
 use App\Services\DeliveryService;
 use Carbon\Carbon;
@@ -17,6 +18,8 @@ use Illuminate\Support\Str;
 
 class OrderService
 {
+    public const ONE_DAY_SERVICE = 'One Day';
+
     public function __construct(
         private PricingService $pricing,
         private InvoiceService $invoice,
@@ -67,8 +70,9 @@ class OrderService
                 'notes'                  => $data['notes'] ?? null,
                 'created_by'             => $actor->id,
             ]);
-            $order->received_at = $data['received_at'] ?? now(); // default: sekarang
+            $order->received_at = $data['received_at'] ?? now();
             $order->ready_at    = $data['ready_at'] ?? null;
+            $this->applyOneDayReadyAt($order, array_column($data['items'], 'service_id'));
             $order->save();
 
             $subtotal          = 0.0;
@@ -434,6 +438,7 @@ class OrderService
                 $order->paid_at = null;
             }
 
+            $this->applyOneDayReadyAt($order, $order->items()->pluck('service_id')->all());
             $order->save();
 
             if (Schema::hasTable('receivables')) {
@@ -485,6 +490,19 @@ class OrderService
             return $order->load(['items.service', 'customer', 'receivable']);
         });
     }
+
+    private function applyOneDayReadyAt(Order $order, array $serviceIds): void
+    {
+        $hasOneDay = Service::query()
+            ->whereIn('id', $serviceIds)
+            ->where('name', self::ONE_DAY_SERVICE)
+            ->exists();
+
+        if ($hasOneDay) {
+            $order->ready_at = Carbon::parse($order->received_at)->addDay()->toDateString();
+        }
+    }
+
 
     public function applyManualLoyaltyCorrection(Order $order, string $reward, string $note, User $actor): Order
     {

@@ -36,7 +36,7 @@ class OrderController extends Controller
 
         $me = $request->user();
         $q  = Order::query()
-            ->with(['customer', 'items.service', 'receivable'])
+            ->with(['customer', 'items.service', 'receivable', 'branch:id,code,name'])
             ->withCount('payments')
             ->addSelect([
                 'latest_payment_method' => \App\Models\Payment::query()
@@ -114,6 +114,13 @@ class OrderController extends Controller
 
         if ($finishedOn = $request->query('finished_on')) {
             $q->whereHas('productionTask', fn($t) => $t->whereDate('finished_date', $finishedOn));
+        }
+
+        if ($request->boolean('one_day_due')) {
+            $q->whereHas('items.service', fn($s) => $s->where('name', OrderService::ONE_DAY_SERVICE))
+                ->whereNotIn('status', ['READY', 'DELIVERING', 'PICKED_UP', 'CANCELED'])
+                ->whereNotNull('ready_at')
+                ->whereDate('ready_at', '<=', now('Asia/Jakarta')->toDateString());
         }
 
         $allowedPerPages  = [5, 10, 25, 50, 100, 200, 500];
