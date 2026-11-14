@@ -531,10 +531,15 @@ class OrderService
 
             $subtotal = (float) $locked->subtotal;
             $paid     = (float) $locked->paid_amount;
+            $base     = $this->loyalty->rewardBase($locked);
+
+            if ($base <= 0) {
+                abort(422, 'Order ini tidak memiliki treatment Deep Clean sepatu.');
+            }
 
             $loyaltyDiscount = $reward === 'FREE100'
-                ? $subtotal
-                : round($subtotal * 0.25, 2);
+                ? $base
+                : round($base * 0.25, 2);
 
             $grandTotal = max(0, $subtotal - $loyaltyDiscount);
             $dueAmount  = max(0, $grandTotal - $paid);

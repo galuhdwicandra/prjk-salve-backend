@@ -739,9 +739,9 @@
                             <div style="font-size:12px; margin:6px 0 8px 0;">
                                 Reward diterapkan pada transaksi ini:
                                 @if ($order->loyalty_reward === 'DISC25')
-                                    <strong>Diskon 25%</strong>.
+                                    <strong>Diskon 25% untuk 1 pasang Deep Clean</strong>.
                                 @elseif($order->loyalty_reward === 'FREE100')
-                                    <strong>Gratis 100%</strong>.
+                                    <strong>Gratis 1 pasang Deep Clean</strong>.
                                 @else
                                     <strong>{{ $order->loyalty_reward }}</strong>.
                                 @endif

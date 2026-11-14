@@ -11,6 +11,7 @@ use InvalidArgumentException;
 final class LoyaltyService
 {
     public const CYCLE = 10;
+    public const REWARD_SERVICE = 'Deep Clean';
 
     public function getOrCreateAccount(string $customerId, string $branchId): LoyaltyAccount
     {
@@ -102,30 +103,39 @@ final class LoyaltyService
     }
 
     /** Hitung reward untuk order baru (tanpa mengubah state). */
-    public function previewReward(?string $customerId, string $branchId, float $subtotal): array
+    public function previewReward(?string $customerId, string $branchId, float $base): array
     {
-        if (! $customerId || $subtotal <= 0) {
+        if (! $customerId || $base <= 0) {
             return ['reward' => 'NONE', 'discount' => 0.0];
         }
         $acc  = $this->getOrCreateAccount($customerId, $branchId);
         $next = ($acc->stamps % self::CYCLE) + 1; // 1..10
 
         if ($next === 5) {
-            return ['reward' => 'DISC25', 'discount' => round($subtotal * 0.25, 2)];
+            return ['reward' => 'DISC25', 'discount' => round($base * 0.25, 2)];
         }
 
         if ($next === 10) {
-            return ['reward' => 'FREE100', 'discount' => round($subtotal, 2)];
+            return ['reward' => 'FREE100', 'discount' => round($base, 2)];
         }
 
         return ['reward' => 'NONE', 'discount' => 0.0];
+    }
+
+    public function rewardBase(Order $order): float
+    {
+        return (float) $order->items()->with('service.parent')->get()
+            ->filter(fn ($item) => $item->service?->parent?->name === self::REWARD_SERVICE
+                && $item->service->name !== OrderService::ONE_DAY_SERVICE)
+            ->map(fn ($item) => (float) $item->price * min((float) $item->qty, 1))
+            ->min();
     }
 
     /** Terapkan loyalti pada draft order (mengisi kolom meta & perhitungan total). */
     public function applyToOrder(Order $order, string $branchId): void
     {
         $subtotal = (float) $order->getAttribute('subtotal');
-        $p        = $this->previewReward($order->customer_id, $branchId, $subtotal);
+        $p        = $this->previewReward($order->customer_id, $branchId, $this->rewardBase($order));
 
         $order->loyalty_reward   = $p['reward'];   // NONE|DISC25|FREE100
         $order->loyalty_discount = $p['discount']; // angka rupiah
@@ -149,6 +159,11 @@ final class LoyaltyService
 
             $acc    = $this->getOrCreateAccount((string) $order->customer_id, (string) $order->branch_id);
             $before = (int) $acc->stamps;
+
+            $isRewardVisit = in_array(($before % self::CYCLE) + 1, [5, 10], true);
+            if ($isRewardVisit && ! in_array($order->loyalty_reward, ['DISC25', 'FREE100'], true)) {
+                return;
+            }
 
             // catat reward yang dipakai di order ini
             if ($order->loyalty_reward === 'DISC25') {
