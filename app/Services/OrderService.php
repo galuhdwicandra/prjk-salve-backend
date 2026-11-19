@@ -117,6 +117,8 @@ class OrderService
             $order->discount = $this->dec($manualDiscount);
 
             $this->loyalty->applyToOrder($order, $branchId);
+            $order->payment_status = ((float) $order->due_amount <= 0 && $order->loyalty_reward === 'FREE100') ? 'PAID' : 'PENDING';
+            $order->paid_at        = $order->payment_status === 'PAID' ? now() : null;
             $order->save();
 
             $this->loyalty->finalizeEarn($order);
@@ -430,13 +432,11 @@ class OrderService
             $order->due_amount  = $this->dec($due);
 
             $paidAmount            = (float) $order->paid_amount;
-            $order->payment_status = ($due <= 0 && $grand > 0)
+            $order->payment_status = ($due <= 0 && ($grand > 0 || $order->loyalty_reward === 'FREE100'))
                 ? 'PAID'
                 : ($paidAmount > 0 ? 'DP' : 'PENDING');
 
-            if ($order->payment_status !== 'PAID') {
-                $order->paid_at = null;
-            }
+            $order->paid_at = $order->payment_status === 'PAID' ? ($order->paid_at ?? now()) : null;
 
             $this->applyOneDayReadyAt($order, $order->items()->pluck('service_id')->all());
             $order->save();
@@ -502,7 +502,6 @@ class OrderService
             $order->ready_at = Carbon::parse($order->received_at)->addDay()->toDateString();
         }
     }
-
 
     public function applyManualLoyaltyCorrection(Order $order, string $reward, string $note, User $actor): Order
     {
