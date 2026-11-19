@@ -32,6 +32,11 @@ class CustomerPolicy
         return $user->canAccessBranch((string) $customer->branch_id);
     }
 
+    public function manageManual(User $user, Customer $customer): bool
+    {
+        return $user->canManageBranch((string) $customer->branch_id);
+    }
+
     public function delete(User $user, Customer $customer): bool
     {
         return $user->canManageBranch((string) $customer->branch_id);

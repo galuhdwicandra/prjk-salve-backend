@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\LoyaltyService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class LoyaltyManualAdjustRequest extends FormRequest
@@ -25,6 +26,11 @@ class LoyaltyManualAdjustRequest extends FormRequest
 
                     if ($type === 'set' && $amount < 0) {
                         $fail('Jumlah stamp minimal 0 untuk tipe set.');
+                        return;
+                    }
+
+                    if ($type === 'set' && $amount >= LoyaltyService::CYCLE) {
+                        $fail('Jumlah stamp maksimal ' . (LoyaltyService::CYCLE - 1) . ' untuk tipe set.');
                         return;
                     }
 
