@@ -3,6 +3,8 @@ namespace App\Services\Accounting;
 
 use App\Models\AccountingAccount;
 use App\Models\AccountingJournalLine;
+use App\Models\Payment;
+use App\Models\Receivable;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -22,11 +24,21 @@ class AccountingLedgerService
         $lines = $this->ledgerLinesQuery($account, $branchId, $dateFrom, $dateTo)
             ->get();
 
+        $entries = $lines->pluck('journalEntry')->filter();
+
+        $paymentOrders = Payment::query()
+            ->whereIn('id', $entries->where('source_type', 'payment')->pluck('source_id')->filter()->all())
+            ->pluck('order_id', 'id');
+
+        $receivableOrders = Receivable::query()
+            ->whereIn('id', $entries->where('source_type', 'receivable')->pluck('source_id')->filter()->all())
+            ->pluck('order_id', 'id');
+
         $runningBalance = $openingBalance;
         $totalDebit     = 0.0;
         $totalCredit    = 0.0;
 
-        $rows = $lines->map(function (AccountingJournalLine $line) use ($account, &$runningBalance, &$totalDebit, &$totalCredit) {
+        $rows = $lines->map(function (AccountingJournalLine $line) use ($account, $paymentOrders, $receivableOrders, &$runningBalance, &$totalDebit, &$totalCredit) {
             $debit  = (float) $line->debit;
             $credit = (float) $line->credit;
 
@@ -35,14 +47,22 @@ class AccountingLedgerService
 
             $runningBalance = $this->applyMovement($account, $runningBalance, $debit, $credit);
 
+            $sourceId = $line->journalEntry?->source_id;
+
             return [
                 'id'               => (string) $line->id,
                 'journal_entry_id' => (string) $line->journal_entry_id,
                 'journal_date'     => optional($line->journalEntry?->journal_date)->format('Y-m-d'),
                 'journal_no'       => $line->journalEntry?->journal_no,
                 'source_type'      => $line->journalEntry?->source_type,
-                'source_id'        => $line->journalEntry?->source_id,
+                'source_id'        => $sourceId,
                 'source_no'        => $line->journalEntry?->source_no,
+                'order_id'         => match ($line->journalEntry?->source_type) {
+                    'payment'        => $paymentOrders[$sourceId] ?? null,
+                    'receivable'     => $receivableOrders[$sourceId] ?? null,
+                    'order_discount' => $sourceId,
+                    default          => null,
+                },
                 'branch'           => $line->journalEntry?->branch ? [
                     'id'   => (string) $line->journalEntry->branch->id,
                     'name' => $line->journalEntry->branch->name,
@@ -86,13 +106,13 @@ class AccountingLedgerService
         ];
     }
 
-        public function buildAll(array $filters, $user): array
+    public function buildAll(array $filters, $user): array
     {
         $branchId = $this->resolveScopeBranchId($filters, $user);
         $dateFrom = (string) $filters['date_from'];
         $dateTo   = (string) $filters['date_to'];
 
-        $accounts = $this->visibleAccountsQuery($user)->get()->keyBy(fn ($account) => (string) $account->id);
+        $accounts = $this->visibleAccountsQuery($user)->get()->keyBy(fn($account) => (string) $account->id);
         $openings = $this->openingBalancesByAccount($branchId, $dateFrom);
 
         $groups   = [];
@@ -132,8 +152,8 @@ class AccountingLedgerService
             $debit  = (float) $line->debit;
             $credit = (float) $line->credit;
 
-            $groups[$key]['total_debit']  += $debit;
-            $groups[$key]['total_credit'] += $credit;
+            $groups[$key]['total_debit']    += $debit;
+            $groups[$key]['total_credit']   += $credit;
             $groups[$key]['ending_balance'] = $this->applyMovement(
                 $account,
                 $groups[$key]['ending_balance'],
@@ -141,7 +161,7 @@ class AccountingLedgerService
                 $credit
             );
 
-            $groups[$key]['rows'][] = [
+            $groups[$key]['rows'][]  = [
                 'id'               => (string) $line->id,
                 'journal_entry_id' => (string) $line->journal_entry_id,
                 'journal_date'     => $line->journal_date,
@@ -214,7 +234,7 @@ class AccountingLedgerService
             ->join('accounting_journal_entries as e', 'e.id', '=', 'accounting_journal_lines.journal_entry_id')
             ->where('e.status', 'POSTED')
             ->whereDate('e.journal_date', '<', $dateFrom)
-            ->when($branchId, fn ($q) => $q->where('e.branch_id', $branchId))
+            ->when($branchId, fn($q) => $q->where('e.branch_id', $branchId))
             ->groupBy('accounting_journal_lines.account_id')
             ->selectRaw('accounting_journal_lines.account_id as account_id, COALESCE(SUM(accounting_journal_lines.debit), 0) as debit_total, COALESCE(SUM(accounting_journal_lines.credit), 0) as credit_total')
             ->get();
@@ -243,7 +263,7 @@ class AccountingLedgerService
             ->where('e.status', 'POSTED')
             ->whereDate('e.journal_date', '>=', $dateFrom)
             ->whereDate('e.journal_date', '<=', $dateTo)
-            ->when($branchId, fn ($q) => $q->where('e.branch_id', $branchId))
+            ->when($branchId, fn($q) => $q->where('e.branch_id', $branchId))
             ->orderBy('a.sort_order')
             ->orderBy('a.code')
             ->orderBy('e.journal_date')
